@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registry, releasePackages } from './release-contract.mjs';
 import { planPublication } from './registry-preflight.mjs';
+import { readRegistry, checkPrereleaseBaseline, checkPublishedTags } from './registry-tags.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_EVENT_NAME !== 'workflow_dispatch' || process.env.GITHUB_REPOSITORY !== 'Super-Solution/super-editor' || process.env.GITHUB_REF !== 'refs/heads/main') throw new Error('Publication is allowed only by the controlled manual workflow on this repository main branch.');
 const packages = releasePackages(root);
@@ -22,14 +23,24 @@ for (let i = 0; i < packages.length; i++) {
   if (createHash('sha256').update(bytes).digest('hex') !== item.sha256 || `sha512-${createHash('sha512').update(bytes).digest('base64')}` !== item.integrity || bytes.length !== item.size) throw new Error(`Artifact checksum mismatch: ${item.name}`);
   artifacts.push({ ...item, tarball });
 }
+const beforeLatest = new Map();
 const { pending, skipped } = await planPublication(artifacts, async item => {
-  const response = await fetch(`${registry}${encodeURIComponent(item.name)}`, { signal: AbortSignal.timeout(15_000), headers: { accept: 'application/json' } });
-  return { status: response.status, document: response.status === 200 ? await response.json() : undefined };
+  const document = await readRegistry(item.name);
+  if (item.channel === 'next') beforeLatest.set(item.name, checkPrereleaseBaseline(item.name, document));
+  return { status: document ? 200 : 404, document };
 });
 for (const item of skipped) console.log(`Already published with identical integrity; skipping ${item.name}@${item.version}.`);
 for (const item of pending) {
+  if (item.channel === 'next' && (await readRegistry(item.name))?.['dist-tags']?.latest !== beforeLatest.get(item.name)) {
+    throw new Error(`Latest changed after preflight: ${item.name}; no publication attempted for this package.`);
+  }
   // npm consumes the workflow's ephemeral NODE_AUTH_TOKEN through setup-node's auth configuration.
   // Never inspect or log credential values here; no lifecycle scripts, force or unpublish.
   execFileSync(process.execPath, [npmCli, 'publish', item.tarball, '--access', 'public', '--tag', item.channel, '--registry', registry, '--ignore-scripts'], { cwd: root, stdio: 'inherit' });
   console.log(`Published ${item.name}@${item.version} to ${item.channel}.`);
+}
+// Checks are read-only. Unexpected tags stop the release; never move a changed tag automatically.
+for (const item of artifacts) {
+  checkPublishedTags(item, beforeLatest.get(item.name), await readRegistry(item.name));
+  console.log(`Verified ${item.name} channel and preserved prerelease latest baseline.`);
 }

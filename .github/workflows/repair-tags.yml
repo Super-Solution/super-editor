@@ -1,0 +1,44 @@
+name: Repair prerelease latest tags
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: super-editor-npm-publication
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN_AVAILABLE: ${{ secrets.NPM_TOKEN != '' }}
+    steps:
+      - name: Require existing organization secret access
+        if: env.NPM_TOKEN_AVAILABLE != 'true'
+        run: |
+          echo 'Existing NPM_TOKEN is unavailable; no tag changes attempted.'
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          scope: '@super-solution'
+      - name: Guard, remove only candidate latest, and verify all six packages
+        run: npm run release:repair-tags
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Save public registry audit, including partial failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: npm-tag-repair-${{ github.run_id }}
+          path: artifacts/tag-repair/audit.json
+          if-no-files-found: warn
+          retention-days: 7

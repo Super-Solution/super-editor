@@ -53,3 +53,6 @@ npm install @super-solution/editor-api@next @super-solution/editor-mcp@next
 ```
 
 Import `createReportService`, `documentSchema`, and `transactionSchema` from editor-core, `createHttpHandler` from editor-api, `createMcpDispatcher` from editor-mcp, and `runCli` from editor-cli. UI CSS is `@super-solution/editor-ui/styles.css`. Report schema v1 and guarded operations remain unchanged. SuperChat/SuperChart official contracts, complete MCP server initialization, Word compatibility and real-time collaboration remain outside this release.
+## Tag maintenance
+
+For the fixed `0.1.0-next.0` latest-tag repair and its guarded manual workflow, see [npm-tag-repair.md](npm-tag-repair.md). Publication checks now also verify the candidate channel and preserve an absent or stable latest baseline without automatically changing tags.
