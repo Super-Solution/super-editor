@@ -1,10 +1,49 @@
 {
   "compilerOptions": {
-    "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext",
-    "strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
-    "declaration": true, "outDir": "dist", "rootDir": ".", "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"], "skipLibCheck": true,
-    "noEmitOnError": true
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "noEmitOnError": true,
+    "paths": {
+      "@super-solution/editor-core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@super-solution/editor-ui": [
+        "./packages/ui/src/index.ts"
+      ],
+      "@super-solution/editor-react": [
+        "./packages/react/src/index.tsx"
+      ],
+      "@super-solution/editor-api": [
+        "./packages/api/src/index.ts"
+      ],
+      "@super-solution/editor-mcp": [
+        "./packages/mcp/src/index.ts"
+      ],
+      "@super-solution/editor-cli": [
+        "./packages/cli/src/index.ts"
+      ]
+    }
   },
-  "include": ["packages/**/*.ts", "packages/**/*.tsx", "examples/**/*.ts", "examples/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
+  "include": [
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "examples/**/*.ts",
+    "examples/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
+  ]
 }

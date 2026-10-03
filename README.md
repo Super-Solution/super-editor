@@ -6,7 +6,7 @@ This is a local vertical slice for macro, stock, ETF, portfolio, and arbitrage *
 
 ## Status and licensing
 
-The owner added the [Apache License 2.0](LICENSE) to upstream on 2026-10-03. This implementation is based on that commit and preserves its LICENSE unchanged. The workspace packages declare `Apache-2.0`; `private: true` keeps the development workspace from accidental npm publication. Package publishing and a complete release workflow are not implemented.
+The owner added the [Apache License 2.0](LICENSE) to upstream on 2026-10-03. This implementation preserves that LICENSE unchanged. The root workspace stays private; its six library packages declare `Apache-2.0` and include LICENSE, built ESM, declarations and package READMEs. The first release candidate is `0.1.0-next.0` on the `next` channel; see [controlled npm releases](docs/RELEASING.md).
 
 Public SuperChat / SuperChart APIs could not be verified. Their integration points are custom host adapter contracts, not claims of working official SDK integration.
 
@@ -28,12 +28,14 @@ Open the localhost URL printed by Vite. The React demo includes a research noteb
 
 | Package | Responsibility |
 | --- | --- |
-| `@super-editor/core` | JSON schema v1, runtime validation, immutable snapshots, atomic typed operations, revisions and session history |
-| `@super-editor/ui` | DOM rendering and controls, block/chart renderer registry, CSS tokens, safe embed policy |
-| `@super-editor/react` | React subscription hook and composable report view/editor |
-| `@super-editor/transports` | Shared report service, HTTP and MCP dispatch adapters, local JSON CLI |
+| `@super-solution/editor-core` | JSON schema v1, runtime validation, immutable snapshots, atomic typed operations, revisions and session history |
+| `@super-solution/editor-ui` | DOM rendering and controls, block/chart renderer registry, CSS tokens, safe embed policy |
+| `@super-solution/editor-react` | React subscription hook and composable report view/editor |
+| `@super-solution/editor-api` | HTTP Request/Response adapter over Core's shared report service |
+| `@super-solution/editor-mcp` | MCP JSON-RPC tool dispatcher over the same Core service |
+| `@super-solution/editor-cli` | Local JSON files, lock and atomic replacement through Core |
 
-Core imports no DOM, React, HTTP, or filesystem APIs. UI and React submit the same validated transactions as agent transports. Build emits ESM and declarations into each package's `dist/`; workspace source types and the `development` condition support local development. These packages are not ready for npm distribution.
+Core imports no DOM, React, HTTP, or filesystem APIs. UI and React submit the same validated transactions as API, MCP and CLI. Build emits ESM and declarations into each package's `dist/`; public exports use built files, with TypeScript source paths only in the workspace compiler. `npm run release:check` packs and inspects all six artifacts and tests them in a separate consumer installation. No credentials are needed for this verification.
 
 See [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), [security and host responsibilities](docs/SECURITY.md), and [provider verification](docs/PROVIDER-VERIFICATION.md). A working report fixture is in [examples/report.ts](examples/report.ts); [examples/headless.ts](examples/headless.ts) demonstrates a rejected stale agent edit.
 
@@ -44,7 +46,7 @@ The default stylesheet uses neutral inherited `--se-*` tokens; see [UI theme cus
 ## Minimal headless use
 
 ```ts
-import { createDocument, createEditor, serializeDocument } from '@super-editor/core';
+import { createDocument, createEditor, serializeDocument } from '@super-solution/editor-core';
 
 const editor = createEditor(createDocument({ id: 'report-1', title: 'Macro weekly' }));
 const result = editor.apply({

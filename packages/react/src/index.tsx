@@ -1,9 +1,9 @@
 import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { safeUrl } from '@super-editor/core';
-import type { Actor, ApplyResult, Block, BlockContent, ChartSpec, Editor, Operation, ResearchDocument } from '@super-editor/core';
-import { allowedEmbedUrl, contentWithText, editableText, getChartModel, localId } from '@super-editor/ui';
-import type { EmbedPolicy } from '@super-editor/ui';
+import { safeUrl } from '@super-solution/editor-core';
+import type { Actor, ApplyResult, Block, BlockContent, ChartSpec, Editor, Operation, ResearchDocument } from '@super-solution/editor-core';
+import { allowedEmbedUrl, contentWithText, editableText, getChartModel, localId } from '@super-solution/editor-ui';
+import type { EmbedPolicy } from '@super-solution/editor-ui';
 
 export function useEditor(editor: Editor): ResearchDocument {
   return useSyncExternalStore(editor.subscribe, editor.getSnapshot, editor.getSnapshot);

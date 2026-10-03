@@ -1,4 +1,4 @@
-import type { Actor, ApplyResult, Editor, ResearchDocument } from '@super-editor/core';
+import type { Actor, ApplyResult, Editor, ResearchDocument } from './types.js';
 
 /** Session-scoped facade. Persistence and access control belong to the host. */
 export interface ReportService {
@@ -25,10 +25,3 @@ export function validationFailure(service: ReportService, message: string): Appl
   };
 }
 
-export function resultStatus(result: ApplyResult): number {
-  return result.ok ? 200 : result.issues.some((issue) => issue.code === 'conflict') ? 409 : 400;
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}

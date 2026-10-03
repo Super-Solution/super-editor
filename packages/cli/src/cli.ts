@@ -3,8 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { link, open, readFile, rename, unlink } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createDocument, createEditor, parseDocument, serializeDocument } from '@super-editor/core';
-import { createReportService } from './service.js';
+import { createDocument, createEditor, parseDocument, serializeDocument } from '@super-solution/editor-core';
+import { createReportService } from '@super-solution/editor-core';
 
 export const CLI_HELP = `Super Editor local JSON CLI
 

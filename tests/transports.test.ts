@@ -5,9 +5,11 @@ import { basename, dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { createDocument, createEditor, serializeDocument } from '../packages/core/src/index.js';
 import type { Actor, Transaction } from '../packages/core/src/index.js';
-import { createHttpHandler, createMcpDispatcher, createReportService, documentSchema, transactionSchema } from '../packages/transports/src/index.js';
-import type { JsonRpcResponse, McpToolResult } from '../packages/transports/src/index.js';
-import { runCli } from '../packages/transports/src/cli.js';
+import { createReportService, documentSchema, transactionSchema } from '../packages/core/src/index.js';
+import { createHttpHandler } from '../packages/api/src/index.js';
+import { createMcpDispatcher } from '../packages/mcp/src/index.js';
+import type { JsonRpcResponse, McpToolResult } from '../packages/mcp/src/index.js';
+import { runCli } from '../packages/cli/src/cli.js';
 
 const now = () => '2026-10-03T00:00:00.000Z';
 const agent: Actor = { id: 'research-agent', kind: 'agent' };

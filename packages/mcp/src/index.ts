@@ -1,6 +1,6 @@
-import type { Actor } from '@super-editor/core';
-import { emptyInputSchema, historyInputSchema, transactionInputSchema } from './schemas.js';
-import { validationFailure, type ReportService } from './service.js';
+import type { Actor } from '@super-solution/editor-core';
+import { emptyInputSchema, historyInputSchema, transactionInputSchema } from '@super-solution/editor-core';
+import { validationFailure, type ReportService } from '@super-solution/editor-core';
 
 type RpcId = string | number | null;
 export type JsonRpcResponse =

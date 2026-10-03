@@ -1,0 +1,83 @@
+name: Publish npm packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact version already committed in all six packages
+        required: true
+        default: 0.1.0-next.0
+        type: string
+      channel:
+        description: next for prereleases; latest only for committed stable versions
+        required: true
+        default: next
+        type: choice
+        options: [next, latest]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: super-editor-npm-publication
+  cancel-in-progress: false
+
+env:
+  RELEASE_VERSION: ${{ inputs.version }}
+  RELEASE_CHANNEL: ${{ inputs.channel }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: node scripts/check-release-request.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - run: npm run build:demo
+      - run: npm run example
+      - run: npm run release:check -- --require-clean
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: npm-release-${{ github.sha }}
+          path: |
+            artifacts/release/*.tgz
+            artifacts/release/release-manifest.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN_AVAILABLE: ${{ secrets.NPM_TOKEN != '' }}
+    steps:
+      - name: Require existing organization secret access
+        if: env.NPM_TOKEN_AVAILABLE != 'true'
+        run: |
+          echo 'NPM_TOKEN is unavailable to this repository. Check existing organization secret access; no publication attempted.'
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          scope: '@super-solution'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: npm-release-${{ github.sha }}
+          path: artifacts/release
+      - name: Publish verified immutable artifacts in dependency order
+        run: npm run release:publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

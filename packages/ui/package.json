@@ -1,1 +1,40 @@
-{"name":"@super-editor/ui","version":"0.1.0","private":true,"license":"Apache-2.0","type":"module","dependencies":{"@super-editor/core":"0.1.0"},"exports":{".":{"types":"./src/index.ts","development":"./src/index.ts","import":"./dist/index.js"},"./styles.css":"./src/styles.css"}}
+{
+  "name": "@super-solution/editor-ui",
+  "version": "0.1.0-next.0",
+  "description": "Composable DOM research report renderer",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Super-Solution/super-editor.git",
+    "directory": "packages/ui"
+  },
+  "homepage": "https://github.com/Super-Solution/super-editor#readme",
+  "bugs": {
+    "url": "https://github.com/Super-Solution/super-editor/issues"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "next"
+  },
+  "dependencies": {
+    "@super-solution/editor-core": "0.1.0-next.0"
+  }
+}

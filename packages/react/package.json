@@ -1,1 +1,43 @@
-{"name":"@super-editor/react","version":"0.1.0","private":true,"license":"Apache-2.0","type":"module","peerDependencies":{"react":">=18"},"dependencies":{"@super-editor/core":"0.1.0","@super-editor/ui":"0.1.0"},"exports":{".":{"types":"./src/index.tsx","development":"./src/index.tsx","import":"./dist/index.js"}}}
+{
+  "name": "@super-solution/editor-react",
+  "version": "0.1.0-next.0",
+  "description": "Composable React research report components",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Super-Solution/super-editor.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/Super-Solution/super-editor#readme",
+  "bugs": {
+    "url": "https://github.com/Super-Solution/super-editor/issues"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "next"
+  },
+  "dependencies": {
+    "@super-solution/editor-core": "0.1.0-next.0",
+    "@super-solution/editor-ui": "0.1.0-next.0"
+  },
+  "peerDependencies": {
+    "react": ">=18 <20"
+  }
+}

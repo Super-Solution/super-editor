@@ -1,6 +1,6 @@
 {
   "name": "super-editor-workspace",
-  "version": "0.1.0",
+  "version": "0.1.0-next.0",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -9,12 +9,14 @@
   ],
   "scripts": {
     "build": "tsc -b && node scripts/package-build.mjs",
-    "test": "tsx --conditions=development --test tests/*.test.ts tests/*.test.tsx",
+    "test": "tsx --conditions=development --test tests/*.test.ts tests/*.test.tsx tests/*.test.mjs",
     "check": "npm run build && npm test",
     "dev": "vite --host 127.0.0.1",
     "build:demo": "vite build",
-    "cli": "tsx --conditions=development packages/transports/src/cli.ts",
-    "example": "tsx --conditions=development examples/headless.ts"
+    "cli": "tsx --conditions=development packages/cli/src/cli.ts",
+    "example": "tsx --conditions=development examples/headless.ts",
+    "release:check": "node scripts/verify-release.mjs",
+    "release:publish": "node scripts/publish-release.mjs"
   },
   "engines": {
     "node": ">=22"

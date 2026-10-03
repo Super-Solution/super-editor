@@ -1,5 +1,5 @@
-import type { Actor } from '@super-editor/core';
-import { isRecord, resultStatus, validationFailure, type ReportService } from './service.js';
+import type { Actor } from '@super-solution/editor-core';
+import { validationFailure, type ApplyResult, type ReportService } from '@super-solution/editor-core';
 
 export type HttpHandlerOptions = { maxBodyBytes?: number };
 
@@ -78,4 +78,12 @@ export function createHttpHandler(service: ReportService, options: HttpHandlerOp
       : service.redo(body.actor as Actor, body.expectedRevision as number);
     return json(result, resultStatus(result));
   };
+}
+
+function resultStatus(result: ApplyResult): number {
+  return result.ok ? 200 : result.issues.some((issue) => issue.code === 'conflict') ? 409 : 400;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

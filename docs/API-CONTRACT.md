@@ -1,11 +1,14 @@
 # Super Editor v0.1 local integration contract
 
-Verified 2026-10-03: the owner initialized upstream `main` with the Apache-2.0 LICENSE in commit `549d85b6b00682f34452d6e97fc1b3ca1c8a1698`. This implementation is based on that commit and preserves LICENSE unchanged. These private local workspace packages are not published.
+The owner initialized upstream `main` with the Apache-2.0 LICENSE in commit `549d85b6b00682f34452d6e97fc1b3ca1c8a1698`; LICENSE is preserved unchanged. The six `@super-solution/editor-*` packages share version `0.1.0-next.0` for the first `next` prerelease. The root workspace remains private. These names replace the earlier unpublished `@super-editor/*` contract.
 
-- `@super-editor/core`: JSON v1 document, runtime validation, immutable `createEditor(document, options)`, `createDocument({id,title}, options)`, `parseDocument(json)`, `serializeDocument(document)`, and typed operations in `packages/core/src/types.ts`.
-- `@super-editor/ui`: framework-independent `renderDocument(document, options)` / `mountEditor(container, editor, options)`, replaceable block and chart renderers. No DOM dependency in core.
-- `@super-editor/react`: `useEditor(editor)`, `ReportView`, `ReportEditor`; renders the same core document and submits core transactions. Replaceable renderers and controls.
-- `@super-editor/transports`: `createReportService(editor)`, HTTP request handler, MCP tool dispatcher, and local CLI use the same `editor.apply()` path. No trading or credentials in these packages.
+- `@super-solution/editor-core`: JSON v1 document, runtime validation, immutable `createEditor(document, options)`, `createDocument({id,title}, options)`, `parseDocument(json)`, `serializeDocument(document)`, and typed operations in `packages/core/src/types.ts`.
+- `@super-solution/editor-ui`: framework-independent `renderDocument(document, options)` / `mountEditor(container, editor, options)`, replaceable block and chart renderers. No DOM dependency in core.
+- `@super-solution/editor-react`: `useEditor(editor)`, `ReportView`, `ReportEditor`; renders the same core document and submits core transactions. Replaceable renderers and controls.
+- `@super-solution/editor-core` also exports `createReportService(editor)`, `ReportService`, and document/transaction discovery schemas. The facade shares an Editor; it contains no network or filesystem logic.
+- `@super-solution/editor-api`: `createHttpHandler(service)` uses native Request/Response and the shared Core service.
+- `@super-solution/editor-mcp`: `createMcpDispatcher(service)` provides JSON-RPC tool discovery/calls over the same service.
+- `@super-solution/editor-cli`: `runCli`, `CLI_HELP`, and the `super-editor` binary perform guarded local JSON operations. There is no aggregate transports package, trading or credential storage.
 
 Documents have `schemaVersion: 1`, monotonic `revision`, stable caller-assigned block IDs, ordered flat blocks with `parentId` pointing only to sections, citations with access/publication timestamps, and page/font formatting. Blocks include sections, H2/H3, paragraphs with typed inline marks/links, lists, tables, extensible chart specs (`pie`, `bar`, `trend` by default), URL-based SuperChart embed descriptors, and timestamps. No raw HTML block.
 
