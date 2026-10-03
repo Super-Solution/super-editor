@@ -1,6 +1,6 @@
 # Verified upstream and provider evidence
 
-Read-only investigation on 2026-10-03 used the authorized GitHub connector and an independent git clone.
+Initial read-only investigation on 2026-10-03 used the authorized GitHub connector and an independent git clone. These initial results preceded the owner's license commit.
 
 | Check | Observed result |
 | --- | --- |
@@ -15,4 +15,4 @@ A 404 means the API could not be accessed or verified, not proof that a private 
 
 The `provider: 'superchart'` descriptor and renderer registry are **custom integration seams**, awaiting a verified SDK/embed contract and host-approved HTTPS origins. The example URL is a placeholder and defaults to a plain link. SuperChat can submit typed transactions through the shared service once its actual host API is supplied; no official SuperChat import is claimed.
 
-The owner must supply the licensing decision and copyright attribution before an open-source release. Because the repository has no base commit or main branch, a development branch can be pushed under the current authorization, but a pull request against main requires owner-authorized initialization of main first. This implementation does not silently initialize or write main.
+Subsequent read-only `git fetch` and `git ls-remote --symref origin HEAD` verified that the owner initialized `main` with commit [`549d85b6b00682f34452d6e97fc1b3ca1c8a1698`](https://github.com/Super-Solution/super-editor/commit/549d85b6b00682f34452d6e97fc1b3ca1c8a1698), "Add Apache License 2.0 to the project", at 2026-10-03 09:57:35 UTC. Its only file is LICENSE. The implementation was rebased locally onto this existing commit; the owner's LICENSE, including its appendix template, is preserved byte-for-byte. Workspace metadata now declares Apache-2.0. No remote branch, pull request, publication, or permission change was made by this implementation task.

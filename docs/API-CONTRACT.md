@@ -1,6 +1,6 @@
 # Super Editor v0.1 local integration contract
 
-Verified 2026-10-03: the target repo is empty and has no license. These private local workspace packages are not published. The owner must select a license before an open-source release.
+Verified 2026-10-03: the owner initialized upstream `main` with the Apache-2.0 LICENSE in commit `549d85b6b00682f34452d6e97fc1b3ca1c8a1698`. This implementation is based on that commit and preserves LICENSE unchanged. These private local workspace packages are not published.
 
 - `@super-editor/core`: JSON v1 document, runtime validation, immutable `createEditor(document, options)`, `createDocument({id,title}, options)`, `parseDocument(json)`, `serializeDocument(document)`, and typed operations in `packages/core/src/types.ts`.
 - `@super-editor/ui`: framework-independent `renderDocument(document, options)` / `mountEditor(container, editor, options)`, replaceable block and chart renderers. No DOM dependency in core.

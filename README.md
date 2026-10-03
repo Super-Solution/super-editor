@@ -6,7 +6,7 @@ This is a local vertical slice for macro, stock, ETF, portfolio, and arbitrage *
 
 ## Status and licensing
 
-The upstream repository was verified empty on 2026-10-03, with no commits or LICENSE. The owner has not selected a license. `private: true` and `UNLICENSED` prevent these workspace packages from being treated as a published open-source release. No license is being inferred from the repository being public. Release requires owner-selected licensing and copyright attribution.
+The owner added the [Apache License 2.0](LICENSE) to upstream on 2026-10-03. This implementation is based on that commit and preserves its LICENSE unchanged. The workspace packages declare `Apache-2.0`; `private: true` keeps the development workspace from accidental npm publication. Package publishing and a complete release workflow are not implemented.
 
 Public SuperChat / SuperChart APIs could not be verified. Their integration points are custom host adapter contracts, not claims of working official SDK integration.
 
