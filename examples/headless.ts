@@ -1,5 +1,5 @@
-import { serializeDocument } from '@super-editor/core';
-import { createReportService } from '@super-editor/transports';
+import { serializeDocument } from '@super-solution/editor-core';
+import { createReportService } from '@super-solution/editor-core';
 import { createResearchExample } from './report.js';
 const editor = createResearchExample();
 const service = createReportService(editor);

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { serializeDocument, type ApplyResult } from '@super-editor/core';
-import { ReportEditor, useEditor } from '@super-editor/react';
+import { serializeDocument, type ApplyResult } from '@super-solution/editor-core';
+import { ReportEditor, useEditor } from '@super-solution/editor-react';
 import { createResearchExample } from './report.js';
-import '@super-editor/ui/styles.css';
+import '@super-solution/editor-ui/styles.css';
 import './demo.css';
 
 const editor = createResearchExample();

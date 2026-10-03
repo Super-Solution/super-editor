@@ -1,4 +1,4 @@
-import { createDocument, createEditor, type Editor } from '@super-editor/core';
+import { createDocument, createEditor, type Editor } from '@super-solution/editor-core';
 
 /** Fictional fixed fixture. No account, market feed, secrets, or trade execution. */
 export function createResearchExample(): Editor {

@@ -3,11 +3,11 @@ import test from 'node:test';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createDocument, createEditor } from '@super-editor/core';
-import type { BlockContent, ChartSpec, Editor, Operation } from '@super-editor/core';
-import { allowedEmbedUrl, getChartModel, mountEditor, renderDocument } from '@super-editor/ui';
-import type { RenderContext } from '@super-editor/ui';
-import { ReportEditor, ReportView } from '@super-editor/react';
+import { createDocument, createEditor } from '@super-solution/editor-core';
+import type { BlockContent, ChartSpec, Editor, Operation } from '@super-solution/editor-core';
+import { allowedEmbedUrl, getChartModel, mountEditor, renderDocument } from '@super-solution/editor-ui';
+import type { RenderContext } from '@super-solution/editor-ui';
+import { ReportEditor, ReportView } from '@super-solution/editor-react';
 
 const at = '2026-10-03T12:00:00.000Z';
 let transactionNumber = 0;

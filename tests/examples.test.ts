@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { createEditor, parseDocument } from '@super-editor/core';
+import { createEditor, parseDocument } from '@super-solution/editor-core';
 import { createResearchExample } from '../examples/report.js';
 
 test('serialized Trading integration fixture accepts its guarded agent proposal', async () => {

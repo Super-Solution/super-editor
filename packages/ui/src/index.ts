@@ -1,5 +1,5 @@
-import { safeUrl } from '@super-editor/core';
-import type { Actor, Block, BlockContent, ChartSpec, Editor, ResearchDocument, ApplyResult, Operation } from '@super-editor/core';
+import { safeUrl } from '@super-solution/editor-core';
+import type { Actor, Block, BlockContent, ChartSpec, Editor, ResearchDocument, ApplyResult, Operation } from '@super-solution/editor-core';
 import { contentWithText, editableText, getChartModel, localId } from './presentation.js';
 
 export type EmbedPolicy = { enabled: boolean; allowedOrigins: readonly string[] };

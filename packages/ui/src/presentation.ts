@@ -1,4 +1,4 @@
-import type { Block, BlockContent, ChartSpec } from '@super-editor/core';
+import type { Block, BlockContent, ChartSpec } from '@super-solution/editor-core';
 
 export const chartColors = ['var(--se-chart-1, #282828)', 'var(--se-chart-2, #686868)', 'var(--se-chart-3, #9b9b9b)', 'var(--se-chart-4, #c6c6c6)', 'var(--se-chart-5, #484848)', 'var(--se-chart-6, #dedede)'];
 export type ChartShape = {

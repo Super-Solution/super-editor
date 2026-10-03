@@ -6,3 +6,4 @@ demo-dist/
 artifacts/
 *.local
 coverage/
+packages/*/LICENSE

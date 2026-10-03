@@ -4,9 +4,9 @@
 
 ```tsx
 import { useMemo } from 'react';
-import { createDocument, createEditor } from '@super-editor/core';
-import { ReportEditor } from '@super-editor/react';
-import '@super-editor/ui/styles.css';
+import { createDocument, createEditor } from '@super-solution/editor-core';
+import { ReportEditor } from '@super-solution/editor-react';
+import '@super-solution/editor-ui/styles.css';
 
 export function ResearchReport() {
   const editor = useMemo(() => createEditor(createDocument({

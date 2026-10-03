@@ -1,7 +1,7 @@
 {
-  "name": "@super-solution/editor-core",
+  "name": "@super-solution/editor-mcp",
   "version": "0.1.0-next.0",
-  "description": "Headless versioned research documents and validated operations",
+  "description": "MCP tool dispatcher for guarded research report operations",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Super-Solution/super-editor.git",
-    "directory": "packages/core"
+    "directory": "packages/mcp"
   },
   "homepage": "https://github.com/Super-Solution/super-editor#readme",
   "bugs": {
@@ -32,5 +32,8 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/",
     "tag": "next"
+  },
+  "dependencies": {
+    "@super-solution/editor-core": "0.1.0-next.0"
   }
 }

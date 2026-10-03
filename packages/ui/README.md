@@ -3,9 +3,9 @@
 The UI consumes the Core document and operations. It owns DOM rendering and local draft state; it does not own persistence, business rules or collaborative storage.
 
 ```ts
-import { createDocument, createEditor } from '@super-editor/core';
-import { mountEditor, renderDocument } from '@super-editor/ui';
-import '@super-editor/ui/styles.css';
+import { createDocument, createEditor } from '@super-solution/editor-core';
+import { mountEditor, renderDocument } from '@super-solution/editor-ui';
+import '@super-solution/editor-ui/styles.css';
 
 const editor = createEditor(createDocument({ id: 'research', title: 'Research report' }));
 const mounted = mountEditor(container, editor, {
