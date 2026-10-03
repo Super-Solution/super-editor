@@ -1,0 +1,23 @@
+{
+  "id": "fixture-agent-update",
+  "actor": {
+    "id": "research-agent",
+    "kind": "agent"
+  },
+  "baseRevision": 1,
+  "operations": [
+    {
+      "type": "updateBlock",
+      "blockId": "portfolio-summary",
+      "expectedVersion": 1,
+      "content": {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "Illustrative agent proposal: review liquidity and concentration before distribution."
+          }
+        ]
+      }
+    }
+  ]
+}

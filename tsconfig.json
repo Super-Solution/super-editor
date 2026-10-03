@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext",
+    "strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
+    "declaration": true, "outDir": "dist", "rootDir": ".", "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"], "skipLibCheck": true,
+    "noEmitOnError": true
+  },
+  "include": ["packages/**/*.ts", "packages/**/*.tsx", "examples/**/*.ts", "examples/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
+}
