@@ -16,7 +16,8 @@
     "cli": "tsx --conditions=development packages/cli/src/cli.ts",
     "example": "tsx --conditions=development examples/headless.ts",
     "release:check": "node scripts/verify-release.mjs",
-    "release:publish": "node scripts/publish-release.mjs"
+    "release:publish": "node scripts/publish-release.mjs",
+    "release:repair-tags": "node scripts/repair-prerelease-tags.mjs"
   },
   "engines": {
     "node": ">=22"
