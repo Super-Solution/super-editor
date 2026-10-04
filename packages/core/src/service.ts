@@ -1,4 +1,4 @@
-import type { Actor, ApplyResult, Editor, ResearchDocument } from './types.js';
+import type { Actor, ApplyResult, Editor, ResearchDocument, Revision } from './types.js';
 
 /** Session-scoped facade. Persistence and access control belong to the host. */
 export interface ReportService {
@@ -6,6 +6,11 @@ export interface ReportService {
   apply(transaction: unknown): ApplyResult;
   undo(actor: Actor, expectedRevision: number): ApplyResult;
   redo(actor: Actor, expectedRevision: number): ApplyResult;
+  /**
+   * Revisions this service can list, oldest first. Optional so a host that keeps durable history (or none) can
+   * implement it however it likes; callers treat a missing method as an empty list.
+   */
+  revisions?(): readonly Revision[];
 }
 
 export function createReportService(editor: Editor): ReportService {
@@ -14,6 +19,7 @@ export function createReportService(editor: Editor): ReportService {
     apply: (transaction) => editor.apply(transaction),
     undo: (actor, expectedRevision) => editor.undo(actor, expectedRevision),
     redo: (actor, expectedRevision) => editor.redo(actor, expectedRevision),
+    revisions: () => editor.getRevisions(),
   };
 }
 

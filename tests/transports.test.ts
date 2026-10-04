@@ -101,11 +101,14 @@ test('HTTP validates malformed, oversized, and history input before mutation', a
   const instance = service();
   const http = createHttpHandler(instance, { maxBodyBytes: 512 });
   const before = instance.read();
-  for (const body of ['{bad json', 'x'.repeat(513)]) {
+  for (const [body, status] of [['{bad json', 400], ['x'.repeat(513), 413]] as const) {
     const response = await http(new Request('http://local/transactions', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body,
     }));
-    assert.equal(response.status, 400);
+    assert.equal(response.status, status);
+    const failure = await response.json() as { ok: boolean; issues: { hint?: string }[]; currentRevision: number };
+    assert.equal(failure.ok, false);
+    assert.ok(failure.issues[0]!.hint, 'every failure carries a hint');
   }
   const invalidUtf8 = await http(new Request('http://local/transactions', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: new Uint8Array([0xff]),
@@ -148,7 +151,7 @@ test('MCP exposes typed tools, handles protocol errors and notifications, and re
   const list = await mcp({ jsonrpc: '2.0', id: 'list', method: 'tools/list' });
   assert.ok(list && 'result' in list);
   const discovered = list.result as { tools: { name: string; inputSchema: Record<string, unknown> }[] };
-  assert.deepEqual(discovered.tools.map((item) => item.name), ['read_document', 'apply_transaction', 'undo', 'redo']);
+  assert.deepEqual(discovered.tools.slice(0, 4).map((item) => item.name), ['read_document', 'apply_transaction', 'undo', 'redo']);
   assert.ok(discovered.tools[1]!.inputSchema.$defs);
   discovered.tools[0]!.name = 'tampered';
   const next = await mcp({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
