@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { packageOrder } from '../scripts/release-contract.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-// The script is added to main by the release commit; until it is there these tests report a skip instead of a failure.
+// Skips only in a checkout without the script (it ships in scripts/ from 0.3.0-next.0).
 const options = { skip: existsSync(join(repository, 'scripts', 'bump-version.mjs')) ? false : 'scripts/bump-version.mjs is not present in this checkout' };
 
 /** Copy only the manifests and the two scripts into a scratch workspace; the real repository is never touched. */
