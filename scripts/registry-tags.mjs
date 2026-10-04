@@ -15,10 +15,16 @@ export async function readRegistry(name) {
   return response.json();
 }
 
-export function checkPrereleaseBaseline(name, document) {
+/**
+ * The `latest` tag a `next` publication must leave untouched (checkPublishedTags
+ * verifies it afterwards). A prerelease `latest` is the known legacy state from
+ * 0.1.0-next.0; its repair (npm-tag-repair.md) is deferred by the owner, so it
+ * is reported, not fatal: publishing to `next` neither moves nor worsens it.
+ */
+export function checkPrereleaseBaseline(name, document, warn = message => console.warn(message)) {
   const latest = document?.['dist-tags']?.latest;
   if (latest !== undefined && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(latest)) {
-    throw new Error(`Prerelease latest already present: ${name}@${latest}; resolve tags separately before publication.`);
+    warn(`Prerelease latest already present: ${name}@${latest}; publishing to next leaves it unchanged (repair is tracked separately).`);
   }
   return latest;
 }
@@ -28,6 +34,23 @@ export function checkPublishedTags(item, beforeLatest, document) {
   if (tags?.[item.channel] !== item.version) throw new Error(`Published channel mismatch: ${item.name}`);
   if (item.channel === 'next' && tags?.latest !== beforeLatest) {
     throw new Error(`Prerelease changed latest: ${item.name}; tag verification is read-only and will not repair it.`);
+  }
+}
+
+/**
+ * npm answers a publish before its registry metadata shows the new dist-tag
+ * ("may take a few minutes to become available"), so a channel that has not
+ * caught up yet is retried. A moved `latest` is never retried: it fails at once.
+ */
+export async function waitForPublishedTags(item, beforeLatest, { read = readRegistry, attempts = 20, delayMs = 30_000, sleep = ms => new Promise(done => setTimeout(done, ms)), log = message => console.log(message) } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return checkPublishedTags(item, beforeLatest, await read(item.name));
+    } catch (error) {
+      if (!/^Published channel mismatch/.test(error.message) || attempt >= attempts) throw error;
+      log(`Registry does not show ${item.name}@${item.version} on ${item.channel} yet (attempt ${attempt}/${attempts}); retrying in ${delayMs / 1000}s.`);
+      await sleep(delayMs);
+    }
   }
 }
 
