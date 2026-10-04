@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { Interaction, MenuAction } from '@super-solution/editor-ui';
 import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels, useSurface } from './context.js';
-import { useIsoLayoutEffect, useKeepInViewport } from './util.js';
+import { shiftTransform, useIsoLayoutEffect, useKeepInViewport } from './util.js';
 
 /**
  * The block menu opened from the gutter handle: turn into, duplicate, copy id/link, move and delete. Arrow keys move through the
@@ -47,7 +47,7 @@ export function BlockActionMenu({ interaction: explicit }: { interaction?: Inter
     }
   };
   return <div ref={ref} className="se-popup se-menu" data-se-popup role="menu" aria-label={submenu ? labels.turnInto : labels.blockMenu} onKeyDown={onKeyDown}
-    style={{ left: Math.max(0, rect.left - 4), top: rect.top + 30, ...(shift ? { transform: `translateY(-${shift}px)` } : {}) }}>
+    style={{ left: Math.max(0, rect.left - 4), top: rect.top + 30, transform: shiftTransform(shift) }}>
     {submenu ? <button type="button" role="menuitem" className="se-menu-item se-menu-back" tabIndex={-1} onClick={() => interaction.menu.openSubmenu(null)}><span className="se-menu-icon" aria-hidden="true">{'←'}</span><span className="se-menu-label">{labels.turnInto}</span></button> : null}
     {items.map((action) => <button key={action.id} type="button" role="menuitem" tabIndex={-1} className={`se-menu-item${action.danger ? ' se-menu-danger' : ''}${action.current ? ' se-menu-current' : ''}`}
       aria-disabled={action.disabled ? true : undefined} aria-haspopup={action.children ? 'menu' : undefined} aria-current={action.current ? 'true' : undefined} data-se-action={action.id}

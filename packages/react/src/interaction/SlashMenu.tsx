@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { groupSlashItems } from '@super-solution/editor-ui';
 import type { Interaction } from '@super-solution/editor-ui';
 import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels } from './context.js';
-import { keepFocus, useIsoLayoutEffect, useKeepInViewport } from './util.js';
+import { keepFocus, shiftTransform, useIsoLayoutEffect, useKeepInViewport } from './util.js';
 
 /** DOM id of a slash option, for `aria-activedescendant` on the field that has focus. */
 export const slashOptionId = (interaction: Interaction, itemId: string): string => `${interaction.id}-slash-${itemId}`;
@@ -26,7 +26,7 @@ export function SlashMenu({ interaction: explicit }: { interaction?: Interaction
   const groups = groupSlashItems(state.items);
   let index = -1;
   return <div ref={ref} id={slashListId(interaction)} className="se-popup se-slash" data-se-popup role="listbox" aria-label={labels.slashMenu}
-    style={{ left: rect.left, top: rect.bottom + 4, ...(shift ? { transform: `translateY(-${shift}px)` } : {}) }} onMouseDown={keepFocus}>
+    style={{ left: rect.left, top: rect.bottom + 4, transform: shiftTransform(shift) }} onMouseDown={keepFocus}>
     {groups.length === 0 ? <div className="se-popup-empty" role="presentation">{labels.slashEmpty}</div> : groups.map((group) => <div role="group" aria-label={group.group} key={group.group + group.items[0]!.id}>
       <div className="se-popup-heading" role="presentation">{group.group}</div>
       {group.items.map((item) => {

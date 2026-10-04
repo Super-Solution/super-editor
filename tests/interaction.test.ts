@@ -747,6 +747,23 @@ test('Mod+A selects the text first, then all blocks; Esc steps out; arrows move 
   assert.deepEqual(interaction.getState().selection.ids, []);
 });
 
+test('Tab walks table cells in reading order, adds a row after the last cell, and leaves the table with Shift+Tab at the start', () => {
+  const { editor, interaction } = harness([b.table('t', ['A', 'B'], [['1', '2']])]);
+  const field = () => interaction.getState().editing?.field;
+  interaction.edit.start('t', { field: 'cell:-1:0', caret: 'start' });
+  assert.equal(interaction.edit.indent(-1), false, 'first cell: the browser moves focus out');
+  assert.equal(interaction.edit.indent(1), true);
+  assert.equal(field(), 'cell:-1:1');
+  interaction.edit.indent(1);
+  assert.equal(field(), 'cell:0:0', 'wraps to the next row');
+  interaction.edit.start('t', { field: 'cell:0:1', caret: 'start' });
+  interaction.edit.indent(1);
+  assert.equal((get(editor, 't').content as { rows: string[][] }).rows.length, 2, 'a row is added after the last cell');
+  assert.equal(field(), 'cell:1:0');
+  interaction.edit.indent(-1);
+  assert.equal(field(), 'cell:0:1');
+});
+
 test('arrow navigation crosses fields, cells and blocks; non-text neighbours are selected', () => {
   const { editor, interaction } = harness([b.paragraph('a', 'aa'), b.list('l', ['x', 'y']), b.table('t', ['H1', 'H2'], [['1', '2']]), b.divider('d'), b.paragraph('z', 'zz')]);
   interaction.edit.start('a', { caret: 'end' });

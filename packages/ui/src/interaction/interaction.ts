@@ -521,6 +521,16 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
         return false;
       }
       const field = parseField(current.field);
+      if (current.content.type === 'table' && field.kind === 'cell') {
+        // Tab walks the cells in reading order and, past the last cell, adds a row (Shift+Tab at the first cell leaves the table).
+        const columns = current.content.columns.length, rows = current.content.rows.length;
+        let row = field.row, col = field.col + delta;
+        if (col >= columns) { col = 0; row++; } else if (col < 0) { col = columns - 1; row--; }
+        if (row < -1) return false;
+        if (row >= rows) { commands.table.addRow(current.blockId); return true; }
+        api.edit.start(current.blockId, { field: cellField(row, col), caret: 'start' });
+        return true;
+      }
       if (current.content.type !== 'list' || field.kind !== 'item') return false;
       const next = listSetIndent(current.content, field.index, delta);
       if (!next) return true;

@@ -5,7 +5,7 @@ import type { Interaction, InteractionState, Mark, TurnIntoTarget } from '@super
 import { HIGHLIGHTS } from '@super-solution/editor-core';
 import type { Highlight } from '@super-solution/editor-core';
 import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels, useSurface } from './context.js';
-import { keepFocus, useIsoLayoutEffect, useKeepInViewport } from './util.js';
+import { keepFocus, shiftTransform, useIsoLayoutEffect, useKeepInViewport } from './util.js';
 
 type Point = { x: number; y: number };
 /** Content-space point above the current text selection (or above the block when the environment cannot measure the selection). */
@@ -47,7 +47,7 @@ export function FormattingToolbar({ interaction: explicit }: { interaction?: Int
   const supported = selection.field === 'main' && (interaction.edit.draftContent(selection.blockId)?.type === 'paragraph' || interaction.edit.draftContent(selection.blockId)?.type === 'quote' || interaction.edit.draftContent(selection.blockId)?.type === 'callout');
   if (!supported) return null;
   return <div ref={ref} className="se-popup se-toolbar se-format-toolbar" data-se-popup role="toolbar" aria-label={labels.formattingToolbar} aria-orientation="horizontal"
-    style={{ left: point.x, top: point.y - 8 - shift, transform: 'translate(-50%, -100%)' }} onMouseDown={keepFocus}>
+    style={{ left: point.x, top: point.y - 8, transform: shiftTransform(shift, 'translate(-50%, -100%)') }} onMouseDown={keepFocus}>
     {MARK_BUTTONS.map((entry) => <button key={entry.mark} type="button" className="se-tool" aria-pressed={selection.marks[entry.mark] === 'all' ? true : selection.marks[entry.mark] === 'some' ? 'mixed' : false}
       aria-label={labels[entry.label]} title={`${labels[entry.label]}${hint(interaction, entry.shortcut)}`} onClick={() => interaction.format.toggle(entry.mark)}>{entry.glyph}</button>)}
     <button type="button" className="se-tool" aria-pressed={selection.highlight !== null && selection.highlight !== 'mixed' ? true : selection.highlight === 'mixed' ? 'mixed' : false} aria-haspopup="true" aria-expanded={colors}
@@ -71,14 +71,14 @@ export function LinkEditor({ interaction: explicit }: { interaction?: Interactio
   const ref = useRef<HTMLDivElement>(null);
   const shift = useKeepInViewport(ref, !!link);
   if (!link || !point) return null;
-  return <LinkForm key={`${link.blockId}:${link.field}:${link.start}:${link.end}`} interaction={interaction} link={link} popupRef={ref} left={point.x} top={point.y - 8 - shift} />;
+  return <LinkForm key={`${link.blockId}:${link.field}:${link.start}:${link.end}`} interaction={interaction} link={link} popupRef={ref} left={point.x} top={point.y - 8} shift={shift} />;
 }
-function LinkForm({ interaction, link, popupRef, left, top }: { interaction: Interaction; link: Extract<NonNullable<InteractionState['prompt']>, { kind: 'link' }>; popupRef: RefObject<HTMLDivElement | null>; left: number; top: number }): ReactNode {
+function LinkForm({ interaction, link, popupRef, left, top, shift }: { interaction: Interaction; link: Extract<NonNullable<InteractionState['prompt']>, { kind: 'link' }>; popupRef: RefObject<HTMLDivElement | null>; left: number; top: number; shift: { x: number; y: number } }): ReactNode {
   const labels = useInteractionLabels();
   const [text, setText] = useState(link.href);
   const refocus = (): void => { interaction.edit.start(link.blockId, { field: link.field, caret: link.end }); };
   const submit = (event: FormEvent): void => { event.preventDefault(); if (interaction.format.applyLink(text)) refocus(); };
-  return <div ref={popupRef} className="se-popup se-link-editor" data-se-popup role="dialog" aria-label={labels.linkDialog} style={{ left, top, transform: 'translate(-50%, -100%)' }}
+  return <div ref={popupRef} className="se-popup se-link-editor" data-se-popup role="dialog" aria-label={labels.linkDialog} style={{ left, top, transform: shiftTransform(shift, 'translate(-50%, -100%)') }}
     onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); interaction.format.closePrompt(); refocus(); } }}>
     <form onSubmit={submit}>
       <label className="se-field"><span className="se-field-label">{labels.linkUrl}</span>
