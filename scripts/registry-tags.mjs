@@ -15,10 +15,16 @@ export async function readRegistry(name) {
   return response.json();
 }
 
-export function checkPrereleaseBaseline(name, document) {
+/**
+ * The `latest` tag a `next` publication must leave untouched (checkPublishedTags
+ * verifies it afterwards). A prerelease `latest` is the known legacy state from
+ * 0.1.0-next.0; its repair (npm-tag-repair.md) is deferred by the owner, so it
+ * is reported, not fatal: publishing to `next` neither moves nor worsens it.
+ */
+export function checkPrereleaseBaseline(name, document, warn = message => console.warn(message)) {
   const latest = document?.['dist-tags']?.latest;
   if (latest !== undefined && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(latest)) {
-    throw new Error(`Prerelease latest already present: ${name}@${latest}; resolve tags separately before publication.`);
+    warn(`Prerelease latest already present: ${name}@${latest}; publishing to next leaves it unchanged (repair is tracked separately).`);
   }
   return latest;
 }
