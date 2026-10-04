@@ -2,7 +2,18 @@
 
 All notable changes to the six `@super-solution/editor-*` packages (released together, same version). Prereleases ship on the `next` npm channel. The document format stays `schemaVersion: 1`; every change below is additive.
 
-## Unreleased (target 0.3.0-next.0)
+## 0.3.0-next.0 (2026-10-05)
+
+Editor interaction (hover handles, drag, slash menu, selection, shortcuts) follows in `0.3.0-next.1`.
+
+### Rendering, charts and panels (`editor-ui`, `editor-react`)
+
+- **Every v0.2 block renders** in the headless DOM renderer (`renderDocument`) and the React `ReportView`, with the same structure: headings 1-3, marks, todo/indented lists, quote, callout, code, divider, image, toggle, metrics, TOC, page break, and tables with align, caption, header column and sticky header. Citation markers are `[n]` superscripts with a hover card that links to the references list.
+- **Chart engine**: line, area (stacked), bar (grouped, stacked, horizontal), pie, donut, scatter, histogram, candlestick with volume, heatmap with a colour bar, waterfall. Nice ticks; number, percent, currency and compact formats; series toggles, tooltip and crosshair, keyboard navigation, annotations; responsive relayout; an accessible data table; SVG and PNG export.
+- **Panels**: `Outline`, `FindReplace` (Mod+F / Mod+H, guarded `replaceText`), `StatusBar`, `SaveIndicator`, toasts with a conflict toast and Reload, `RevisionHistory` with diff marks, empty states, skeletons, an editable `DocumentHeader` and `CitationHoverCard`.
+- **Theme and print**: `--se-*` tokens with a 10-colour series palette and density through `data-se-density`. Dark is opt-in through `data-se-theme="dark" | "auto"`. Print honours the document format (A4 or letter), uses the light palette and expands toggles.
+- **Robustness**: a per-block error boundary, rendering memoised by block id and version, viewport mounting above 300 blocks (`virtualize={false}` for server-rendered hydration), landmarks and a polite live region, and a `labels` prop for every string.
+- **Unsafe URLs** in links, citations, images and embeds go through core `safeUrl`; images and embeds must be https.
 
 ### Agent transports: MCP, HTTP, CLI
 
