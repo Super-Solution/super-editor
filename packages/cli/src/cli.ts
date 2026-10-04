@@ -1,149 +1,123 @@
 #!/usr/bin/env node
-import { randomUUID } from 'node:crypto';
-import { link, open, readFile, rename, unlink } from 'node:fs/promises';
-import { basename, dirname, resolve } from 'node:path';
+import { realpathSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createDocument, createEditor, parseDocument, serializeDocument } from '@super-solution/editor-core';
-import { createReportService } from '@super-solution/editor-core';
+import { formatIssues, withHints } from '@super-solution/editor-core';
+import type { EditorIssue } from '@super-solution/editor-core';
+import { COMMANDS, defaultActor, parseCommand, type CliIo, type Command } from './commands.js';
+import { InputError, InvalidDocument, Refusal } from './files.js';
 
-export const CLI_HELP = `Super Editor local JSON CLI
+export type CliOutput = CliIo;
+
+function buildHelp(): string {
+  const width = Math.max(...COMMANDS.map(command => command.name.length));
+  return `Super Editor: read and edit a research report stored as a JSON file
 
 Usage:
   super-editor init <document.json> --id <id> [--title <title>]
   super-editor read <document.json>
   super-editor apply <document.json> <transaction.json>
-  super-editor help
+  super-editor <command> <document.json> [arguments] [options]
+  super-editor help [<command>]
 
-init refuses to overwrite an existing file. apply validates the entire batch
-through the Core and atomically replaces the document only on success.
-Revision/version guards are mandatory. Undo/redo is session-only; use the API
-for an ongoing editor session. This command does not start a network server.
-Exit codes: 0 success, 1 IO failure, 2 invalid input, 3 revision conflict.
+Commands:
+${COMMANDS.map(command => `  ${command.name.padEnd(width)}  ${command.summary}`).join('\n')}
+
+Every command that edits validates the whole change through the Core, takes an exclusive lock and replaces the file
+atomically only on success. Guarded edits name the block version you last read as <blockId>@<version> (see find and get);
+a stale version is a conflict. Use --dry-run to preview an edit, --json for machine-readable output.
+Undo/redo is session-only and not available from the CLI. This command does not start a network server.
+
+Examples:
+  super-editor new report.json --id aapl-q3 --template equity --subject AAPL
+  super-editor outline report.json
+  super-editor find report.json --type paragraph --text revenue --json
+  super-editor update-text report.json aapl-q3-summary-thesis@1 --text "Revenue grew **12%**."
+  super-editor insert report.json --markdown notes.md --after aapl-q3-summary
+  super-editor chart report.json --spec chart.json --parent aapl-q3-performance
+  super-editor export report.json --format html --out report.html
+
+Exit codes: 0 success, 1 I/O failure, 2 invalid input, 3 revision or version conflict, 4 block or citation not found.
+Environment: SUPER_EDITOR_ACTOR=<id[:kind]> sets the default --actor.
 `;
+}
+export const CLI_HELP = buildHelp();
 
-export type CliOutput = { stdout(text: string): void; stderr(text: string): void };
+function commandHelp(command: Command): string {
+  return `super-editor ${command.usage}\n\n${command.summary}.\n${command.notes?.length ? `\n${command.notes.map(note => `  ${note}`).join('\n')}\n` : ''}\nExit codes: 0 success, 1 I/O failure, 2 invalid input, 3 conflict, 4 not found. Run super-editor help for all commands.\n`;
+}
+
 const standardOutput: CliOutput = {
   stdout: (text) => { process.stdout.write(text); },
   stderr: (text) => { process.stderr.write(text); },
 };
 
-class InputError extends Error {}
-
-function initOptions(args: string[]): { id: string; title: string } {
-  const options = new Map<string, string>();
-  for (let index = 0; index < args.length; index += 2) {
-    const flag = args[index];
-    const value = args[index + 1];
-    if ((flag !== '--id' && flag !== '--title') || value === undefined || options.has(flag)) {
-      throw new InputError('init requires --id <id> and optionally --title <title>, with no duplicate options.');
-    }
-    options.set(flag, value);
-  }
-  const id = options.get('--id');
-  if (id === undefined) throw new InputError('init requires --id <id>.');
-  return { id, title: options.get('--title') ?? 'Untitled research report' };
-}
-
-async function persistAtomic(file: string, json: string, createOnly = false): Promise<void> {
-  const temporary = resolve(dirname(file), `.${basename(file)}.${randomUUID()}.tmp`);
-  let created = false;
-  try {
-    const handle = await open(temporary, 'wx', 0o600);
-    created = true;
-    try {
-      await handle.writeFile(`${json}\n`, 'utf8');
-      await handle.sync();
-    } finally {
-      await handle.close();
-    }
-    if (createOnly) {
-      // A hard link creates the target atomically and refuses existing files.
-      await link(temporary, file);
-    } else await rename(temporary, file);
-  } finally {
-    if (created) await unlink(temporary).catch((cause: unknown) => {
-      // rename consumed the temp file. Cleanup errors other than absence matter.
-      if (!isFsError(cause, 'ENOENT')) throw cause;
-    });
-  }
-}
-
-function isFsError(error: unknown, code: string): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
+/** 0 success, 2 invalid input, 3 conflict, 4 not found. */
+function exitCodeFor(issues: readonly EditorIssue[]): number {
+  if (issues.some(issue => issue.code === 'conflict')) return 3;
+  if (issues.some(issue => issue.code === 'not-found')) return 4;
+  return 2;
 }
 
 /** Local runner also usable by tests and another trusted CLI host. */
 export async function runCli(args: string[], output: CliOutput = standardOutput): Promise<number> {
-  const command = args[0];
-  if (args.length === 0 || (args.length === 1 && ['help', '--help', '-h'].includes(command ?? ''))) {
+  const name = args[0];
+  if (args.length === 0 || (args.length === 1 && ['help', '--help', '-h'].includes(name ?? ''))) {
     output.stdout(CLI_HELP);
     return 0;
   }
+  const wantsJson = args.includes('--json');
+  let command: Command | undefined;
   try {
-    if (!['init', 'read', 'apply'].includes(command ?? '')) throw new InputError('Unknown command. Run super-editor help.');
-    const target = args[1];
-    if (target === undefined || target.length === 0) throw new InputError('A document file path is required.');
-    const file = resolve(target);
-    if (command === 'init') {
-      const options = initOptions(args.slice(2));
-      let serialized: string;
-      try { serialized = serializeDocument(createDocument(options)); }
-      catch { throw new InputError('Invalid document ID or title.'); }
-      await persistAtomic(file, serialized, true);
-      output.stdout(`${serialized}\n`);
+    if (name === 'help') {
+      const target = COMMANDS.find(entry => entry.name === args[1]);
+      if (!target || args.length > 2) throw new InputError(`Unknown command "${args[1] ?? ''}". Run super-editor help.`);
+      output.stdout(commandHelp(target));
       return 0;
     }
-    if (command === 'read') {
-      if (args.length !== 2) throw new InputError('read takes one document path.');
-      const parsed = parseDocument(await readFile(file, 'utf8'));
-      if (!parsed.ok) {
-        output.stderr(`${JSON.stringify(parsed)}\n`);
-        return 2;
-      }
-      output.stdout(`${serializeDocument(parsed.value)}\n`);
-      return 0;
+    command = COMMANDS.find(entry => entry.name === name);
+    if (!command) throw new InputError('Unknown command. Run super-editor help.');
+    const { values, positionals } = parseCommand(command, args.slice(1));
+    if (values.help === true) { output.stdout(commandHelp(command)); return 0; }
+    let file = '';
+    let rest = positionals;
+    if (command.file) {
+      const target = positionals[0];
+      if (target === undefined || target.length === 0) throw new InputError('A document file path is required.');
+      file = resolve(target);
+      rest = positionals.slice(1);
     }
-    const transactionFile = args[2];
-    if (args.length !== 3 || !transactionFile) throw new InputError('apply requires document and transaction file paths.');
+    const actorValue = typeof values.actor === 'string' ? values.actor : process.env.SUPER_EDITOR_ACTOR;
+    const json = values.json === true;
+    const outcome = await command.run({ file, rest, v: values, io: output, json, actor: defaultActor(actorValue) });
 
-    // Exclusive lock coordinates this CLI's read/validate/write sequence.
-    // Other writers must participate in the same lock protocol.
-    const lockPath = `${file}.lock`;
-    let lock;
-    try { lock = await open(lockPath, 'wx', 0o600); }
-    catch (error) {
-      if (isFsError(error, 'EEXIST')) throw new Error('Document is locked by another CLI writer; resolve the lock before retrying.');
-      throw error;
+    if (outcome.value.ok === false) {
+      const issues = withHints((outcome.value.issues ?? []) as EditorIssue[]);
+      const failure = { ...outcome.value, issues };
+      output.stderr(command.alwaysRaw || json ? `${JSON.stringify(failure)}\n` : `error: the change was not applied\n${formatIssues(issues)}\n`);
+      return exitCodeFor(issues);
     }
-    try {
-      const parsed = parseDocument(await readFile(file, 'utf8'));
-      if (!parsed.ok) {
-        output.stderr(`${JSON.stringify(parsed)}\n`);
-        return 2;
-      }
-      let transaction: unknown;
-      const transactionJson = await readFile(resolve(transactionFile), 'utf8');
-      try { transaction = JSON.parse(transactionJson) as unknown; }
-      catch { throw new InputError('Transaction file must contain valid JSON.'); }
-      const result = createReportService(createEditor(parsed.value)).apply(transaction);
-      if (!result.ok) {
-        output.stderr(`${JSON.stringify(result)}\n`);
-        return result.issues.some((issue) => issue.code === 'conflict') ? 3 : 2;
-      }
-      await persistAtomic(file, serializeDocument(result.document));
-      output.stdout(`${JSON.stringify(result)}\n`);
-      return 0;
-    } finally {
-      await lock.close();
-      await unlink(lockPath);
-    }
+    if (outcome.raw !== undefined && (!json || command.alwaysRaw)) output.stdout(outcome.raw);
+    else output.stdout(json ? `${JSON.stringify(outcome.value)}\n` : outcome.human);
+    return 0;
   } catch (error) {
+    const machine = wantsJson || command?.alwaysRaw === true || command === undefined;
+    if (error instanceof InvalidDocument) {
+      output.stderr(machine ? `${JSON.stringify({ ok: false, issues: withHints(error.issues) })}\n` : `error: the document is not valid\n${formatIssues(error.issues)}\n`);
+      return 2;
+    }
     const message = error instanceof Error ? error.message : 'Local CLI operation failed.';
-    output.stderr(`${JSON.stringify({ ok: false, error: message })}\n`);
-    return error instanceof InputError ? 2 : 1;
+    output.stderr(machine ? `${JSON.stringify({ ok: false, error: message })}\n` : `error: ${message}\n`);
+    return error instanceof Refusal ? error.exitCode : error instanceof InputError ? 2 : 1;
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+function isMain(): boolean {
+  if (!process.argv[1]) return false;
+  // The package manager launches a bin through a symlink; compare real paths so that works too.
+  try { return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href; }
+  catch { return false; }
+}
+if (isMain()) {
   process.exitCode = await runCli(process.argv.slice(2));
 }

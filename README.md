@@ -43,6 +43,16 @@ Machine-readable discovery schemas are in [schemas/document-v1.schema.json](sche
 
 The default stylesheet uses neutral inherited `--se-*` tokens; see [UI theme customization](packages/ui/README.md). Consumers can replace controls and renderers and override tokens without importing React or coupling their branding to Core. Paragraph controls are plain text editors: changing text replaces that paragraph's inline marks; unchanged text retains them. Rich text editing is a future extension.
 
+## Drive it from an agent
+
+Three transports wrap the same guarded operations, so an agent can use whichever it already speaks:
+
+- **MCP**: `npx -y -p @super-solution/editor-mcp@next super-editor-mcp ./report.json --create --id report --template equity` serves a JSON file to Claude Desktop, Claude Code, Cursor or any MCP client: 25 tools with schemas and read-only / destructive annotations, resources, prompts.
+- **CLI**: `super-editor outline | find | insert | update-text | replace | move | delete | chart | cite | export | import | stats` with `--json` and exit codes (3 conflict, 4 not found).
+- **HTTP**: `createHttpHandler(service)` (a fetch-style handler), `GET /openapi.json`, a typed `createHttpClient`.
+
+Edits that overwrite or delete name the block version the agent last read, so a stale proposal is refused with a hint instead of overwriting a person's work. Report templates (`equity`, `macro`, `portfolio`, `strategy`, `arbitrage`, `comparison`) give the agent a skeleton to fill. Start with the [agent guide](docs/AGENT-GUIDE.md); the reference is [docs/API.md](docs/API.md), the threat notes are in [docs/SECURITY.md](docs/SECURITY.md), runnable samples are in [examples/](examples/README.md), and changes are in the [changelog](CHANGELOG.md).
+
 ## Minimal headless use
 
 ```ts
