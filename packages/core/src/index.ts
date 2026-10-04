@@ -10,3 +10,5 @@ export { diffDocuments, summarizeRevision, type DocumentDiff } from './diff.js';
 export { defaultHint, withHints, formatIssues } from './issues.js';
 export { createReportService, validationFailure, type ReportService } from './service.js';
 export { documentSchema, transactionSchema, emptyInputSchema, historyInputSchema, transactionInputSchema } from './schemas.js';
+export { TEMPLATES, TEMPLATE_KINDS, arbitrageTemplate, blankTemplate, comparisonTemplate, createTemplate, equityTemplate, isTemplateKind, listTemplates, macroTemplate, portfolioTemplate, strategyTemplate, templateTitle, type TemplateFunction, type TemplateInfo, type TemplateKind, type TemplateOptions } from './templates.js';
+export { AGENT_ACTIONS, TRANSPORT_LIMITS, getAgentAction, runAgentAction, type AgentAction, type AgentActionContext, type AgentActionInputs, type AgentActionName, type AgentActionOutputs, type WriteControls, type AgentActionResult, type AgentFailure, type AgentWriteSuccess, type BlockBrief, type TouchedBlock } from './actions.js';
