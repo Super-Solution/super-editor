@@ -1,0 +1,1311 @@
+{
+  "schemaVersion": 1,
+  "id": "all-blocks",
+  "title": "Sample report: every block and chart",
+  "revision": 1,
+  "createdAt": "2026-10-05T00:00:00.000Z",
+  "updatedAt": "2026-10-05T00:00:00.000Z",
+  "format": {
+    "page": "screen",
+    "font": "sans",
+    "fontSize": 16,
+    "lineHeight": 1.6
+  },
+  "blocks": [
+    {
+      "id": "title",
+      "parentId": null,
+      "content": {
+        "type": "heading",
+        "level": 1,
+        "text": "Sample report"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "intro",
+      "parentId": null,
+      "content": {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "Every block below is "
+          },
+          {
+            "text": "fictional sample data",
+            "bold": true
+          },
+          {
+            "text": ": "
+          },
+          {
+            "text": "italic",
+            "italic": true
+          },
+          {
+            "text": ", "
+          },
+          {
+            "text": "strike",
+            "strike": true
+          },
+          {
+            "text": ", "
+          },
+          {
+            "text": "code",
+            "code": true
+          },
+          {
+            "text": " and a "
+          },
+          {
+            "text": "link",
+            "href": "https://example.com/page"
+          },
+          {
+            "text": " are inline marks."
+          },
+          {
+            "text": "",
+            "citationId": "src-method"
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "toc",
+      "parentId": null,
+      "content": {
+        "type": "toc"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "kpis",
+      "parentId": null,
+      "content": {
+        "type": "metrics",
+        "items": [
+          {
+            "label": "Return",
+            "value": "12.4%",
+            "change": 1.5,
+            "tone": "up",
+            "hint": "Year to date"
+          },
+          {
+            "label": "Volatility",
+            "value": "18.1%",
+            "change": -0.4,
+            "tone": "down"
+          },
+          {
+            "label": "Max drawdown",
+            "value": "-9.7%",
+            "tone": "neutral"
+          },
+          {
+            "label": "Sharpe ratio",
+            "value": "1.31"
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "rule-1",
+      "parentId": null,
+      "content": {
+        "type": "divider"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "text-blocks",
+      "parentId": null,
+      "content": {
+        "type": "section",
+        "title": "Text blocks"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "h2",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "heading",
+        "level": 2,
+        "text": "Heading level 2"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "h3",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "heading",
+        "level": 3,
+        "text": "Heading level 3"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "marks",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "Plain, "
+          },
+          {
+            "text": "bold",
+            "bold": true
+          },
+          {
+            "text": ", "
+          },
+          {
+            "text": "italic",
+            "italic": true
+          },
+          {
+            "text": ", "
+          },
+          {
+            "text": "code",
+            "code": true
+          },
+          {
+            "text": ", "
+          },
+          {
+            "text": "strike",
+            "strike": true
+          },
+          {
+            "text": " and a "
+          },
+          {
+            "text": "link",
+            "href": "https://example.com/marks"
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "marks-extra",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "Underline",
+            "underline": true
+          },
+          {
+            "text": ", "
+          },
+          {
+            "text": "yellow highlight",
+            "highlight": "yellow"
+          },
+          {
+            "text": " "
+          },
+          {
+            "text": "green highlight",
+            "highlight": "green"
+          },
+          {
+            "text": " "
+          },
+          {
+            "text": "blue highlight",
+            "highlight": "blue"
+          },
+          {
+            "text": " "
+          },
+          {
+            "text": "pink highlight",
+            "highlight": "pink"
+          },
+          {
+            "text": " "
+          },
+          {
+            "text": "gray highlight",
+            "highlight": "gray"
+          },
+          {
+            "text": " "
+          },
+          {
+            "text": "and a sourced claim",
+            "bold": true
+          },
+          {
+            "text": "",
+            "citationId": "src-data"
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "quote",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "quote",
+        "runs": [
+          {
+            "text": "Markets can stay irrational longer than a model can stay solvent."
+          }
+        ],
+        "attribution": "A fictional strategist"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "code-ts",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "code",
+        "language": "ts",
+        "text": "const rebased = prices.map(price => (price / prices[0]) * 100);"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "tone-info",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "callout",
+        "tone": "info",
+        "title": "Info",
+        "runs": [
+          {
+            "text": "Information: a neutral note."
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "tone-success",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "callout",
+        "tone": "success",
+        "title": "Success",
+        "runs": [
+          {
+            "text": "Success: a check that passed."
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "tone-warning",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "callout",
+        "tone": "warning",
+        "title": "Warning",
+        "runs": [
+          {
+            "text": "Warning: the data is "
+          },
+          {
+            "text": "delayed",
+            "bold": true
+          },
+          {
+            "text": "."
+          }
+        ]
+      },
+      "citationIds": [
+        "src-data"
+      ],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "tone-danger",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "callout",
+        "tone": "danger",
+        "title": "Danger",
+        "runs": [
+          {
+            "text": "Danger: a limit was breached."
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "tone-note",
+      "parentId": "text-blocks",
+      "content": {
+        "type": "callout",
+        "tone": "note",
+        "runs": [
+          {
+            "text": "Note: something to remember."
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "lists-tables",
+      "parentId": null,
+      "content": {
+        "type": "section",
+        "title": "Lists and tables"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "bullets",
+      "parentId": "lists-tables",
+      "content": {
+        "type": "list",
+        "ordered": false,
+        "items": [
+          "Growth is slowing",
+          "Inflation is falling",
+          "Rates are on hold"
+        ],
+        "indent": [
+          0,
+          1,
+          0
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "steps",
+      "parentId": "lists-tables",
+      "content": {
+        "type": "list",
+        "ordered": true,
+        "items": [
+          "Collect data",
+          "Clean it",
+          "Chart it"
+        ],
+        "style": "number"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "todo",
+      "parentId": "lists-tables",
+      "content": {
+        "type": "list",
+        "ordered": false,
+        "items": [
+          "Draft",
+          "Review",
+          "Publish"
+        ],
+        "style": "todo",
+        "checked": [
+          true,
+          true,
+          false
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "table",
+      "parentId": "lists-tables",
+      "content": {
+        "type": "table",
+        "columns": [
+          "Asset",
+          "Weight",
+          "Return"
+        ],
+        "rows": [
+          [
+            "Alpha",
+            "40%",
+            "+12.4%"
+          ],
+          [
+            "Beta",
+            "35%",
+            "+8.1%"
+          ],
+          [
+            "Gamma",
+            "25%",
+            "-1.2%"
+          ]
+        ],
+        "align": [
+          "left",
+          "right",
+          "right"
+        ],
+        "caption": "Sample allocation",
+        "headerColumn": true
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "charts",
+      "parentId": null,
+      "content": {
+        "type": "section",
+        "title": "Charts"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-line",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "line",
+          "title": "Rebased performance",
+          "labels": [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun"
+          ],
+          "series": [
+            {
+              "name": "Alpha",
+              "values": [
+                100,
+                103,
+                101,
+                106,
+                109,
+                112
+              ]
+            },
+            {
+              "name": "Benchmark",
+              "values": [
+                100,
+                101,
+                100,
+                103,
+                104,
+                106
+              ]
+            }
+          ],
+          "yAxis": {
+            "label": "Index (start = 100)",
+            "format": "number"
+          },
+          "caption": "Both series start at 100.",
+          "source": "Sample data",
+          "annotations": [
+            {
+              "label": "Rate decision",
+              "at": "Apr"
+            }
+          ]
+        }
+      },
+      "citationIds": [
+        "src-data"
+      ],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-trend",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "trend",
+          "title": "Inflation path",
+          "labels": [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun"
+          ],
+          "series": [
+            {
+              "name": "Value",
+              "values": [
+                3.8,
+                3.5,
+                3.4,
+                3.1,
+                3,
+                2.9
+              ]
+            }
+          ],
+          "unit": "%",
+          "asOf": "2026-10-05T00:00:00.000Z"
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-area",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "area",
+          "title": "Cumulative flow",
+          "labels": [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun"
+          ],
+          "series": [
+            {
+              "name": "Inflow",
+              "values": [
+                1,
+                2,
+                4,
+                5,
+                7,
+                9
+              ]
+            },
+            {
+              "name": "Outflow",
+              "values": [
+                0.5,
+                1,
+                2,
+                2.5,
+                3,
+                4
+              ]
+            }
+          ],
+          "stacked": true
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-bar",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "bar",
+          "title": "Quarterly revenue",
+          "labels": [
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4"
+          ],
+          "series": [
+            {
+              "name": "This year",
+              "values": [
+                12,
+                14,
+                13,
+                17
+              ]
+            },
+            {
+              "name": "Last year",
+              "values": [
+                10,
+                11,
+                12,
+                13
+              ]
+            }
+          ],
+          "unit": "M",
+          "yAxis": {
+            "format": "currency",
+            "currency": "USD"
+          }
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-bar-stacked",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "bar",
+          "title": "Revenue by region (stacked)",
+          "labels": [
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4"
+          ],
+          "series": [
+            {
+              "name": "North",
+              "values": [
+                5,
+                6,
+                5,
+                8
+              ]
+            },
+            {
+              "name": "South",
+              "values": [
+                4,
+                5,
+                5,
+                6
+              ]
+            },
+            {
+              "name": "East",
+              "values": [
+                3,
+                3,
+                3,
+                3
+              ]
+            }
+          ],
+          "stacked": true
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-bar-horizontal",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "bar",
+          "title": "Factor exposure",
+          "labels": [
+            "Quality",
+            "Value",
+            "Momentum",
+            "Size"
+          ],
+          "series": [
+            {
+              "name": "Value",
+              "values": [
+                0.6,
+                -0.2,
+                0.3,
+                -0.4
+              ]
+            }
+          ],
+          "horizontal": true
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-pie",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "pie",
+          "title": "Allocation",
+          "labels": [
+            "Alpha",
+            "Beta",
+            "Gamma"
+          ],
+          "series": [
+            {
+              "name": "Share",
+              "values": [
+                40,
+                35,
+                25
+              ]
+            }
+          ],
+          "unit": "%"
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-donut",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "donut",
+          "title": "Risk contribution",
+          "labels": [
+            "Alpha",
+            "Beta",
+            "Gamma"
+          ],
+          "series": [
+            {
+              "name": "Share",
+              "values": [
+                55,
+                30,
+                15
+              ]
+            }
+          ],
+          "unit": "%"
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-scatter",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "scatter",
+          "title": "Risk and return",
+          "labels": [
+            "Alpha: 18",
+            "Beta: 12",
+            "Gamma: 25"
+          ],
+          "series": [
+            {
+              "name": "Return (%)",
+              "values": [
+                12,
+                8,
+                -1
+              ]
+            }
+          ],
+          "yAxis": {
+            "label": "Return (%)"
+          },
+          "xLabel": "Volatility (%)",
+          "points": [
+            {
+              "series": "Alpha",
+              "x": 18,
+              "y": 12
+            },
+            {
+              "series": "Beta",
+              "x": 12,
+              "y": 8
+            },
+            {
+              "series": "Gamma",
+              "x": 25,
+              "y": -1
+            }
+          ]
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-histogram",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "histogram",
+          "title": "Daily return distribution",
+          "labels": [
+            "<-2%",
+            "-2..-1%",
+            "-1..0%",
+            "0..1%",
+            "1..2%",
+            ">2%"
+          ],
+          "series": [
+            {
+              "name": "Count",
+              "values": [
+                3,
+                12,
+                41,
+                46,
+                15,
+                4
+              ]
+            }
+          ],
+          "xLabel": "Daily return"
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-candles",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "candlestick",
+          "title": "Sample candles",
+          "labels": [
+            "d1",
+            "d2",
+            "d3",
+            "d4"
+          ],
+          "series": [
+            {
+              "name": "Close",
+              "values": [
+                103,
+                102,
+                106,
+                104
+              ]
+            }
+          ],
+          "ohlc": [
+            {
+              "t": "d1",
+              "o": 100,
+              "h": 104,
+              "l": 99,
+              "c": 103,
+              "v": 1200
+            },
+            {
+              "t": "d2",
+              "o": 103,
+              "h": 106,
+              "l": 101,
+              "c": 102,
+              "v": 900
+            },
+            {
+              "t": "d3",
+              "o": 102,
+              "h": 107,
+              "l": 100,
+              "c": 106,
+              "v": 1500
+            },
+            {
+              "t": "d4",
+              "o": 106,
+              "h": 108,
+              "l": 103,
+              "c": 104,
+              "v": 1100
+            }
+          ]
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-heatmap",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "heatmap",
+          "title": "Correlation matrix",
+          "labels": [
+            "Alpha",
+            "Beta",
+            "Gamma"
+          ],
+          "series": [
+            {
+              "name": "Alpha",
+              "values": [
+                1,
+                0.62,
+                -0.1
+              ]
+            },
+            {
+              "name": "Beta",
+              "values": [
+                0.62,
+                1,
+                0.05
+              ]
+            },
+            {
+              "name": "Gamma",
+              "values": [
+                -0.1,
+                0.05,
+                1
+              ]
+            }
+          ],
+          "matrix": {
+            "rows": [
+              "Alpha",
+              "Beta",
+              "Gamma"
+            ],
+            "columns": [
+              "Alpha",
+              "Beta",
+              "Gamma"
+            ],
+            "values": [
+              [
+                1,
+                0.62,
+                -0.1
+              ],
+              [
+                0.62,
+                1,
+                0.05
+              ],
+              [
+                -0.1,
+                0.05,
+                1
+              ]
+            ]
+          }
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "chart-waterfall",
+      "parentId": "charts",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "waterfall",
+          "title": "Return attribution",
+          "labels": [
+            "Start",
+            "Selection",
+            "Allocation",
+            "Costs",
+            "End"
+          ],
+          "series": [
+            {
+              "name": "Change",
+              "values": [
+                0,
+                9.1,
+                4.2,
+                -0.9,
+                12.4
+              ]
+            }
+          ],
+          "unit": "%"
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "media",
+      "parentId": null,
+      "content": {
+        "type": "section",
+        "title": "Media and structure"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "image",
+      "parentId": "media",
+      "content": {
+        "type": "image",
+        "url": "https://example.com/images/sample-chart.png",
+        "alt": "A sample chart image",
+        "caption": "Figure 1: an image block (HTTPS only).",
+        "width": "wide"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "embed",
+      "parentId": "media",
+      "content": {
+        "type": "embed",
+        "provider": "superchart",
+        "url": "https://example.com/superchart/sample",
+        "title": "Embedded chart slot",
+        "height": 400
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "asof",
+      "parentId": "media",
+      "content": {
+        "type": "timestamp",
+        "at": "2026-10-05T00:00:00.000Z",
+        "label": "Data as of"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "details",
+      "parentId": "media",
+      "content": {
+        "type": "toggle",
+        "title": "Details (a toggle holds blocks)",
+        "open": true
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "details-text",
+      "parentId": "details",
+      "content": {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "A toggle is a container, like a section."
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "details-list",
+      "parentId": "details",
+      "content": {
+        "type": "list",
+        "ordered": false,
+        "items": [
+          "Nested content",
+          "inside a toggle"
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "break",
+      "parentId": null,
+      "content": {
+        "type": "pageBreak"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "methodology",
+      "parentId": null,
+      "content": {
+        "type": "section",
+        "title": "Data and methodology"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
+      "id": "methodology-text",
+      "parentId": "methodology",
+      "content": {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "All data in this document is invented to exercise the editor. It is analysis for research purposes only."
+          }
+        ]
+      },
+      "citationIds": [
+        "src-method"
+      ],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    }
+  ],
+  "citations": [
+    {
+      "id": "src-method",
+      "title": "Example methodology note",
+      "url": "https://example.com/methodology",
+      "accessedAt": "2026-10-05T00:00:00.000Z",
+      "publishedAt": "2026-09-30T00:00:00.000Z"
+    },
+    {
+      "id": "src-data",
+      "title": "Example data provider",
+      "url": "https://example.com/data",
+      "accessedAt": "2026-10-05T00:00:00.000Z"
+    }
+  ],
+  "retiredBlockIds": []
+}

@@ -89,7 +89,7 @@ for (const item of results) {
   assert.equal(installed.version, item.version);
 }
 writeFileSync(resolve(consumer, 'smoke.mjs'), `import assert from 'node:assert/strict';
-import { createDocument, createEditor, createReportService, serializeDocument, parseDocument } from '${packageName('core')}';
+import { createDocument, createEditor, createReportService, serializeDocument, parseDocument, runAgentAction, createTemplate, AGENT_ACTIONS } from '${packageName('core')}';
 import { renderDocument, mountEditor } from '${packageName('ui')}';
 import { ReportView, ReportEditor, useEditor } from '${packageName('react')}';
 import { createHttpHandler } from '${packageName('api')}';
@@ -103,7 +103,9 @@ const accepted=service.apply({id:'agent',actor:{id:'agent',kind:'agent'},baseRev
 const human=service.apply({id:'human',actor:{id:'human',kind:'human'},baseRevision:1,operations:[{type:'updateBlock',blockId:'summary',expectedVersion:1,content:{type:'paragraph',runs:[{text:'Human retained'}]}}]}); assert.equal(human.ok,true);
 const stale=service.apply({id:'stale',actor:{id:'agent',kind:'agent'},baseRevision:1,operations:[{type:'updateBlock',blockId:'summary',expectedVersion:1,content:{type:'paragraph',runs:[{text:'Stale'}]}}]}); assert.equal(stale.ok,false);
 const response=await createHttpHandler(service)(new Request('https://example.invalid/document')); assert.equal(response.status,200); assert.equal((await response.json()).revision,2);
-const rpc=await createMcpDispatcher(service)({jsonrpc:'2.0',id:1,method:'tools/list',params:{}}); assert.equal(rpc.result.tools.length,4);
+const rpc=await createMcpDispatcher(service)({jsonrpc:'2.0',id:1,method:'tools/list',params:{}}); assert.equal(rpc.result.tools.length,4+AGENT_ACTIONS.length); assert.ok(rpc.result.tools.every(tool=>tool.annotations&&typeof tool.annotations.readOnlyHint==='boolean'));
+const outline=runAgentAction(service,'get_outline',{}); assert.equal(outline.ok,true); assert.equal(runAgentAction(service,'find_blocks',{text:'Human retained'}).total,1); assert.ok(createTemplate('equity').length>10);
+const openapi=await (await createHttpHandler(service)(new Request('https://example.invalid/openapi.json'))).json(); assert.equal(openapi.openapi,'3.1.0');
 assert.match(renderToString(React.createElement(ReportView,{document:service.read()})),/Human retained/);
 for(const fn of [renderDocument,mountEditor,ReportEditor,useEditor,runCli])assert.equal(typeof fn,'function'); assert.match(CLI_HELP,/super-editor/);
 console.log('Independent six-tarball ESM, HTTP, MCP, React SSR and guarded edit smoke passed.');\n`);
@@ -136,5 +138,24 @@ assert.throws(() => execFileSync(process.execPath, [bin, 'apply', cliDocument, c
 assert.ok(readFileSync(cliDocument).equals(retainedBytes), 'Stale CLI transaction must preserve exact file bytes.');
 const installedCss = resolve(consumer, 'node_modules/@super-solution/editor-ui/dist/styles.css');
 assert.match(readFileSync(installedCss, 'utf8'), /--se-/);
-console.log('Independent declaration resolution, CLI init/read/apply/conflict and CSS asset smoke passed.');
+const cliRun = (...args) => JSON.parse(execFileSync(process.execPath, [bin, ...args], { cwd: consumer, encoding: 'utf8' }));
+const agentDocument = resolve(consumer, 'agent-report.json');
+rmSync(agentDocument, { force: true });
+execFileSync(process.execPath, [bin, 'new', agentDocument, '--id', 'agent-consumer', '--template', 'equity', '--subject', 'ACME'], { cwd: consumer, encoding: 'utf8' });
+const thesis = cliRun('find', agentDocument, '--text', 'thesis', '--type', 'paragraph', '--json').blocks[0];
+assert.equal(cliRun('update-text', agentDocument, thesis.id + '@' + thesis.version, '--text', 'Checked by the release smoke.', '--json').ok, true);
+assert.throws(() => execFileSync(process.execPath, [bin, 'update-text', agentDocument, thesis.id + '@' + thesis.version, '--text', 'stale'], { cwd: consumer, encoding: 'utf8', stdio: 'pipe' }), error => error.status === 3);
+assert.match(execFileSync(process.execPath, [bin, 'export', agentDocument], { cwd: consumer, encoding: 'utf8' }), /Checked by the release smoke/);
+const mcpBin = resolve(consumer, 'node_modules/@super-solution/editor-mcp/dist/stdio.js');
+const mcpDocument = resolve(consumer, 'mcp-report.json');
+rmSync(mcpDocument, { force: true });
+const mcpLines = execFileSync(process.execPath, [mcpBin, mcpDocument, '--create', '--id', 'mcp-consumer', '--template', 'macro'], {
+  cwd: consumer, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
+  input: [{ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'smoke', version: '1' } } },
+    { jsonrpc: '2.0', id: 2, method: 'tools/list' }, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'get_outline', arguments: {} } }].map(message => JSON.stringify(message)).join('\n') + '\n',
+}).trim().split('\n').map(line => JSON.parse(line));
+assert.equal(mcpLines[0].result.serverInfo.name, 'super-editor');
+assert.ok(mcpLines[1].result.tools.some(tool => tool.name === 'insert_blocks'));
+assert.ok(mcpLines[2].result.structuredContent.outline.length > 3);
+console.log('Independent declaration resolution, CLI init/read/apply/conflict, agent commands, MCP stdio server and CSS asset smoke passed.');
 writeFileSync(resolve(output, 'release-manifest.json'), `${JSON.stringify({ sourceCommit, dirty, version: packages[0].version, channel: packages[0].channel, packages: results }, null, 2)}\n`);
