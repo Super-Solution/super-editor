@@ -61,7 +61,13 @@ test('prerelease publication checks preserve absent or stable latest and never f
   const item = { name: repairNames[0], version: repairVersion, channel: 'next' };
   assert.equal(checkPrereleaseBaseline(item.name, undefined), undefined);
   assert.equal(checkPrereleaseBaseline(item.name, { 'dist-tags': { latest: '1.0.0' } }), '1.0.0');
-  assert.throws(() => checkPrereleaseBaseline(item.name, { 'dist-tags': { latest: repairVersion } }), /already present/);
+  // A prerelease latest is reported and returned as the baseline to preserve, not fatal.
+  const warnings = [];
+  assert.equal(checkPrereleaseBaseline(item.name, { 'dist-tags': { latest: repairVersion } }, message => warnings.push(message)), repairVersion);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /already present/);
+  // The baseline then guards the publication: moving latest still fails.
+  assert.throws(() => checkPublishedTags(item, repairVersion, { 'dist-tags': { next: repairVersion, latest: '1.0.0' } }), /changed latest/);
   checkPublishedTags(item, '1.0.0', { 'dist-tags': { latest: '1.0.0', next: repairVersion } });
   checkPublishedTags(item, undefined, { 'dist-tags': { next: repairVersion } });
   assert.throws(() => checkPublishedTags(item, '1.0.0', { 'dist-tags': { latest: repairVersion, next: repairVersion } }), /changed latest/);
