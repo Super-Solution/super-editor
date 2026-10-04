@@ -88,6 +88,8 @@ export function FindReplace({ editor, actor = defaultActor, open: controlledOpen
     const outcome = editor.apply({ id: localId('human'), actor, baseRevision: report.revision, operations: replaceOperations(matches, query, replacement, { all, caseSensitive }) });
     setMessage(outcome.ok ? plural(count, labels.find.replacedOne, labels.find.replaced) : outcome.issues.some((issue) => issue.code === 'conflict') ? labels.find.conflict : outcome.issues.map((issue) => issue.message).join(' '));
     onResult?.(outcome, { replaced: outcome.ok ? count : 0 });
+    // Replace all disables its own button; keep focus in the panel so Escape still closes it.
+    if (all) replaceInput.current?.focus();
   };
   const onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') { event.preventDefault(); setOpen(false); }
