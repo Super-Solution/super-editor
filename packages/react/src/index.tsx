@@ -2,15 +2,18 @@ import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import type { Actor, ApplyResult, Block, BlockContent, Editor, Operation, ResearchDocument } from '@super-solution/editor-core';
 import { contentWithText, editableText, localId } from '@super-solution/editor-ui';
+import type { Interaction } from '@super-solution/editor-ui';
 import { ReportView } from './render/index.js';
 import type { ReportViewProps } from './render/index.js';
+import { InteractiveReportEditor } from './interaction/ReportEditor.js';
+import type { InteractionProps } from './interaction/ReportEditor.js';
 
 export function useEditor(editor: Editor): ResearchDocument {
   return useSyncExternalStore(editor.subscribe, editor.getSnapshot, editor.getSnapshot);
 }
 
-export type ReactControlsContext = { editor: Editor; report: ResearchDocument; actor: Actor; applyResult(result: ApplyResult): void };
-export type ReportEditorProps = Omit<ReportViewProps, 'document' | 'renderBlockActions'> & {
+export type ReactControlsContext = { editor: Editor; report: ResearchDocument; actor: Actor; applyResult(result: ApplyResult): void; interaction?: Interaction };
+export type ReportEditorProps = Omit<ReportViewProps, 'document' | 'renderBlockActions'> & InteractionProps & {
   editor: Editor; actor?: Actor;
   renderControls?: false | ((context: ReactControlsContext) => ReactNode);
 };
@@ -39,8 +42,21 @@ function DefaultControls({ editor, report, actor, applyResult }: ReactControlsCo
 const editorKeys = new WeakMap<Editor, number>();
 let nextEditorKey = 0;
 
-/** Draft state belongs to one editor instance, including when a host swaps the editor prop. */
+/**
+ * The editor. By default it composes the interaction layer (in-place editing, "/" menu, hover gutter, drag and drop, selection,
+ * shortcuts, formatting toolbar, history); every part has an opt-out prop. `interaction={false}` restores the classic
+ * "Edit" button per block with a plain-text draft.
+ */
 export function ReportEditor(props: ReportEditorProps): ReactNode {
+  if (props.interaction === false) return <ClassicReportEditor {...props} />;
+  return <InteractiveReportEditor {...props} />;
+}
+const INTERACTION_PROPS = ['interaction', 'readOnly', 'interactionLabels', 'onReload', 'shortcuts', 'slashItems', 'slashLabels', 'commitDelayMs', 'linkSchemes', 'onConflict', 'onFeedback', 'surface',
+  'gutter', 'hoverOutline', 'selectionOverlay', 'dropIndicator', 'slashMenu', 'formattingToolbar', 'selectionToolbar', 'blockMenu', 'linkEditor', 'shortcutHelp', 'chartEditor', 'conflictNotice', 'feedback'] as const;
+function ClassicReportEditor(allProps: ReportEditorProps): ReactNode {
+  const props = { ...allProps } as ReportEditorProps;
+  for (const name of INTERACTION_PROPS) delete (props as Record<string, unknown>)[name];
+  // Draft state belongs to one editor instance, including when a host swaps the editor prop.
   let key = editorKeys.get(props.editor);
   if (key === undefined) { key = ++nextEditorKey; editorKeys.set(props.editor, key); }
   return <ReportEditorSurface key={key} {...props} />;
@@ -77,6 +93,7 @@ function ReportEditorSurface({ editor, actor = defaultActor, renderControls, ...
   </div>;
 }
 
-// Rendering layer (blocks, charts, labels) and panels. Interaction components are exported by their own modules.
+// Rendering layer (blocks, charts, labels) and panels, plus the interaction layer.
 export * from './render/index.js';
 export * from './panels/index.js';
+export * from './interaction/index.js';

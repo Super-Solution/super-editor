@@ -6,4 +6,5 @@
 @import './styles/blocks.css';
 @import './styles/charts.css';
 @import './styles/panels.css';
+@import './styles/interaction.css';
 @import './styles/print.css';

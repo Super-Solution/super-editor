@@ -89,3 +89,4 @@ export function mountEditor(container: HTMLElement, editor: Editor, options: Mou
 export { getChartModel, contentWithText, editableText, localId, type ChartModel, type ChartShape } from './presentation.js';
 export * from './render/index.js';
 export * from './charts/index.js';
+export * from './interaction/index.js';

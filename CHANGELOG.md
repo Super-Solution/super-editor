@@ -2,6 +2,20 @@
 
 All notable changes to the six `@super-solution/editor-*` packages (released together, same version). Prereleases ship on the `next` npm channel. The document format stays `schemaVersion: 1`; every change below is additive.
 
+## Unreleased (target 0.3.0-next.1)
+
+### Editor interaction (`editor-ui`, `editor-react`)
+
+- **`ReportEditor` is interactive by default**: click text to edit it in place. Typing is buffered and committed as a guarded `updateBlock` by a human actor; Enter splits, Backspace at the start merges. Pass `interaction={false}` for the previous Edit-button editor.
+- **Headless controller** `createInteraction(editor, options)` in `editor-ui` owns selection, drafts, commands, the slash menu, drag and drop, the shortcut registry, Markdown-style input rules and the clipboard, so any host (or an agent harness) can drive the editor without React. Pure planners (`planInsert`, `planDelete`, `planDuplicate`, `planMove`, `planTurnInto`, `planPaste`, ...) return Core operations.
+- **Section hover and drag**: a block gutter with a drag handle and `+`, a hover outline, multi-block selection (click, Mod-click, Shift-click, Shift+Arrow, Mod+A), a drop indicator, and keyboard moves (Alt+Shift+ArrowUp/ArrowDown).
+- **Slash menu** (`/`) with fuzzy search over every block kind and chart templates; **turn into**, duplicate, delete with Undo, and a block action menu.
+- **Formatting**: a selection toolbar for bold, italic, code, strike and links (https only unless `linkSchemes: "http-https"`), Markdown shortcuts (`# `, `- `, `1. `, `[] `, `> `, ```` ``` ````, `---`), and a shortcut help sheet (`Mod+/`) whose bindings are configurable.
+- **Editing blocks in place**: lists and todos, tables (cells, add/remove rows and columns), callouts, and a chart editor for title, kind (only kinds the data fits), caption, source, unit and axis labels; the data itself is not edited there.
+- **Conflicts never overwrite**: a change made elsewhere while you type shows "Keep my version" / "Use the latest". Refused edits become toasts through `toastFromApplyResult`; `onFeedback` replaces the built-in toasts and `onReload` adds a Reload action.
+- **Theme**: the interaction CSS reads only `--se-*` tokens; `data-se-theme` and `data-se-density` on the editor wrapper reach popups and toasts.
+- Fixed: `interaction={false}` keeps the view's `labels` and drops only interaction props.
+
 ## 0.3.0-next.0 (2026-10-05)
 
 Editor interaction (hover handles, drag, slash menu, selection, shortcuts) follows in `0.3.0-next.1`.
