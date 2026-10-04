@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import type { ReactNode } from 'react';
 import { groupSlashItems } from '@super-solution/editor-ui';
 import type { Interaction } from '@super-solution/editor-ui';
-import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useLabels } from './context.js';
+import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels } from './context.js';
 import { keepFocus, useIsoLayoutEffect, useKeepInViewport } from './util.js';
 
 /** DOM id of a slash option, for `aria-activedescendant` on the field that has focus. */
@@ -11,7 +11,7 @@ export const slashListId = (interaction: Interaction): string => `${interaction.
 
 /** The "/" menu: a listbox of blocks, filtered as you type. Keyboard handling lives in the interaction layer (arrows, Enter, Tab, Esc). */
 export function SlashMenu({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels();
+  const interaction = useInteraction(explicit), labels = useInteractionLabels();
   const state = useInteractionState(interaction, (current) => current.slash);
   useDocumentRevision(interaction);
   const rect = useBlockRect(state?.blockId ?? null);

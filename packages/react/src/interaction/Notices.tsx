@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { BlockContent, InlineRun } from '@super-solution/editor-core';
 import type { FeedbackEvent, Interaction } from '@super-solution/editor-ui';
-import { useInteraction, useInteractionState, useLabels } from './context.js';
+import { useLabels } from '../render/context.js';
+import { toastFromApplyResult, useToasts } from '../panels/Toasts.js';
+import type { ToastInput } from '../panels/Toasts.js';
+import { useInteraction, useInteractionState, useInteractionLabels } from './context.js';
 
 const preview = (content: BlockContent | undefined): string => {
   if (!content) return '';
@@ -11,7 +14,7 @@ const preview = (content: BlockContent | undefined): string => {
 };
 /** Shown while a block you are typing in was changed by someone else. Nothing is overwritten until you choose. */
 export function ConflictNotice({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels();
+  const interaction = useInteraction(explicit), labels = useInteractionLabels();
   const conflicts = useInteractionState(interaction, (state) => state.conflicts);
   const entries = Object.entries(conflicts);
   if (!entries.length) return null;
@@ -26,21 +29,25 @@ export function ConflictNotice({ interaction: explicit }: { interaction?: Intera
   </div>;
 }
 
-/** One transient message with an optional action (for example "Undo" after a delete). Errors and conflicts are announced assertively. */
-export function FeedbackBar({ interaction: explicit, durationMs = 6_000 }: { interaction?: Interaction; durationMs?: number }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels();
-  const [event, setEvent] = useState<FeedbackEvent | null>(null);
-  useEffect(() => interaction.subscribeFeedback((next) => setEvent(next)), [interaction]);
-  useEffect(() => {
-    if (!event) return;
-    const timer = setTimeout(() => setEvent(null), event.kind === 'error' || event.kind === 'conflict' ? durationMs * 2 : durationMs);
-    return () => clearTimeout(timer);
-  }, [event, durationMs]);
-  if (!event) return null;
-  const urgent = event.kind === 'error' || event.kind === 'conflict';
-  return <div className={`se-feedback se-feedback-${event.kind}`} data-se-popup role={urgent ? 'alert' : 'status'} aria-live={urgent ? 'assertive' : 'polite'}>
-    <span className="se-feedback-message">{event.message}</span>
-    {event.action ? <button type="button" className="se-button" onClick={() => { event.action!.run(); setEvent(null); }}>{event.action.label}</button> : null}
-    <button type="button" className="se-feedback-dismiss" aria-label={labels.dismiss} onClick={() => setEvent(null)}><span aria-hidden="true">{'×'}</span></button>
-  </div>;
+/**
+ * Turns an interaction feedback event into a toast for the toast system of the rendering layer (`ToastProvider`).
+ * A refused edit goes through `toastFromApplyResult`, so conflicts and errors read the same everywhere.
+ */
+export function feedbackToToast(event: FeedbackEvent, labels?: Parameters<typeof toastFromApplyResult>[1], options: { onReload?: (() => void) | undefined } = {}): ToastInput {
+  if (event.result) {
+    const toast = toastFromApplyResult(event.result, labels, options);
+    if (toast) return event.kind === 'conflict' || toast.tone === 'conflict' ? { ...toast, message: event.message } : toast;
+  }
+  return {
+    tone: event.kind === 'conflict' ? 'conflict' : event.kind,
+    message: event.message,
+    ...(event.kind === 'conflict' ? { key: 'conflict' } : {}),
+    ...(event.action ? { action: { label: event.action.label, onClick: event.action.run } } : {}),
+  };
+}
+/** Forwards every feedback event of the interaction to the nearest `ToastProvider` (success with Undo, refused edits, conflicts). */
+export function FeedbackToasts({ interaction: explicit, onReload }: { interaction?: Interaction; onReload?: () => void }): ReactNode {
+  const interaction = useInteraction(explicit), toasts = useToasts(), labels = useLabels();
+  useEffect(() => interaction.subscribeFeedback((event) => { toasts.show(feedbackToToast(event, labels, { onReload })); }), [interaction, toasts.show, labels, onReload]);
+  return null;
 }

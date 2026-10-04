@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { blockRoots, indicatorFor } from '@super-solution/editor-ui';
 import type { Interaction } from '@super-solution/editor-ui';
-import { useBlockRect, useCoarsePointer, useDocumentRevision, useInteraction, useInteractionState, useLabels, useSurface } from './context.js';
+import { useBlockRect, useCoarsePointer, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels, useSurface } from './context.js';
 import { keepFocus } from './util.js';
 
 /** The "+" and drag handle that appear beside the hovered block (or the block being edited on touch devices). */
 export type BlockGutterProps = { interaction?: Interaction; /** Pin the gutter to one block instead of following hover. */ blockId?: string | null; /** Space reserved left of the block, in px. Default 56. */ width?: number };
 export function BlockGutter(props: BlockGutterProps): ReactNode {
-  const interaction = useInteraction(props.interaction), labels = useLabels(), coarse = useCoarsePointer();
+  const interaction = useInteraction(props.interaction), labels = useInteractionLabels(), coarse = useCoarsePointer();
   const hover = useInteractionState(interaction, (state) => state.hover);
   const editing = useInteractionState(interaction, (state) => state.editing?.blockId ?? null);
   const anchor = useInteractionState(interaction, (state) => state.menu?.anchorId ?? null);

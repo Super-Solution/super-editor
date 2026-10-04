@@ -228,8 +228,8 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     if (conflict) {
       const info: ConflictInfo = { command, message: 'The document changed while you were working, so this change was not applied. Nothing was lost; try again.', issues: result.issues, ...(conflict.blockId ? { blockId: conflict.blockId } : {}) };
       try { options.onConflict?.(info); } catch { /* ignore */ }
-      notify({ kind: 'conflict', message: info.message, ...(conflict.blockId ? { blockIds: [conflict.blockId] } : {}) });
-    } else notify({ kind: 'error', message: describe(result.issues) });
+      notify({ kind: 'conflict', message: info.message, result, ...(conflict.blockId ? { blockIds: [conflict.blockId] } : {}) });
+    } else notify({ kind: 'error', message: describe(result.issues), result });
   }
   function run(command: string, operations: Operation[]): ApplyResult {
     const result = editor.apply({ id: localId('human'), actor, baseRevision: doc().revision, operations });

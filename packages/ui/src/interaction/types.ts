@@ -10,6 +10,8 @@ export type FeedbackKind = 'info' | 'success' | 'error' | 'conflict';
 /** Everything a host may want to surface as a toast, live-region message or log line. */
 export type FeedbackEvent = {
   kind: FeedbackKind; message: string; blockIds?: readonly string[];
+  /** For `error` and `conflict` events caused by a refused edit: the editor's result, so hosts can build their own message (for example with `toastFromApplyResult`). */
+  result?: Extract<ApplyResult, { ok: false }>;
   /** For example "Undo" after a delete. */
   action?: { label: string; run(): void };
 };

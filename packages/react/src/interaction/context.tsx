@@ -1,16 +1,16 @@
 import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import type { Box, Interaction, InteractionState, SurfaceBinding } from '@super-solution/editor-ui';
-import { defaultLabels, mergeLabels } from './labels.js';
+import { defaultInteractionLabels, mergeInteractionLabels } from './labels.js';
 import type { InteractionLabels } from './labels.js';
 
 export const InteractionContext = createContext<Interaction | null>(null);
 /** Pointer/layout binding of the surface the components live in. Null until the surface has mounted (and during server rendering). */
 export const SurfaceContext = createContext<SurfaceBinding | null>(null);
-export const LabelsContext = createContext<InteractionLabels>(defaultLabels);
+export const InteractionLabelsContext = createContext<InteractionLabels>(defaultInteractionLabels);
 
 export function InteractionProvider({ interaction, labels, children }: { interaction: Interaction; labels?: Partial<InteractionLabels>; children?: ReactNode }): ReactNode {
-  return <InteractionContext.Provider value={interaction}><LabelsContext.Provider value={mergeLabels(labels)}>{children}</LabelsContext.Provider></InteractionContext.Provider>;
+  return <InteractionContext.Provider value={interaction}><InteractionLabelsContext.Provider value={mergeInteractionLabels(labels)}>{children}</InteractionLabelsContext.Provider></InteractionContext.Provider>;
 }
 export function useInteraction(explicit?: Interaction): Interaction {
   const context = useContext(InteractionContext);
@@ -18,7 +18,7 @@ export function useInteraction(explicit?: Interaction): Interaction {
   if (!interaction) throw new Error('Pass an interaction, or render inside <InteractionProvider> / <ReportEditor>.');
   return interaction;
 }
-export function useLabels(): InteractionLabels { return useContext(LabelsContext); }
+export function useInteractionLabels(): InteractionLabels { return useContext(InteractionLabelsContext); }
 export function useSurface(): SurfaceBinding | null { return useContext(SurfaceContext); }
 
 /**

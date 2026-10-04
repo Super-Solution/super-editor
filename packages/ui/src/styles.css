@@ -1,42 +1,10 @@
-/* Colors and fonts inherit host tokens; defaults are neutral. */
+/*
+ * Super Editor stylesheet. The published file inlines these imports into one asset.
+ * Tokens first (every color, font and spacing value is a --se-* variable), then blocks, charts, panels and print.
+ */
+@import './styles/tokens.css';
+@import './styles/blocks.css';
+@import './styles/charts.css';
+@import './styles/panels.css';
 @import './styles/interaction.css';
-.super-editor { color: var(--se-text, #262626); background: var(--se-bg, #f5f5f5); padding: 1rem; }
-.super-editor-document { box-sizing: border-box; max-width: var(--se-document-width, 900px); margin: 0 auto; padding: 3rem 3.5rem; background: var(--se-surface, #fff); color: var(--se-text, #262626); overflow-wrap: anywhere; }
-.super-editor-document[data-font="sans"] { font-family: var(--se-font-sans, system-ui, -apple-system, sans-serif); }
-.super-editor-document[data-font="serif"] { font-family: var(--se-font-serif, Georgia, serif); }
-.super-editor-document[data-font="mono"] { font-family: var(--se-font-mono, ui-monospace, Consolas, monospace); }
-.super-editor-document[data-page="A4"] { max-width: 210mm; }
-.super-editor-document[data-page="letter"] { max-width: 8.5in; }
-.super-editor-document h1 { font-size: 2.2em; line-height: 1.15; margin: 0 0 .65rem; letter-spacing: -.025em; }
-.super-editor-document h2 { margin: 1.8rem 0 .7rem; font-size: 1.45em; line-height: 1.25; }
-.super-editor-document h3 { margin: 1.2rem 0 .55rem; font-size: 1.15em; }
-.super-editor-metadata, .super-editor-document small { color: var(--se-muted, #737373); font-size: .8em; }
-.super-editor-block { margin: .8rem 0; }
-.super-editor-block[data-block-type="section"] { margin-top: 2rem; padding-top: .25rem; border-top: 1px solid var(--se-border, #ddd); }
-.super-editor-block p { margin: .55rem 0; }
-.super-editor-document a { color: var(--se-accent, #343434); text-underline-offset: .15em; }
-.super-editor-document code { background: var(--se-subtle, #f3f3f3); border-radius: 3px; padding: .1em .25em; }
-.super-editor-document table { border-collapse: collapse; width: 100%; margin: .75rem 0; font-size: .85em; }
-.super-editor-document caption { text-align: left; color: var(--se-muted, #737373); padding: .4rem 0; }
-.super-editor-document th, .super-editor-document td { padding: .5rem .7rem; border: 1px solid var(--se-border, #ddd); text-align: left; }
-.super-editor-document th { background: var(--se-subtle, #f3f3f3); font-weight: 600; }
-.super-editor-chart, .super-editor-embed { margin: 1.5rem 0; }
-.super-editor-chart figcaption { font-weight: 600; }
-.super-editor-chart svg { display: block; width: 100%; max-height: 300px; }
-.super-editor-embed iframe { display: block; width: 100%; min-height: 380px; margin-top: .75rem; border: 1px solid var(--se-border, #ddd); }
-.super-editor-citations { margin-top: 2rem; border-top: 1px solid var(--se-border, #ddd); }
-.super-editor-citations small { display: block; }
-.super-editor-block-sources { display: block; }
-.super-editor-controls { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; max-width: var(--se-document-width, 900px); margin: 0 auto 1rem; }
-.super-editor button, .super-editor select, .super-editor input { font: inherit; border: 1px solid var(--se-border, #ccc); border-radius: 4px; background: var(--se-surface, #fff); padding: .4rem .6rem; color: inherit; }
-.super-editor button { cursor: pointer; }
-.super-editor button:hover { background: var(--se-hover, #eee); }
-.super-editor button:focus-visible, .super-editor select:focus-visible, .super-editor textarea:focus-visible { outline: 2px solid var(--se-accent, #343434); outline-offset: 2px; }
-.super-editor-block > button { font-size: .75rem; margin-top: .25rem; color: var(--se-muted, #737373); }
-.super-editor-block-edit { background: var(--se-subtle, #f5f5f5); border: 1px solid var(--se-border, #ddd); padding: .75rem; margin: .7rem 0; }
-.super-editor-block-edit textarea { box-sizing: border-box; width: 100%; min-height: 100px; resize: vertical; font: inherit; color: inherit; border: 1px solid var(--se-border, #ccc); background: var(--se-surface, #fff); padding: .6rem; }
-.super-editor-block-edit small { display: block; margin: .3rem 0 .7rem; }
-.super-editor-block-edit button { margin-right: .5rem; }
-.super-editor-error { max-width: var(--se-document-width, 900px); margin: 1rem auto; color: var(--se-error, #9a2929); background: var(--se-error-bg, #fff1ed); padding: .75rem; border-left: 3px solid var(--se-error-border, #b94438); }
-@media (max-width: 640px) { .super-editor { padding: .4rem; } .super-editor-document { padding: 1.5rem 1rem; } .super-editor-document table { display: block; overflow-x: auto; } }
-@media print { .super-editor { padding: 0; background: var(--se-surface, #fff); } .super-editor-controls, .super-editor-block > button, .super-editor-block-edit, .super-editor-error { display: none; } .super-editor-document { padding: 0; max-width: none; } .super-editor-block { break-inside: avoid; } }
+@import './styles/print.css';

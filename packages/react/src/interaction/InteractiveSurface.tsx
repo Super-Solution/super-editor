@@ -3,20 +3,18 @@ import type { Interaction, SurfaceOptions } from '@super-solution/editor-ui';
 import { BlockActionMenu } from './BlockActionMenu.js';
 import { ChartEditor, ShortcutHelp } from './Dialogs.js';
 import { BlockGutter, BlockOutline, DropIndicator, SelectionOverlay } from './Gutter.js';
-import { ConflictNotice, FeedbackBar } from './Notices.js';
+import { ConflictNotice } from './Notices.js';
 import { SlashMenu } from './SlashMenu.js';
 import { FormattingToolbar, LinkEditor, SelectionToolbar, UrlPrompt } from './Toolbars.js';
-import { InteractionContext, LabelsContext, SurfaceContext, useInteraction } from './context.js';
+import { InteractionContext, InteractionLabelsContext, SurfaceContext, useInteraction } from './context.js';
 import { useSurfaceBinding } from './hooks.js';
-import { mergeLabels } from './labels.js';
+import { mergeInteractionLabels } from './labels.js';
 import type { InteractionLabels } from './labels.js';
 
 /** Which parts of the interaction layer a surface shows. Everything defaults to on; switch off what the host replaces. */
 export type InteractionParts = {
   gutter?: boolean; hoverOutline?: boolean; selectionOverlay?: boolean; dropIndicator?: boolean; slashMenu?: boolean; formattingToolbar?: boolean; selectionToolbar?: boolean;
   blockMenu?: boolean; linkEditor?: boolean; shortcutHelp?: boolean; chartEditor?: boolean; conflictNotice?: boolean;
-  /** The built-in transient message bar. Turn off when the host renders its own toasts from `onFeedback`. */
-  feedback?: boolean;
 };
 export type InteractiveSurfaceProps = InteractionParts & {
   interaction?: Interaction;
@@ -35,9 +33,9 @@ export type InteractiveSurfaceProps = InteractionParts & {
 export function InteractiveSurface(props: InteractiveSurfaceProps): ReactNode {
   const interaction = useInteraction(props.interaction);
   const { ref, binding } = useSurfaceBinding(interaction, props.surface);
-  const labels = mergeLabels(props.labels);
+  const labels = mergeInteractionLabels(props.labels);
   const on = (flag: boolean | undefined): boolean => flag !== false;
-  return <InteractionContext.Provider value={interaction}><LabelsContext.Provider value={labels}><SurfaceContext.Provider value={binding}>
+  return <InteractionContext.Provider value={interaction}><InteractionLabelsContext.Provider value={labels}><SurfaceContext.Provider value={binding}>
     <div ref={ref} className={`se-surface${props.className ? ` ${props.className}` : ''}`} tabIndex={0} role="group" aria-label={labels.surface}>
       {on(props.conflictNotice) ? <ConflictNotice /> : null}
       {props.children}
@@ -55,7 +53,6 @@ export function InteractiveSurface(props: InteractiveSurfaceProps): ReactNode {
         {on(props.chartEditor) ? <ChartEditor /> : null}
         {on(props.shortcutHelp) ? <ShortcutHelp /> : null}
       </div> : null}
-      {on(props.feedback) ? <FeedbackBar /> : null}
     </div>
-  </SurfaceContext.Provider></LabelsContext.Provider></InteractionContext.Provider>;
+  </SurfaceContext.Provider></InteractionLabelsContext.Provider></InteractionContext.Provider>;
 }

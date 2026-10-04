@@ -4,7 +4,7 @@ import { TURN_INTO_TARGETS, blockRoots, canTurnInto, formatShortcut, selectionCl
 import type { Interaction, InteractionState, Mark, TurnIntoTarget } from '@super-solution/editor-ui';
 import { HIGHLIGHTS } from '@super-solution/editor-core';
 import type { Highlight } from '@super-solution/editor-core';
-import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useLabels, useSurface } from './context.js';
+import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels, useSurface } from './context.js';
 import { keepFocus, useIsoLayoutEffect, useKeepInViewport } from './util.js';
 
 type Point = { x: number; y: number };
@@ -34,7 +34,7 @@ const hint = (interaction: Interaction, id: string): string => { const key = int
 
 /** Floating toolbar over selected text: bold, italic, underline, strike, code, highlight and link. Buttons keep the editor's focus and selection. */
 export function FormattingToolbar({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels();
+  const interaction = useInteraction(explicit), labels = useInteractionLabels();
   const selection = useInteractionState(interaction, (state) => state.textSelection);
   const hidden = useInteractionState(interaction, (state) => state.slash !== null || state.prompt !== null || state.drag !== null || state.readOnly || state.editing === null);
   useDocumentRevision(interaction);
@@ -74,7 +74,7 @@ export function LinkEditor({ interaction: explicit }: { interaction?: Interactio
   return <LinkForm key={`${link.blockId}:${link.field}:${link.start}:${link.end}`} interaction={interaction} link={link} popupRef={ref} left={point.x} top={point.y - 8 - shift} />;
 }
 function LinkForm({ interaction, link, popupRef, left, top }: { interaction: Interaction; link: Extract<NonNullable<InteractionState['prompt']>, { kind: 'link' }>; popupRef: RefObject<HTMLDivElement | null>; left: number; top: number }): ReactNode {
-  const labels = useLabels();
+  const labels = useInteractionLabels();
   const [text, setText] = useState(link.href);
   const refocus = (): void => { interaction.edit.start(link.blockId, { field: link.field, caret: link.end }); };
   const submit = (event: FormEvent): void => { event.preventDefault(); if (interaction.format.applyLink(text)) refocus(); };
@@ -96,7 +96,7 @@ function LinkForm({ interaction, link, popupRef, left, top }: { interaction: Int
 
 /** Asks for the https address an image or embed needs before it can be inserted. */
 export function UrlPrompt({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels();
+  const interaction = useInteraction(explicit), labels = useInteractionLabels();
   const prompt = useInteractionState(interaction, (state) => state.prompt);
   const url = prompt && prompt.kind === 'url' ? prompt : null;
   const rect = useBlockRect(url?.blockId ?? null);
@@ -116,7 +116,7 @@ export function UrlPrompt({ interaction: explicit }: { interaction?: Interaction
 
 /** Appears over a block selection: how many blocks, plus duplicate, move, turn into, copy, delete and clear. */
 export function SelectionToolbar({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels();
+  const interaction = useInteraction(explicit), labels = useInteractionLabels();
   const ids = useInteractionState(interaction, (state) => state.selection.ids, (a, b) => a === b);
   const hidden = useInteractionState(interaction, (state) => state.editing !== null || state.drag !== null || state.menu !== null || state.readOnly);
   useDocumentRevision(interaction);

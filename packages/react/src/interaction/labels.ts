@@ -35,7 +35,7 @@ export type InteractionLabels = {
   undo: string; redo: string; help: string; documentFont: string; documentPage: string;
   dismiss: string;
 };
-export const defaultLabels: InteractionLabels = {
+export const defaultInteractionLabels: InteractionLabels = {
   surface: 'Document editor',
   placeholderParagraph: "Type '/' for commands",
   placeholderHeading: 'Heading',
@@ -71,4 +71,4 @@ export const defaultLabels: InteractionLabels = {
   undo: 'Undo', redo: 'Redo', help: 'Keyboard shortcuts', documentFont: 'Document font', documentPage: 'Page format',
   dismiss: 'Dismiss',
 };
-export function mergeLabels(overrides?: Partial<InteractionLabels>): InteractionLabels { return overrides ? { ...defaultLabels, ...overrides } : defaultLabels; }
+export function mergeInteractionLabels(overrides?: Partial<InteractionLabels>): InteractionLabels { return overrides ? { ...defaultInteractionLabels, ...overrides } : defaultInteractionLabels; }

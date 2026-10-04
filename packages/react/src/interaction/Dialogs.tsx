@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { INPUT_RULE_DOCS, compatibleChartKinds } from '@super-solution/editor-ui';
 import type { Interaction, ShortcutInfo } from '@super-solution/editor-ui';
-import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useLabels, useSurface } from './context.js';
+import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels, useSurface } from './context.js';
 import { useIsoLayoutEffect } from './util.js';
 
 function groupShortcuts(list: readonly ShortcutInfo[]): { group: string; items: ShortcutInfo[] }[] {
@@ -16,7 +16,7 @@ function groupShortcuts(list: readonly ShortcutInfo[]): { group: string; items: 
 }
 /** Modal list of every shortcut (platform-aware) and the markdown shortcuts. Opens with Mod+/ or "?". */
 export function ShortcutHelp({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels();
+  const interaction = useInteraction(explicit), labels = useInteractionLabels();
   const open = useInteractionState(interaction, (state) => state.help);
   const dialog = useRef<HTMLDivElement>(null), close = useRef<HTMLButtonElement>(null);
   useIsoLayoutEffect(() => {
@@ -52,7 +52,7 @@ export function ShortcutHelp({ interaction: explicit }: { interaction?: Interact
 
 /** Quick settings for the selected chart: title, type, caption, source and bar layout. Only types the data can be drawn as are offered. */
 export function ChartEditor({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels(), binding = useSurface();
+  const interaction = useInteraction(explicit), labels = useInteractionLabels(), binding = useSurface();
   const id = useInteractionState(interaction, (state) => state.chartEditor);
   useDocumentRevision(interaction);
   const rect = useBlockRect(id);

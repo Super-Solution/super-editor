@@ -1,0 +1,49 @@
+/*
+ * Print. The document format.page picks a named page (A4 or letter); "screen" prints on the default page of the browser.
+ * Everything is forced to the light palette so a dark UI still prints dark-on-white.
+ */
+@page se-a4 { size: A4; margin: 18mm 16mm; }
+@page se-letter { size: letter; margin: .75in .7in; }
+.super-editor-document[data-page="A4"] { page: se-a4; }
+.super-editor-document[data-page="letter"] { page: se-letter; }
+
+@media print {
+  :root, [data-se-theme="dark"], .se-theme-dark {
+    --se-bg: #fff; --se-surface: #fff; --se-subtle: #f3f4f6; --se-hover: #eceef1; --se-text: #111418; --se-muted: #4b5563; --se-border: #d1d5db; --se-border-strong: #9ca3af;
+    --se-link: #1d4ed8; --se-code-bg: #f6f8fa; --se-chart-axis: #6b7280; --se-chart-grid: #e5e7eb; --se-chart-neutral: #64748b; --se-chart-band: rgba(100,116,139,.1);
+    --se-up: #15803d; --se-down: #b91c1c; --se-heat-high: #2563eb; --se-heat-low: #ea580c; --se-heat-mid: #f8fafc;
+    --se-tone-info: #1d4ed8; --se-tone-info-bg: #eff6ff; --se-tone-success: #15803d; --se-tone-success-bg: #f0fdf4; --se-tone-warning: #b45309; --se-tone-warning-bg: #fffbeb;
+    --se-tone-danger: #b91c1c; --se-tone-danger-bg: #fef2f2; --se-tone-note: #475569; --se-tone-note-bg: #f8fafc;
+    --se-mark-yellow: #fef08a; --se-mark-green: #bbf7d0; --se-mark-blue: #bfdbfe; --se-mark-pink: #fbcfe8; --se-mark-gray: #e5e7eb;
+    --se-series-1: #2563eb; --se-series-2: #f97316; --se-series-3: #16a34a; --se-series-4: #9333ea; --se-series-5: #db2777;
+    --se-series-6: #0891b2; --se-series-7: #ca8a04; --se-series-8: #64748b; --se-series-9: #dc2626; --se-series-10: #4d7c0f;
+  }
+  .super-editor, .se-app { padding: 0 !important; background: #fff !important; }
+  .super-editor-document { padding: 0; max-width: none !important; box-shadow: none; border: 0; background: #fff; color: #111418; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Interface that has no place on paper. */
+  .super-editor-controls, .super-editor-block > button, .super-editor-block-edit, .super-editor-error, .se-chart-toolbar,
+  .se-block-gutter, .se-selection-toolbar, .se-slash-menu, .se-panel, .se-toasts, .se-status-bar, .se-code-copy, .se-citation-card, .se-tooltip { display: none !important; }
+  .se-legend-button { border: 0; padding: 0; background: none; }
+  .se-chart-data:not([data-open="true"]) { display: none; }
+  /* Flow */
+  .super-editor-block { break-inside: avoid; }
+  .super-editor-block[data-block-type="section"], .super-editor-block[data-block-type="toggle"] { break-inside: auto; }
+  .super-editor-document h1, .super-editor-document h2, .super-editor-document h3 { break-after: avoid; }
+  .super-editor-chart, .se-image, .se-callout, .se-quote, .se-metrics, .se-code { break-inside: avoid; }
+  .se-table-wrap { max-height: none !important; overflow: visible !important; border-radius: 0; }
+  .se-table thead { display: table-header-group; }
+  .se-table tr { break-inside: avoid; }
+  .se-table thead th, .se-table tbody th[scope="row"] { position: static !important; }
+  .se-page-break { break-after: page; height: 0; margin: 0; visibility: hidden; }
+  /* Collapsed toggles print expanded. */
+  .se-toggle-body[hidden] { display: block !important; }
+  .se-toggle-caret { display: none; }
+  .super-editor-document[data-large="true"] > .super-editor-block { content-visibility: visible; }
+  .super-editor-document a { color: inherit; text-decoration: underline; }
+  .se-sources a[href^="http"]::after { content: " <" attr(href) ">"; font-size: .8em; color: #4b5563; word-break: break-all; }
+  .se-citation-link { text-decoration: none; }
+  .super-editor-block[data-diff] { background: none !important; }
+  .super-editor-block[data-diff]::before { display: none; }
+  mark.se-find-match { background: none !important; color: inherit !important; }
+  .se-embed-frame { display: none; }
+}

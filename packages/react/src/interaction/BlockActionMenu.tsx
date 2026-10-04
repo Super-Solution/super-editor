@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { Interaction, MenuAction } from '@super-solution/editor-ui';
-import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useLabels, useSurface } from './context.js';
+import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels, useSurface } from './context.js';
 import { useIsoLayoutEffect, useKeepInViewport } from './util.js';
 
 /**
@@ -9,7 +9,7 @@ import { useIsoLayoutEffect, useKeepInViewport } from './util.js';
  * items, Right opens "Turn into", Left or Esc goes back, and focus returns to the document when it closes.
  */
 export function BlockActionMenu({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
-  const interaction = useInteraction(explicit), labels = useLabels(), binding = useSurface();
+  const interaction = useInteraction(explicit), labels = useInteractionLabels(), binding = useSurface();
   const menu = useInteractionState(interaction, (state) => state.menu);
   useDocumentRevision(interaction);
   const rect = useBlockRect(menu?.anchorId ?? null);
