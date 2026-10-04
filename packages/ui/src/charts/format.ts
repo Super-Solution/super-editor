@@ -26,8 +26,11 @@ const clean = (text: string): string => text.replace(/^[-−]0(?:\.0+)?(?=\D*$)/
 /** Fraction digits needed to print multiples of `step` exactly (0.25 needs 2, 5 needs 0). */
 export function decimalsForStep(step: number): number {
   if (!Number.isFinite(step) || step <= 0) return 0;
-  const digits = Math.ceil(-Math.log10(step) - 1e-9);
-  return Math.max(0, Math.min(8, digits));
+  for (let digits = 0; digits <= 8; digits++) {
+    const scaled = step * 10 ** digits;
+    if (Math.abs(scaled - Math.round(scaled)) < 1e-9 * Math.max(1, scaled)) return digits;
+  }
+  return 8;
 }
 
 export function formatNumber(value: number, locale = 'en-US', decimals?: number): string {
@@ -71,15 +74,21 @@ export function formatValue(value: number, options: FormatOptions = {}): string 
   }
 }
 
+/** Divisor of the compact unit (K, M, B, T) that `value` prints in. */
+function compactUnit(value: number): number {
+  const exponent = Math.floor(Math.log10(Math.abs(value) || 1) / 3);
+  return exponent >= 1 ? 1000 ** Math.min(exponent, 4) : 1;
+}
 /** Axis ticks: no unit suffix on each tick (the axis title carries it), but `%`, currency and compact stay. */
 export function formatTick(value: number, step: number, options: FormatOptions = {}): string {
   const { format, currency, unit, locale = 'en-US' } = options;
   const decimals = decimalsForStep(step);
   if (unit === '%' && (format === undefined || format === 'number' || format === 'percent')) return `${formatNumber(value, locale, decimals)}%`;
+  const compact = (): string => formatCompact(value, locale, decimalsForStep(step / compactUnit(Math.max(Math.abs(value), Math.abs(step)))));
   switch (format) {
     case 'percent': return formatPercent(value, locale, decimalsForStep(step * 100));
     case 'currency': return formatCurrency(value, currency, locale, decimals);
-    case 'compact': return formatCompact(value, locale, decimals);
-    default: return Math.abs(value) >= 1e6 && format === undefined ? formatCompact(value, locale, decimals) : formatNumber(value, locale, decimals);
+    case 'compact': return compact();
+    default: return Math.abs(value) >= 1e6 && format === undefined ? compact() : formatNumber(value, locale, decimals);
   }
 }

@@ -12,34 +12,34 @@ export type ThemeName = 'light' | 'dark' | 'auto';
 
 /** Options shared by the DOM and React renderers (all optional). */
 export type SharedRenderOptions = {
-  className?: string;
-  embedPolicy?: EmbedPolicy;
+  className?: string | undefined;
+  embedPolicy?: EmbedPolicy | undefined;
   /** Any subset of the UI strings; the rest stay English. */
-  labels?: PartialLabels;
-  locale?: string;
+  labels?: PartialLabels | undefined;
+  locale?: string | undefined;
   /** Called when a reader opens or closes a toggle. The view updates itself either way. */
-  onToggle?: (block: Block, open: boolean) => void;
+  onToggle?: ((block: Block, open: boolean) => void) | undefined;
   /** When set, to-do checkboxes become interactive and report the new state. */
-  onToggleTodo?: (block: Block, index: number, checked: boolean) => void;
+  onToggleTodo?: ((block: Block, index: number, checked: boolean) => void) | undefined;
   /** A block failed to render; the block shows an error card and the rest of the document is unaffected. */
-  onRenderError?: (error: unknown, block: Block) => void;
-  diff?: DiffMarks;
-  find?: FindHighlight;
+  onRenderError?: ((error: unknown, block: Block) => void) | undefined;
+  diff?: DiffMarks | undefined;
+  find?: FindHighlight | undefined;
   /** Show the chart toolbar (view data, export). Default true. */
-  chartActions?: boolean;
+  chartActions?: boolean | undefined;
   /** Render the title and metadata header. Default true. */
-  showHeader?: boolean;
+  showHeader?: boolean | undefined;
   /** Sets `data-se-theme`. Without it the host's CSS tokens and `prefers-color-scheme` decide. */
-  theme?: ThemeName;
-  density?: Density;
+  theme?: ThemeName | undefined;
+  density?: Density | undefined;
   /** Colors used when a chart is exported as SVG/PNG. Default light. */
-  exportTheme?: ChartTheme;
+  exportTheme?: ChartTheme | undefined;
 };
 
 export type RenderOptions = SharedRenderOptions & {
-  document?: Document;
-  blockRenderers?: Partial<Record<BlockContent['type'], BlockRenderer>>;
-  chartRenderers?: Record<string, ChartRenderer>;
+  document?: Document | undefined;
+  blockRenderers?: Partial<Record<BlockContent['type'], BlockRenderer>> | undefined;
+  chartRenderers?: Record<string, ChartRenderer> | undefined;
 };
 export type RenderContext = {
   document: Document; report: ResearchDocument; options: RenderOptions; labels: Labels;

@@ -170,6 +170,7 @@ function renderImage(document: Document, content: Extract<BlockContent, { type: 
   const figure = element(document, 'figure', undefined, 'super-editor-image se-image'); figure.dataset.width = model.width;
   if (model.src) {
     const image = element(document, 'img'); image.src = model.src; image.alt = model.alt; image.loading = 'lazy'; image.decoding = 'async'; image.referrerPolicy = 'no-referrer';
+    for (const [name, value] of [['loading', 'lazy'], ['decoding', 'async'], ['referrerpolicy', 'no-referrer']] as const) image.setAttribute(name, value);
     image.addEventListener('error', () => { const broken = element(document, 'p', context.labels.blocks.imageBroken, 'se-image-broken'); broken.setAttribute('role', 'img'); broken.setAttribute('aria-label', model.alt || context.labels.blocks.imageBroken); image.replaceWith(broken); });
     figure.append(image);
   } else figure.append(element(document, 'p', model.alt || content.url, 'se-image-broken'));
@@ -189,6 +190,7 @@ function renderEmbed(document: Document, content: Extract<BlockContent, { type: 
   if (url) {
     const iframe = element(document, 'iframe', undefined, 'se-embed-frame'); iframe.src = url; iframe.title = content.title;
     iframe.setAttribute('sandbox', 'allow-scripts'); iframe.referrerPolicy = 'no-referrer'; iframe.loading = 'lazy';
+    iframe.setAttribute('referrerpolicy', 'no-referrer'); iframe.setAttribute('loading', 'lazy');
     iframe.style.height = `${embedHeight(content.height)}px`;
     figure.append(iframe);
   }

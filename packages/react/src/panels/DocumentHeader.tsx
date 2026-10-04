@@ -33,7 +33,7 @@ const defaultActor: Actor = { id: 'local-human', kind: 'human' };
 export function DocumentHeader({ document, editor, actor = defaultActor, onTitleChange, onResult, editable, meta, actions, now: fixedNow, locale, labels: override, className }: DocumentHeaderProps): ReactNode {
   const labels = useLabels(override), inputId = useId();
   const canEdit = editable ?? (editor !== undefined || onTitleChange !== undefined);
-  const [draft, setDraft] = useState(document.title), focused = useRef(false);
+  const [draft, setDraft] = useState(document.title), focused = useRef(false), cancelled = useRef(false);
   // Follow the document unless the reader is typing.
   useEffect(() => { if (!focused.current) setDraft(document.title); }, [document.title]);
   const ticking = useNow(fixedNow === undefined, 60_000), now = fixedNow ?? ticking;
@@ -41,6 +41,8 @@ export function DocumentHeader({ document, editor, actor = defaultActor, onTitle
   const words = useMemo(() => stats(deferred).words, [deferred]);
   const commit = (): void => {
     focused.current = false;
+    // Escape blurs the field; that blur must not save the half-typed draft.
+    if (cancelled.current) { cancelled.current = false; setDraft(document.title); return; }
     const title = draft.trim().slice(0, LIMITS.title);
     if (title === document.title) { setDraft(document.title); return; }
     if (!title) { setDraft(document.title); return; }
@@ -57,7 +59,7 @@ export function DocumentHeader({ document, editor, actor = defaultActor, onTitle
       {canEdit
         ? <h1 className="se-doc-title"><input id={inputId} className="se-doc-title-input" value={draft} maxLength={LIMITS.title} placeholder={labels.header.titlePlaceholder} aria-label={labels.header.titleLabel} spellCheck
           onFocus={() => { focused.current = true; }} onChange={(event) => setDraft(event.target.value)} onBlur={commit}
-          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); (event.target as HTMLInputElement).blur(); } else if (event.key === 'Escape') { setDraft(document.title); focused.current = false; (event.target as HTMLInputElement).blur(); } }} /></h1>
+          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); (event.target as HTMLInputElement).blur(); } else if (event.key === 'Escape') { cancelled.current = true; setDraft(document.title); (event.target as HTMLInputElement).blur(); cancelled.current = false; } }} /></h1>
         : <h1 className="se-doc-title">{document.title || labels.header.titlePlaceholder}</h1>}
       <p className="se-doc-meta">
         <span>{template(labels.header.revision, { revision: document.revision })}</span>

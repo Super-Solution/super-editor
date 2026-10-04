@@ -86,7 +86,7 @@ function BlockNodeImpl({ block, shared }: NodeProps): ReactNode {
 }
 function memoKeyFor(block: Block, shared: Shared): string {
   const dependency = dependsOnDocument(block);
-  return [block.id, block.version, block.updatedAt, shared.epoch, dependency === 'toc' ? shared.outlineKey : dependency === 'citations' ? shared.citationsKey : '', shared.marks.added.has(block.id) ? 'a' : shared.marks.changed.has(block.id) ? 'c' : shared.marks.moved.has(block.id) ? 'm' : '', shared.findKey(block), shared.children.get(block.id)?.map((child) => memoKeyFor(child, shared)).join(',') ?? ''].join('|');
+  return [block.id, block.version, block.updatedAt, shared.epoch, shared.virtual ? 'v' : '', dependency === 'toc' ? shared.outlineKey : dependency === 'citations' ? shared.citationsKey : '', shared.marks.added.has(block.id) ? 'a' : shared.marks.changed.has(block.id) ? 'c' : shared.marks.moved.has(block.id) ? 'm' : '', shared.findKey(block), shared.children.get(block.id)?.map((child) => memoKeyFor(child, shared)).join(',') ?? ''].join('|');
 }
 const BlockNode = memo(BlockNodeImpl, (previous, next) => previous.memoKey === next.memoKey);
 

@@ -58,12 +58,16 @@ export function hitTest(layout: ChartLayout, x: number, y: number): Hit | undefi
   }
   return best;
 }
-/** Keyboard navigation between hover targets. `delta` of 0 returns the first one. */
+/**
+ * Keyboard navigation between hover targets: `delta` steps from the current one and clamps at the ends.
+ * With nothing current, +1 is the first target, -1 the last, and a larger magnitude jumps further (Home and End pass ±count).
+ */
 export function stepHit(layout: ChartLayout, currentId: string | undefined, delta: number): Hit | undefined {
-  if (!layout.hits.length) return undefined;
-  const index = layout.hits.findIndex((hit) => hit.id === currentId);
-  if (index < 0) return delta < 0 ? layout.hits.at(-1) : layout.hits[0];
-  return layout.hits[Math.max(0, Math.min(layout.hits.length - 1, index + delta))];
+  const { hits } = layout;
+  if (!hits.length) return undefined;
+  const index = hits.findIndex((hit) => hit.id === currentId);
+  const next = index < 0 ? (delta > 0 ? delta - 1 : delta < 0 ? hits.length + delta : 0) : index + delta;
+  return hits[Math.max(0, Math.min(hits.length - 1, next))];
 }
 /** Scene nodes drawn over the chart while a target is hovered: highlight band, crosshair and point markers. */
 export function hoverScene(hit: Hit, stroke: string, surface: string): SceneNode[] {
