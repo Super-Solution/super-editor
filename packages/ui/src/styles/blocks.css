@@ -45,7 +45,7 @@
 
 /* Citations */
 .se-citation { position: relative; font-size: .75em; line-height: 0; margin-left: .1em; }
-.se-citation-link { text-decoration: none; padding: 0 .1em; border-radius: 3px; }
+.se-citation-link { color: var(--se-link); text-decoration: none; padding: 0 .1em; border-radius: 3px; }
 .se-citation-link:hover { background: var(--se-hover); }
 .se-citation-card {
   position: absolute; left: 50%; bottom: calc(100% + .45rem); z-index: 20; display: none; width: max-content; max-width: min(20rem, 70vw);

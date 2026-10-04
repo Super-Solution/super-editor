@@ -20,7 +20,6 @@
   }
   .super-editor, .se-app { padding: 0 !important; background: #fff !important; }
   .super-editor-document { padding: 0; max-width: none !important; box-shadow: none; border: 0; background: #fff; color: #111418; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .super-editor-document[data-page="A4"], .super-editor-document[data-page="letter"] { font-size: 11pt !important; }
   /* Interface that has no place on paper. */
   .super-editor-controls, .super-editor-block > button, .super-editor-block-edit, .super-editor-error, .se-chart-toolbar,
   .se-block-gutter, .se-selection-toolbar, .se-slash-menu, .se-panel, .se-toasts, .se-status-bar, .se-code-copy, .se-citation-card, .se-tooltip { display: none !important; }

@@ -4,7 +4,7 @@ import test from 'node:test';
 import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Block, BlockContent, Editor } from '@super-solution/editor-core';
-import { defaultLabels, findMatches, renderDocument, replaceOperations, resolveLabels, revealBlock, splitMatches, template } from '@super-solution/editor-ui';
+import { defaultLabels, findMatches, renderChartFigure, renderDocument, replaceOperations, resolveLabels, revealBlock, splitMatches, template } from '@super-solution/editor-ui';
 import type { RenderOptions } from '@super-solution/editor-ui';
 import { ChartView, ReportView } from '@super-solution/editor-react';
 import type { ReportViewProps } from '@super-solution/editor-react';
@@ -583,7 +583,8 @@ test('styles: tokens define every variable the other sheets use; dark theme, den
     assert.deepEqual(missing, [], `${name}.css uses undefined tokens`);
   }
   for (const token of ['--se-bg', '--se-surface', '--se-text', '--se-muted', '--se-border', '--se-accent', '--se-series-1', '--se-series-10', '--se-up', '--se-down', '--se-font-sans', '--se-leading', '--se-block-gap', '--se-pad-x']) assert.ok(defined.has(token), token);
-  assert.match(tokens, /\[data-se-theme="dark"\]/); assert.match(tokens, /prefers-color-scheme: dark/); assert.match(tokens, /:not\(\[data-se-theme="light"\]\)/);
+  assert.match(tokens, /\[data-se-theme="dark"\]/); assert.match(tokens, /prefers-color-scheme: dark/); assert.match(tokens, /\[data-se-theme="auto"\]/);
+  assert.doesNotMatch(tokens, /:root:not\(/, 'dark is opt-in: an unset theme stays light');
   for (const density of ['compact', 'comfortable', 'spacious']) assert.match(tokens, new RegExp(`data-se-density="${density}"`));
   assert.match(tokens, /prefers-reduced-motion: reduce/);
   assert.match(print, /@page se-a4 \{ size: A4/); assert.match(print, /@page se-letter \{ size: letter/);
@@ -599,4 +600,51 @@ test('every callout, chart and block type renders without throwing in both rende
   const blocks: Block[] = snapshot.blocks;
   assert.ok(new Set(blocks.map((block) => block.content.type)).size >= 17 - 0, 'the fixture covers all block types');
   assert.deepEqual([...new Set(blocks.map((block) => block.content.type))].sort(), ['callout', 'chart', 'code', 'divider', 'embed', 'heading', 'image', 'list', 'metrics', 'pageBreak', 'paragraph', 'quote', 'section', 'table', 'timestamp', 'toc', 'toggle'].sort());
+});
+
+test('charts are responsive: a ResizeObserver relayouts the SVG at the new width (DOM and React)', async () => {
+  const spec = (everyBlock().getSnapshot().blocks.find((block) => block.id === 'line')!.content as Extract<BlockContent, { type: 'chart' }>).spec;
+  const viewBox = (root: ParentNode): string => must(root, 'svg').getAttribute('viewBox') ?? '';
+  type Entry = { callback: (entries: { contentRect: { width: number } }[]) => void; targets: Element[] };
+  const made: Entry[] = [];
+  class FakeResize implements Entry {
+    targets: Element[] = [];
+    constructor(readonly callback: Entry['callback']) { made.push(this); }
+    observe(target: Element): void { this.targets.push(target); }
+    disconnect(): void { this.targets = []; }
+    unobserve(): void { /* unused */ }
+  }
+  // Headless DOM figure
+  const dom = new JSDOM('<!doctype html>');
+  Object.defineProperty(dom.window, 'ResizeObserver', { configurable: true, value: FakeResize });
+  const figure = renderChartFigure(spec, { document: dom.window.document });
+  assert.match(viewBox(figure), /^0 0 640 /);
+  made[0]!.callback([{ contentRect: { width: 300 } }]);
+  assert.match(viewBox(figure), /^0 0 300 /, 'narrower container, narrower layout');
+  made[0]!.callback([{ contentRect: { width: 302 } }]);
+  assert.match(viewBox(figure), /^0 0 300 /, 'sub-8px jitter does not relayout');
+  made[0]!.callback([{ contentRect: { width: 20 } }]);
+  assert.match(viewBox(figure), /^0 0 300 /, 'collapsed containers are ignored');
+  assert.equal(made[0]!.targets.length, 1);
+  assert.equal(must(figure, '.se-chart-stage').getAttribute('tabindex'), '0');
+  // A fixed width never observes.
+  const before = made.length;
+  renderChartFigure(spec, { document: dom.window.document, width: 500 });
+  assert.equal(made.length, before);
+  // React view
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'ResizeObserver');
+  Object.defineProperty(globalThis, 'ResizeObserver', { configurable: true, writable: true, value: FakeResize });
+  try {
+    await withDom(async ({ container, render }) => {
+      const start = made.length;
+      await render(<ChartView spec={spec} />);
+      assert.match(viewBox(container), /^0 0 640 /);
+      const { act } = await import('react');
+      await act(async () => made[start]!.callback([{ contentRect: { width: 380 } }]));
+      assert.match(viewBox(container), /^0 0 380 /);
+      assert.ok(made[start]!.targets.length === 1);
+      await render(<ChartView spec={spec} width={700} />);
+      assert.match(viewBox(container), /^0 0 700 /, 'a fixed width wins');
+    });
+  } finally { if (previous) Object.defineProperty(globalThis, 'ResizeObserver', previous); else Reflect.deleteProperty(globalThis, 'ResizeObserver'); }
 });

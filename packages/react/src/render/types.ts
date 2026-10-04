@@ -19,7 +19,8 @@ export type ReportViewProps = SharedRenderOptions & {
   renderBlockActions?: ((block: Block) => ReactNode) | undefined;
   /**
    * Blocks that render only near the viewport. `true` (default) turns it on above 300 blocks; a number sets the threshold;
-   * `false` renders everything. Needs IntersectionObserver; without it every block renders.
+   * `false` renders everything. Needs IntersectionObserver; without it (and on the server) every block renders, so
+   * hydrating a very large server-rendered document should pass `virtualize={false}`.
    */
   virtualize?: boolean | number | undefined;
   /** Re-render a block only when its id, version, or the document facts it depends on change. Default true. */

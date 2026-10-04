@@ -2,7 +2,8 @@
  * Design tokens. Everything the renderers and panels draw comes from `--se-*` variables, so a host re-themes the
  * editor by setting variables on any ancestor (or on :root). Defaults are neutral: black, grey and white.
  *
- * Theme:   data-se-theme="light" | "dark" on any element (or leave unset to follow prefers-color-scheme).
+ * Theme:   data-se-theme="light" | "dark" | "auto" on any element. Unset means light, so adopting the stylesheet never flips an
+ *          existing page to dark by surprise; "auto" follows prefers-color-scheme.
  * Density: data-se-density="compact" | "comfortable" | "spacious" on .super-editor-document or an ancestor.
  */
 :root,
@@ -94,9 +95,9 @@
   --se-series-6: #22d3ee; --se-series-7: #facc15; --se-series-8: #94a3b8; --se-series-9: #f87171; --se-series-10: #a3e635;
 }
 
-/* Follow the OS unless the host pinned a theme. */
+/* Opt in to following the OS with data-se-theme="auto". */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-se-theme="light"]):not([data-se-theme="dark"]) {
+  [data-se-theme="auto"] {
     --se-bg: #0d0f12; --se-surface: #15181d; --se-subtle: #1c2026; --se-hover: #242a31;
     --se-text: #e6e8eb; --se-muted: #9aa3af; --se-border: #2a2f36; --se-border-strong: #3a414a;
     --se-accent: #e6e8eb; --se-accent-contrast: #111418; --se-link: #7aa7ff; --se-focus: #60a5fa;
