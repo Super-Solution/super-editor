@@ -2,7 +2,7 @@
 
 All notable changes to the six `@super-solution/editor-*` packages (released together, same version). Prereleases ship on the `next` npm channel. The document format stays `schemaVersion: 1`; every change below is additive.
 
-## Unreleased (target 0.3.0-next.1)
+## 0.3.0-next.1 (2026-10-05)
 
 ### Editor interaction (`editor-ui`, `editor-react`)
 
