@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registry, releasePackages } from './release-contract.mjs';
 import { planPublication } from './registry-preflight.mjs';
-import { readRegistry, checkPrereleaseBaseline, checkPublishedTags } from './registry-tags.mjs';
+import { readRegistry, checkPrereleaseBaseline, waitForPublishedTags } from './registry-tags.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_EVENT_NAME !== 'workflow_dispatch' || process.env.GITHUB_REPOSITORY !== 'Super-Solution/super-editor' || process.env.GITHUB_REF !== 'refs/heads/main') throw new Error('Publication is allowed only by the controlled manual workflow on this repository main branch.');
 const packages = releasePackages(root);
@@ -41,6 +41,6 @@ for (const item of pending) {
 }
 // Checks are read-only. Unexpected tags stop the release; never move a changed tag automatically.
 for (const item of artifacts) {
-  checkPublishedTags(item, beforeLatest.get(item.name), await readRegistry(item.name));
+  await waitForPublishedTags(item, beforeLatest.get(item.name));
   console.log(`Verified ${item.name} channel and preserved prerelease latest baseline.`);
 }

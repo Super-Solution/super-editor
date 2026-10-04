@@ -37,6 +37,23 @@ export function checkPublishedTags(item, beforeLatest, document) {
   }
 }
 
+/**
+ * npm answers a publish before its registry metadata shows the new dist-tag
+ * ("may take a few minutes to become available"), so a channel that has not
+ * caught up yet is retried. A moved `latest` is never retried: it fails at once.
+ */
+export async function waitForPublishedTags(item, beforeLatest, { read = readRegistry, attempts = 20, delayMs = 30_000, sleep = ms => new Promise(done => setTimeout(done, ms)), log = message => console.log(message) } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return checkPublishedTags(item, beforeLatest, await read(item.name));
+    } catch (error) {
+      if (!/^Published channel mismatch/.test(error.message) || attempt >= attempts) throw error;
+      log(`Registry does not show ${item.name}@${item.version} on ${item.channel} yet (attempt ${attempt}/${attempts}); retrying in ${delayMs / 1000}s.`);
+      await sleep(delayMs);
+    }
+  }
+}
+
 // Compare the published version set and every tarball descriptor, including integrity.
 export function versionSnapshot(document) {
   return Object.fromEntries(Object.entries(document?.versions ?? {}).sort(([a], [b]) => a.localeCompare(b))

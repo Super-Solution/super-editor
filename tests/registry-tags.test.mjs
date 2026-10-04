@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import test from 'node:test';
-import { repairLatest, repairNames, repairVersion, checkPrereleaseBaseline, checkPublishedTags } from '../scripts/registry-tags.mjs';
+import { repairLatest, repairNames, repairVersion, checkPrereleaseBaseline, checkPublishedTags, waitForPublishedTags } from '../scripts/registry-tags.mjs';
 
 function registryFixture() {
   return new Map(repairNames.map(name => [name, {
@@ -78,4 +78,22 @@ test('tag repair refuses local execution before invoking npm', () => {
   assert.throws(() => execFileSync(process.execPath, ['scripts/repair-prerelease-tags.mjs'], {
     encoding: 'utf8', stdio: 'pipe', env: { ...process.env, GITHUB_ACTIONS: 'false' },
   }), error => error.status !== 0 && error.stderr.includes('controlled manual workflow'));
+});
+
+test('published tag checks wait for registry propagation but never for a moved latest', async () => {
+  const item = { name: repairNames[0], version: '0.2.0-next.0', channel: 'next' };
+  const quiet = { sleep: async () => {}, log: () => {} };
+  // Stale metadata twice, then the new channel appears.
+  const views = [{ next: repairVersion, latest: repairVersion }, { next: repairVersion, latest: repairVersion }, { next: item.version, latest: repairVersion }];
+  let reads = 0;
+  await waitForPublishedTags(item, repairVersion, { ...quiet, read: async () => ({ 'dist-tags': views[Math.min(reads++, views.length - 1)] }) });
+  assert.equal(reads, 3);
+  // The channel never appears: fails after the attempt budget.
+  reads = 0;
+  await assert.rejects(waitForPublishedTags(item, repairVersion, { ...quiet, attempts: 4, read: async () => { reads++; return { 'dist-tags': { next: repairVersion, latest: repairVersion } }; } }), /channel mismatch/);
+  assert.equal(reads, 4);
+  // A moved latest fails on the first read, without waiting.
+  reads = 0;
+  await assert.rejects(waitForPublishedTags(item, repairVersion, { ...quiet, read: async () => { reads++; return { 'dist-tags': { next: item.version, latest: item.version } }; } }), /changed latest/);
+  assert.equal(reads, 1);
 });
