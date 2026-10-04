@@ -1,4 +1,5 @@
 import { isContainerType } from './constants.js';
+import { withHints } from './issues.js';
 import { replaceInContent, runsOf } from './text.js';
 import type { Actor, ApplyResult, Block, Editor, EditorIssue, EditorOptions, Operation, ResearchDocument, Revision, Transaction } from './types.js';
 import { timestamp, validateDocument, validateHistoryRequest, validateTransaction } from './validation.js';
@@ -54,7 +55,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
   let lastApply: { id: string; fingerprint: string; result: Extract<ApplyResult, { ok: true }> } | undefined;
   let committing = false;
 
-  function failure(issues: EditorIssue[]): ApplyResult { return { ok: false, issues, currentRevision: snapshot.revision }; }
+  function failure(issues: EditorIssue[]): ApplyResult { return { ok: false, issues: withHints(issues), currentRevision: snapshot.revision }; }
   function clock(): string {
     let at: string;
     try { at = timestamp(now(), 'options.now'); }
