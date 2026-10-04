@@ -77,6 +77,10 @@ test('ReportEditor is interactive by default and classic with interaction={false
   assert.match(classic, /Edit paragraph/);
   assert.doesNotMatch(classic, /se-surface/);
   assert.match(renderToStaticMarkup(<ReportEditor editor={editor} theme="dark" density="compact" renderControls={false} />), /class="super-editor se-editor"[^>]*data-se-theme="dark"[^>]*data-se-density="compact"/);
+
+  // Classic mode keeps the view's own labels; only interaction-only props are dropped.
+  const empty = createEditor(createDocument({ id: 'empty-doc', title: 'Empty' }));
+  assert.match(renderToStaticMarkup(<ReportEditor editor={empty} renderControls={false} interaction={false} labels={{ document: { empty: 'Nothing here yet' } }} />), /Nothing here yet/);
 });
 
 test('clicking text edits it in place: typing commits a guarded human update, Enter splits, the editor keeps focus', async () => {

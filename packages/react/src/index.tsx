@@ -51,7 +51,7 @@ export function ReportEditor(props: ReportEditorProps): ReactNode {
   if (props.interaction === false) return <ClassicReportEditor {...props} />;
   return <InteractiveReportEditor {...props} />;
 }
-const INTERACTION_PROPS = ['interaction', 'readOnly', 'labels', 'shortcuts', 'slashItems', 'slashLabels', 'commitDelayMs', 'linkSchemes', 'onConflict', 'onFeedback', 'surface',
+const INTERACTION_PROPS = ['interaction', 'readOnly', 'interactionLabels', 'onReload', 'shortcuts', 'slashItems', 'slashLabels', 'commitDelayMs', 'linkSchemes', 'onConflict', 'onFeedback', 'surface',
   'gutter', 'hoverOutline', 'selectionOverlay', 'dropIndicator', 'slashMenu', 'formattingToolbar', 'selectionToolbar', 'blockMenu', 'linkEditor', 'shortcutHelp', 'chartEditor', 'conflictNotice', 'feedback'] as const;
 function ClassicReportEditor(allProps: ReportEditorProps): ReactNode {
   const props = { ...allProps } as ReportEditorProps;
