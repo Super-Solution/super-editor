@@ -9,5 +9,9 @@ for (const name of ['core', 'ui', 'react', 'api', 'mcp', 'cli']) {
   await mkdir(destination, { recursive: true });
   await cp(resolve(root, 'dist', 'packages', name, 'src'), destination, { recursive: true });
   await cp(resolve(root, 'LICENSE'), resolve(root, 'packages', name, 'LICENSE'));
-  if (name === 'ui') await cp(resolve(root, 'packages', name, 'src', 'styles.css'), resolve(destination, 'styles.css'));
+  if (name === 'ui') {
+    await cp(resolve(root, 'packages', name, 'src', 'styles.css'), resolve(destination, 'styles.css'));
+    // styles.css imports the stylesheets in styles/ (interaction layer), so they ship next to it.
+    await cp(resolve(root, 'packages', name, 'src', 'styles'), resolve(destination, 'styles'), { recursive: true });
+  }
 }

@@ -67,7 +67,7 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
   const doc = root.ownerDocument, view = doc.defaultView;
   const gutter = options.gutterWidth ?? 56, threshold = options.dragThreshold ?? 4, longPress = options.longPressMs ?? 350;
   const dropOptions: DropOptions = { expandLeft: gutter, ...options.dropOptions };
-  let cache: LayoutIndex | null = null, destroyed = false, lastLayoutKey = '';
+  let cache: LayoutIndex | null = null, destroyed = false, lastLayoutKey = '', focusTimer: ReturnType<typeof setTimeout> | null = null;
   const listeners = new Set<() => void>();
   const disposers: (() => void)[] = [];
   const listen = (target: EventTarget, type: string, handler: (event: never) => void, capture: boolean | AddEventListenerOptions = false): void => {
@@ -97,7 +97,14 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
     const layoutKey = `${state.editing?.blockId ?? ''}:${state.editing?.field ?? ''}:${state.sync?.seq ?? 0}:${Object.keys(state.conflicts).join(',')}:${state.readOnly}`;
     if (layoutKey !== lastLayoutKey) { lastLayoutKey = layoutKey; invalidate(); }
     // Keys act on a block selection only while focus is inside the document, so pull focus there when blocks get selected.
-    if (state.selection.ids.length && !state.editing && !root.contains(doc.activeElement) && !state.drag) root.focus({ preventScroll: true });
+    // Deferred: a menu that just closed still holds focus until the framework removes it.
+    if (state.selection.ids.length && !state.editing && !state.drag && focusTimer === null) {
+      focusTimer = setTimeout(() => {
+        focusTimer = null;
+        const now = interaction.getState();
+        if (!destroyed && now.selection.ids.length && !now.editing && !now.drag && !now.menu && !root.contains(doc.activeElement)) root.focus({ preventScroll: true });
+      }, 0);
+    }
   };
   disposers.push(interaction.subscribe(syncAttributes));
   syncAttributes();
@@ -280,12 +287,18 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
     if (next && root.contains(next)) return;
     // Switching windows or tabs keeps the editing session; moving focus elsewhere on the page ends it.
     if (!next && !doc.hasFocus()) return;
-    if (interaction.getState().editing) interaction.edit.stop();
+    const editing = interaction.getState().editing;
+    if (!editing) return;
+    // Replacing the focused field (Enter, turn into) also reports a focusout. Judge after the new field has taken focus.
+    setTimeout(() => {
+      const current = interaction.getState().editing;
+      if (!destroyed && current && current.seq === editing.seq && !root.contains(doc.activeElement)) interaction.edit.stop();
+    }, 0);
   });
 
   return {
     root, layout, rectOf, invalidate, toContent,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    destroy() { if (destroyed) return; destroyed = true; endPointer(); disposers.forEach((dispose) => dispose()); listeners.clear(); },
+    destroy() { if (destroyed) return; destroyed = true; if (focusTimer !== null) clearTimeout(focusTimer); endPointer(); disposers.forEach((dispose) => dispose()); listeners.clear(); },
   };
 }

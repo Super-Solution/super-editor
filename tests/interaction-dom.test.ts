@@ -284,7 +284,7 @@ test('surface: layout is measured lazily, cached, and refreshed after the docume
   p.interaction.destroy();
 });
 
-test('surface: leaving the document with focus ends the editing session; moving inside it does not', () => {
+test('surface: leaving the document with focus ends the editing session; moving inside it does not', async () => {
   const p = page([b.paragraph('a', 'one')]);
   p.interaction.edit.start('a');
   const inside = p.document.createElement('button'); p.root.append(inside);
@@ -292,7 +292,14 @@ test('surface: leaving the document with focus ends the editing session; moving 
   assert.ok(p.interaction.getState().editing);
   const outside = p.document.createElement('button'); p.document.body.append(outside);
   fire(p, p.root, 'focusout', { relatedTarget: outside });
+  await new Promise((resolve) => setTimeout(resolve, 5));
   assert.equal(p.interaction.getState().editing, null);
+  // A field replaced by the next one (Enter) reports focusout too, but the new field already has focus.
+  p.interaction.edit.start('a');
+  const field = p.document.createElement('p'); p.root.append(field); field.setAttribute('tabindex', '-1'); field.focus();
+  fire(p, p.root, 'focusout', { relatedTarget: null });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.ok(p.interaction.getState().editing);
   p.destroy();
 });
 

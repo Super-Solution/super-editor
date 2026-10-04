@@ -702,7 +702,15 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
       setSlash({ ...state, query, items, activeIndex: 0 });
       return;
     }
-    if (data === '/' && caret >= 1 && text[caret - 1] === '/' && (caret === 1 || /\s/.test(text[caret - 2] ?? ''))) api.slash.open(blockId, field, caret - 1);
+    // The menu opens when the typed text contains a "/" that starts a word. Input methods may insert several characters at once ("/ch").
+    if (data && data.includes('/')) {
+      const at = text.slice(0, caret).lastIndexOf('/');
+      if (at >= caret - data.length && (at === 0 || /\s/.test(text[at - 1] ?? '')) && !/\s/.test(text.slice(at + 1, caret))) {
+        api.slash.open(blockId, field, at);
+        const query = text.slice(at + 1, caret);
+        if (query) api.slash.setQuery(query);
+      }
+    }
   }
   const slash: Interaction['slash'] = {
     open(blockId, field = 'main', anchor = null) {

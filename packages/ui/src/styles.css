@@ -1,4 +1,5 @@
 /* Colors and fonts inherit host tokens; defaults are neutral. */
+@import './styles/interaction.css';
 .super-editor { color: var(--se-text, #262626); background: var(--se-bg, #f5f5f5); padding: 1rem; }
 .super-editor-document { box-sizing: border-box; max-width: var(--se-document-width, 900px); margin: 0 auto; padding: 3rem 3.5rem; background: var(--se-surface, #fff); color: var(--se-text, #262626); overflow-wrap: anywhere; }
 .super-editor-document[data-font="sans"] { font-family: var(--se-font-sans, system-ui, -apple-system, sans-serif); }

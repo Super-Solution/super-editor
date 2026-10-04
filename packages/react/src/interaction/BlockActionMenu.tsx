@@ -18,15 +18,15 @@ export function BlockActionMenu({ interaction: explicit }: { interaction?: Inter
   const submenu = menu?.submenu ?? null;
   // Focus the first enabled item whenever the menu (or its submenu) opens.
   useIsoLayoutEffect(() => {
-    if (!menu) return;
+    if (!menu || !rect) return;
     ref.current?.querySelector<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])')?.focus({ preventScroll: true });
-  }, [!!menu, submenu]);
+  }, [!!menu && !!rect, submenu]);
   useIsoLayoutEffect(() => {
-    if (!menu || typeof document === 'undefined') return;
+    if (!menu || !rect || typeof document === 'undefined') return;
     const away = (event: Event): void => { const target = event.target as Node | null; if (target && ref.current && !ref.current.contains(target) && !(target as Element).closest?.('[data-se-drag-handle]')) interaction.menu.close(); };
     document.addEventListener('pointerdown', away, true);
     return () => document.removeEventListener('pointerdown', away, true);
-  }, [!!menu]);
+  }, [!!menu && !!rect]);
   if (!menu || !rect) return null;
   const actions = interaction.menu.actions();
   const items: MenuAction[] = submenu === 'turn-into' ? actions.find((action) => action.id === 'turn-into')?.children ?? [] : actions;

@@ -57,7 +57,8 @@ export function ChartEditor({ interaction: explicit }: { interaction?: Interacti
   useDocumentRevision(interaction);
   const rect = useBlockRect(id);
   const first = useRef<HTMLInputElement>(null);
-  useIsoLayoutEffect(() => { if (id) first.current?.focus({ preventScroll: true }); }, [id]);
+  const shown = !!id && !!rect;
+  useIsoLayoutEffect(() => { if (shown) first.current?.focus({ preventScroll: true }); }, [shown]);
   const block = id ? interaction.editor.getSnapshot().blocks.find((entry) => entry.id === id) : undefined;
   if (!id || !rect || !block || block.content.type !== 'chart') return null;
   const spec = block.content.spec, kinds = compatibleChartKinds(spec), bar = spec.kind === 'bar';

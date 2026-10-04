@@ -26,7 +26,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./interaction.css": "./dist/styles/interaction.css"
   },
   "types": "./dist/index.d.ts",
   "publishConfig": {

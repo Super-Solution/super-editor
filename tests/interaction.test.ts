@@ -613,6 +613,13 @@ test('slash menu: "/" opens at the caret, query filters, Enter replaces the empt
   assert.deepEqual(get(editor, 'e').content, { type: 'heading', level: 2, text: '' });
   assert.equal(interaction.getState().slash, null);
   assert.equal(interaction.getState().editing?.blockId, 'e');
+  // An input method may insert "/ch" in one go: the menu still opens, already filtered.
+  interaction.edit.start('p');
+  interaction.edit.input('p', 'main', [{ text: 'intro /ch' }], { caret: 9, data: ' /ch' });
+  assert.equal(interaction.getState().slash?.query, 'ch');
+  assert.equal(interaction.getState().slash?.anchor, 6);
+  interaction.slash.close();
+  interaction.edit.input('p', 'main', [{ text: 'intro' }], { caret: 5, data: null });
   // "/" in the middle of a word does not open the menu.
   interaction.edit.start('p');
   interaction.edit.input('p', 'main', [{ text: 'intro/' }], { caret: 6, data: '/' });
