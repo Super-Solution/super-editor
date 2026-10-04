@@ -11,12 +11,14 @@ export type ChartModel = { shapes: ChartShape[]; message?: string };
 export function getChartModel(spec: ChartSpec): ChartModel {
   const count = spec.labels.length;
   if (!count || !spec.series.length) return { shapes: [], message: 'No chart data.' };
-  if (!['pie', 'bar', 'trend'].includes(spec.kind)) return { shapes: [], message: `No renderer registered for “${spec.kind}”.` };
+  // v0.2 fallback; full renderer in SE2b: line and donut reuse the trend and pie geometry, other new kinds show the data table.
+  const kind = spec.kind === 'line' ? 'trend' : spec.kind === 'donut' ? 'pie' : spec.kind;
+  if (!['pie', 'bar', 'trend'].includes(kind)) return { shapes: [], message: `No renderer registered for “${spec.kind}”.` };
   const values = spec.series.flatMap((series) => series.values);
   if (values.some((value) => !Number.isFinite(value)) || spec.series.some((series) => series.values.length !== count)) {
     return { shapes: [], message: 'Chart data is invalid.' };
   }
-  if (spec.kind === 'pie') {
+  if (kind === 'pie') {
     const pieValues = spec.series[0]!.values;
     const total = pieValues.reduce((sum, value) => sum + value, 0);
     if (pieValues.some((value) => value < 0) || total <= 0 || !Number.isFinite(total)) return { shapes: [], message: 'Pie charts require nonnegative values with a finite positive total.' };
@@ -46,7 +48,7 @@ export function getChartModel(spec: ChartSpec): ChartModel {
   const shapes: ChartShape[] = [{ tag: 'line', attributes: { x1: 35, x2: 620, y1: zero, y2: zero, stroke: 'var(--se-chart-axis, #999)', 'stroke-width': 1 } }];
   spec.series.forEach((series, seriesIndex) => {
     const color = chartColors[seriesIndex % chartColors.length]!;
-    if (spec.kind === 'bar') {
+    if (kind === 'bar') {
       const slot = 570 / count, width = slot * .75 / spec.series.length;
       series.values.forEach((value, index) => {
         shapes.push({ tag: 'rect', attributes: { x: 42 + index * slot + seriesIndex * width, y: Math.min(zero, y(value)), width: Math.max(.5, width - 2), height: Math.max(.5, Math.abs(y(value) - zero)), fill: color } });

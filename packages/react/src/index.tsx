@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { safeUrl } from '@super-solution/editor-core';
-import type { Actor, ApplyResult, Block, BlockContent, ChartSpec, Editor, Operation, ResearchDocument } from '@super-solution/editor-core';
+import type { Actor, ApplyResult, Block, BlockContent, ChartSpec, Editor, InlineRun, Operation, ResearchDocument } from '@super-solution/editor-core';
 import { allowedEmbedUrl, contentWithText, editableText, getChartModel, localId } from '@super-solution/editor-ui';
 import type { EmbedPolicy } from '@super-solution/editor-ui';
 
@@ -58,21 +58,33 @@ export function ChartView({ spec }: { spec: ChartSpec }): ReactNode {
   </figure>;
 }
 
+function Runs({ runs, report }: { runs: readonly InlineRun[]; report: ResearchDocument }): ReactNode {
+  return <>{runs.map((run, index) => {
+    let node: ReactNode = run.text;
+    if (run.code) node = <code>{node}</code>;
+    if (run.italic) node = <em>{node}</em>;
+    if (run.bold) node = <strong>{node}</strong>;
+    // v0.2 fallback; full renderer in SE2b
+    if (run.strike) node = <s>{node}</s>;
+    if (run.underline) node = <u>{node}</u>;
+    if (run.highlight) node = <mark data-highlight={run.highlight}>{node}</mark>;
+    if (run.href) node = <SafeLink url={run.href}>{node}</SafeLink>;
+    return <span key={index}>{node}{run.citationId ? <sup data-citation-id={run.citationId}>[{report.citations.findIndex((citation) => citation.id === run.citationId) + 1}]</sup> : null}</span>;
+  })}</>;
+}
+
 export function DefaultBlockView({ block, context }: { block: Block; context: ReactRenderContext }): ReactNode {
   const { content } = block;
   switch (content.type) {
     case 'section': return <h2>{content.title}</h2>;
-    case 'heading': return content.level === 2 ? <h2>{content.text}</h2> : <h3>{content.text}</h3>;
-    case 'paragraph': return <p>{content.runs.map((run, index) => {
-      let node: ReactNode = run.text;
-      if (run.code) node = <code>{node}</code>;
-      if (run.italic) node = <em>{node}</em>;
-      if (run.bold) node = <strong>{node}</strong>;
-      if (run.href) node = <SafeLink url={run.href}>{node}</SafeLink>;
-      return <span key={index}>{node}</span>;
-    })}</p>;
-    case 'list': return content.ordered ? <ol>{content.items.map((item, index) => <li key={index}>{item}</li>)}</ol> : <ul>{content.items.map((item, index) => <li key={index}>{item}</li>)}</ul>;
-    case 'table': return <table><thead><tr>{content.columns.map((column, index) => <th scope="col" key={index}>{column}</th>)}</tr></thead><tbody>{content.rows.map((row, index) => <tr key={index}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody></table>;
+    case 'heading': return content.level === 1 ? <h1>{content.text}</h1> : content.level === 2 ? <h2>{content.text}</h2> : <h3>{content.text}</h3>;
+    case 'paragraph': return <p><Runs runs={content.runs} report={context.report} /></p>;
+    case 'list': {
+      // v0.2 fallback; full renderer in SE2b: todo state is shown as a text prefix and indent is ignored.
+      const items = content.items.map((item, index) => <li key={index}>{content.style === 'todo' ? `${content.checked?.[index] ? '☑' : '☐'} ${item}` : item}</li>);
+      return content.ordered ? <ol>{items}</ol> : <ul>{items}</ul>;
+    }
+    case 'table': return <table>{content.caption ? <caption>{content.caption}</caption> : null}<thead><tr>{content.columns.map((column, index) => <th scope="col" key={index} style={content.align?.[index] ? { textAlign: content.align[index] } : undefined}>{column}</th>)}</tr></thead><tbody>{content.rows.map((row, index) => <tr key={index}>{row.map((cell, column) => <td key={column} style={content.align?.[column] ? { textAlign: content.align[column] } : undefined}>{cell}</td>)}</tr>)}</tbody></table>;
     case 'chart': {
       const registry = context.options.chartRenderers;
       const renderer = registry && Object.hasOwn(registry, content.spec.kind) ? registry[content.spec.kind] : undefined;
@@ -83,6 +95,16 @@ export function DefaultBlockView({ block, context }: { block: Block; context: Re
       return <figure className="super-editor-embed"><SafeLink url={content.url}>{content.title}</SafeLink>{url ? <iframe src={url} title={content.title} sandbox="allow-scripts" referrerPolicy="no-referrer" loading="lazy" /> : null}</figure>;
     }
     case 'timestamp': return <time dateTime={content.at}>{content.label}: {content.at}</time>;
+    // v0.2 fallback; full renderer in SE2b. Everything below is deliberately plain.
+    case 'quote': return <blockquote><Runs runs={content.runs} report={context.report} />{content.attribution ? <cite>{content.attribution}</cite> : null}</blockquote>;
+    case 'callout': return <aside data-tone={content.tone}>{content.title ? <strong>{content.title}</strong> : null}<p><Runs runs={content.runs} report={context.report} /></p></aside>;
+    case 'code': return <pre><code data-language={content.language || undefined}>{content.text}</code></pre>;
+    case 'divider': return <hr />;
+    case 'image': return <figure className="super-editor-image"><SafeLink url={content.url}>{content.alt || content.url}</SafeLink>{content.caption ? <figcaption>{content.caption}</figcaption> : null}</figure>;
+    case 'toggle': return <p>▸ {content.title}</p>;
+    case 'metrics': return <ul>{content.items.map((item, index) => <li key={index}>{item.label}: {item.value}</li>)}</ul>;
+    case 'toc': return <nav aria-label="Table of contents"><ol>{context.report.blocks.flatMap((entry) => entry.content.type === 'heading' ? [<li key={entry.id}>{entry.content.text}</li>] : entry.content.type === 'section' ? [<li key={entry.id}>{entry.content.title}</li>] : [])}</ol></nav>;
+    case 'pageBreak': return <hr className="super-editor-page-break" />;
   }
 }
 
