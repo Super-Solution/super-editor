@@ -273,6 +273,233 @@
             "citation"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "insertBlocks"
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 500,
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            },
+            "afterId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "duplicateBlock"
+            },
+            "blockId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "expectedVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "newIds": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 500,
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+              },
+              "description": "Maps the block and every descendant (old id to new id)."
+            },
+            "afterId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "blockId",
+            "expectedVersion",
+            "newIds"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "replaceText"
+            },
+            "blockId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            },
+            "expectedVersion": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "find": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "replace": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "all": {
+              "type": "boolean"
+            },
+            "caseSensitive": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "blockId",
+            "expectedVersion",
+            "find",
+            "replace"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "deleteBlocks"
+            },
+            "blocks": {
+              "$ref": "#/$defs/blockRefs"
+            }
+          },
+          "required": [
+            "type",
+            "blocks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "moveBlocks"
+            },
+            "blocks": {
+              "$ref": "#/$defs/blockRefs"
+            },
+            "parentId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "afterId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "blocks",
+            "parentId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "updateCitation"
+            },
+            "citation": {
+              "$ref": "#/$defs/citation"
+            }
+          },
+          "required": [
+            "type",
+            "citation"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "removeCitation"
+            },
+            "citationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            }
+          },
+          "required": [
+            "type",
+            "citationId"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -303,6 +530,7 @@
             },
             "level": {
               "enum": [
+                1,
                 2,
                 3
               ]
@@ -348,6 +576,28 @@
                     "type": "string",
                     "maxLength": 4096,
                     "format": "uri"
+                  },
+                  "strike": {
+                    "type": "boolean"
+                  },
+                  "underline": {
+                    "type": "boolean"
+                  },
+                  "highlight": {
+                    "enum": [
+                      "yellow",
+                      "green",
+                      "blue",
+                      "pink",
+                      "gray"
+                    ]
+                  },
+                  "citationId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                    "description": "Inline citation marker. Must reference an id in document.citations."
                   }
                 },
                 "required": [
@@ -374,10 +624,37 @@
             },
             "items": {
               "type": "array",
+              "maxItems": 2000,
               "items": {
                 "type": "string",
-                "maxLength": 100000
+                "maxLength": 10000
               }
+            },
+            "style": {
+              "enum": [
+                "bullet",
+                "number",
+                "todo"
+              ],
+              "description": "bullet and todo need ordered: false, number needs ordered: true."
+            },
+            "checked": {
+              "type": "array",
+              "maxItems": 2000,
+              "items": {
+                "type": "boolean"
+              },
+              "description": "One entry per item; only with style \"todo\"."
+            },
+            "indent": {
+              "type": "array",
+              "maxItems": 2000,
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3
+              },
+              "description": "One nesting level (0 to 3) per item."
             }
           },
           "required": [
@@ -395,20 +672,43 @@
             },
             "columns": {
               "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
               "items": {
                 "type": "string",
-                "maxLength": 100000
+                "maxLength": 1000
               }
             },
             "rows": {
               "type": "array",
+              "maxItems": 2000,
               "items": {
                 "type": "array",
+                "maxItems": 100,
                 "items": {
                   "type": "string",
-                  "maxLength": 100000
+                  "maxLength": 10000
                 }
               }
+            },
+            "align": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ]
+              },
+              "description": "One entry per column."
+            },
+            "caption": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "headerColumn": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -446,11 +746,17 @@
             "url": {
               "type": "string",
               "maxLength": 4096,
-              "format": "uri"
+              "format": "uri",
+              "pattern": "^https://"
             },
             "title": {
               "type": "string",
               "maxLength": 1000
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 1200
             }
           },
           "required": [
@@ -482,6 +788,324 @@
             "type",
             "at",
             "label"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "quote"
+            },
+            "runs": {
+              "type": "array",
+              "maxItems": 1000,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 100000
+                  },
+                  "bold": {
+                    "type": "boolean"
+                  },
+                  "italic": {
+                    "type": "boolean"
+                  },
+                  "code": {
+                    "type": "boolean"
+                  },
+                  "href": {
+                    "type": "string",
+                    "maxLength": 4096,
+                    "format": "uri"
+                  },
+                  "strike": {
+                    "type": "boolean"
+                  },
+                  "underline": {
+                    "type": "boolean"
+                  },
+                  "highlight": {
+                    "enum": [
+                      "yellow",
+                      "green",
+                      "blue",
+                      "pink",
+                      "gray"
+                    ]
+                  },
+                  "citationId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                    "description": "Inline citation marker. Must reference an id in document.citations."
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "attribution": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "type",
+            "runs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "callout"
+            },
+            "tone": {
+              "enum": [
+                "info",
+                "success",
+                "warning",
+                "danger",
+                "note"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "runs": {
+              "type": "array",
+              "maxItems": 1000,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 100000
+                  },
+                  "bold": {
+                    "type": "boolean"
+                  },
+                  "italic": {
+                    "type": "boolean"
+                  },
+                  "code": {
+                    "type": "boolean"
+                  },
+                  "href": {
+                    "type": "string",
+                    "maxLength": 4096,
+                    "format": "uri"
+                  },
+                  "strike": {
+                    "type": "boolean"
+                  },
+                  "underline": {
+                    "type": "boolean"
+                  },
+                  "highlight": {
+                    "enum": [
+                      "yellow",
+                      "green",
+                      "blue",
+                      "pink",
+                      "gray"
+                    ]
+                  },
+                  "citationId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                    "description": "Inline citation marker. Must reference an id in document.citations."
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "type",
+            "tone",
+            "runs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "code"
+            },
+            "language": {
+              "type": "string",
+              "maxLength": 40,
+              "pattern": "^[A-Za-z0-9+#._-]*$"
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 100000
+            }
+          },
+          "required": [
+            "type",
+            "language",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "divider"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "image"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 4096,
+              "format": "uri",
+              "pattern": "^https://"
+            },
+            "alt": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "caption": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "width": {
+              "enum": [
+                "narrow",
+                "normal",
+                "wide",
+                "full"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "url",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "toggle"
+            },
+            "title": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "open": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "title",
+            "open"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "metrics"
+            },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 50,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "value": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "change": {
+                    "type": "number",
+                    "minimum": -1000000000000000,
+                    "maximum": 1000000000000000
+                  },
+                  "tone": {
+                    "enum": [
+                      "up",
+                      "down",
+                      "neutral"
+                    ]
+                  },
+                  "hint": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "label",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "type",
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "toc"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "pageBreak"
+            }
+          },
+          "required": [
+            "type"
           ],
           "additionalProperties": false
         }
@@ -532,6 +1156,32 @@
       ],
       "additionalProperties": false
     },
+    "blockRefs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "blockId",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      }
+    },
     "chart": {
       "type": "object",
       "properties": {
@@ -539,7 +1189,8 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 128,
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "description": "Known kinds: pie, donut, bar, trend, line, area, scatter, histogram, candlestick, heatmap, waterfall. Other kinds stay valid and render a data table. Every kind needs labels and series; scatter, candlestick and heatmap also need points, ohlc or matrix, with labels/series as the fallback table."
         },
         "title": {
           "type": "string",
@@ -573,6 +1224,13 @@
                   "minimum": -1000000000000000,
                   "maximum": 1000000000000000
                 }
+              },
+              "color": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "description": "Hex color, CSS color keyword or var(--token).",
+                "pattern": "^(?:#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|[A-Za-z]{3,30}|var\\(--[A-Za-z0-9_-]{1,60}\\))$"
               }
             },
             "required": [
@@ -591,6 +1249,206 @@
           "maxLength": 30,
           "format": "date-time",
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?Z$"
+        },
+        "stacked": {
+          "type": "boolean"
+        },
+        "horizontal": {
+          "type": "boolean"
+        },
+        "yAxis": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "format": {
+              "enum": [
+                "number",
+                "percent",
+                "currency",
+                "compact"
+              ]
+            },
+            "min": {
+              "type": "number",
+              "minimum": -1000000000000000,
+              "maximum": 1000000000000000
+            },
+            "max": {
+              "type": "number",
+              "minimum": -1000000000000000,
+              "maximum": 1000000000000000
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "xLabel": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "annotations": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "at": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "value": {
+                "type": "number",
+                "minimum": -1000000000000000,
+                "maximum": 1000000000000000
+              }
+            },
+            "required": [
+              "label",
+              "at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "points": {
+          "type": "array",
+          "maxItems": 20000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "series": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "x": {
+                "type": "number",
+                "minimum": -1000000000000000,
+                "maximum": 1000000000000000
+              },
+              "y": {
+                "type": "number",
+                "minimum": -1000000000000000,
+                "maximum": 1000000000000000
+              }
+            },
+            "required": [
+              "series",
+              "x",
+              "y"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "ohlc": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "t": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "o": {
+                "type": "number",
+                "minimum": -1000000000000000,
+                "maximum": 1000000000000000
+              },
+              "h": {
+                "type": "number",
+                "minimum": -1000000000000000,
+                "maximum": 1000000000000000
+              },
+              "l": {
+                "type": "number",
+                "minimum": -1000000000000000,
+                "maximum": 1000000000000000
+              },
+              "c": {
+                "type": "number",
+                "minimum": -1000000000000000,
+                "maximum": 1000000000000000
+              },
+              "v": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000000
+              }
+            },
+            "required": [
+              "t",
+              "o",
+              "h",
+              "l",
+              "c"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "matrix": {
+          "type": "object",
+          "properties": {
+            "rows": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 200,
+              "items": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            },
+            "columns": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 200,
+              "items": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            },
+            "values": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 200,
+              "items": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 200,
+                "items": {
+                  "type": "number",
+                  "minimum": -1000000000000000,
+                  "maximum": 1000000000000000
+                }
+              }
+            }
+          },
+          "required": [
+            "rows",
+            "columns",
+            "values"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [

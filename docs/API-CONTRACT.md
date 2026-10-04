@@ -1,4 +1,4 @@
-# Super Editor v0.1 local integration contract
+# Super Editor local integration contract (v0.1 baseline, v0.2 additions)
 
 The owner initialized upstream `main` with the Apache-2.0 LICENSE in commit `549d85b6b00682f34452d6e97fc1b3ca1c8a1698`; LICENSE is preserved unchanged. The six `@super-solution/editor-*` packages share version `0.1.0-next.0` for the first `next` prerelease. The root workspace remains private. These names replace the earlier unpublished `@super-editor/*` contract.
 
@@ -35,3 +35,17 @@ Runtime budgets: 5,000 blocks, section depth 64, 256 operations per batch, 2,000
 HTTPS/HTTP links only; credentials and dangerous schemes are rejected. Embeds require HTTPS and an explicit host allowlist from the host application, defaulting to link-only display. Text uses DOM text nodes / escaped React content. Raw HTML is not accepted. Custom renderers are host-trusted code.
 
 The public SuperChat/SuperChart API has not yet been verified. No guessed package import or claimed provider integration: SuperChat can call the service transaction contract; a host can register a real SuperChart renderer once its API and allowed origins are confirmed.
+
+## v0.2 core additions (schemaVersion stays 1)
+
+Everything below is additive and optional: documents and transactions written for v0.1 stay valid.
+
+- Inline marks: `strike`, `underline`, `highlight` (`yellow|green|blue|pink|gray`) and `citationId`, an inline citation marker that must reference an id in `document.citations`.
+- Block types: heading level 1, `quote`, `callout` (`info|success|warning|danger|note`), `code`, `divider`, `image` (HTTPS only), `toggle` (a container like `section`), `metrics`, `toc`, `pageBreak`. Lists gain `style` (`bullet|number|todo`), `checked[]` and `indent[]` (0 to 3 per item); tables gain `align[]`, `caption` and `headerColumn`; embeds gain `height` (200 to 1200).
+- Chart kinds `line`, `area`, `donut`, `scatter`, `histogram`, `candlestick`, `heatmap`, `waterfall` next to `pie`, `bar`, `trend`; unknown kinds remain valid and show a data table. Optional chart fields: `stacked`, `horizontal`, `yAxis`, `xLabel`, `caption`, `source`, `annotations`, per-series `color`, and the typed data `points` (scatter), `ohlc` (candlestick), `matrix` (heatmap). `labels` and `series` stay required for every kind and carry the fallback data table.
+- Containers: `section` and `toggle` may parent blocks. Anything else as a parent is rejected.
+- Operations: `insertBlocks` (ordered, all-or-nothing), `duplicateBlock` (deep copy; `newIds` maps the block and every descendant), `replaceText` (case-insensitive unless `caseSensitive`, first match unless `all`, matches may span inline runs, `not-found` when nothing matches), `deleteBlocks`, `moveBlocks`, `updateCitation` and `removeCitation` (also strips `citationIds` entries and inline `citationId` markers). `replaceText` may rebase like `updateBlock`; every other new operation needs the exact document revision.
+- Issues may carry `hint`, an actionable remediation (for example the current block version after a conflict, or the allowed properties after an unknown one).
+- `LIMITS` gained the v0.2 field budgets (`blocksPerOperation`, `annotations`, `ohlc`, `heatmapCells`, `metrics`, `embedHeightMin/Max`, and others). The runtime also exports `BLOCK_TYPES`, `CHART_KINDS`, `HIGHLIGHTS`, `CALLOUT_TONES`, `OPERATION_TYPES`, `CONTAINER_TYPES` and `isContainerType`.
+- Flat block order is kept in pre-order (a container is followed by its subtree) for blocks the editor places, but consumers must still walk `parentId` rather than rely on it.
+

@@ -1,5 +1,5 @@
 import { safeUrl } from '@super-solution/editor-core';
-import type { Actor, Block, BlockContent, ChartSpec, Editor, ResearchDocument, ApplyResult, Operation } from '@super-solution/editor-core';
+import type { Actor, Block, BlockContent, ChartSpec, Editor, InlineRun, ResearchDocument, ApplyResult, Operation } from '@super-solution/editor-core';
 import { contentWithText, editableText, getChartModel, localId } from './presentation.js';
 
 export type EmbedPolicy = { enabled: boolean; allowedOrigins: readonly string[] };
@@ -95,34 +95,44 @@ export function renderChart(spec: ChartSpec, context: RenderContext): HTMLElemen
   return figure;
 }
 
+function renderRuns(document: Document, report: ResearchDocument, runs: readonly InlineRun[]): Node[] {
+  return runs.flatMap((run) => {
+    let node: Node = document.createTextNode(run.text);
+    const wrap = (tag: 'code' | 'em' | 'strong' | 's' | 'u' | 'mark'): HTMLElement => { const wrapper = element(document, tag); wrapper.append(node); node = wrapper; return wrapper; };
+    if (run.code) wrap('code');
+    if (run.italic) wrap('em');
+    if (run.bold) wrap('strong');
+    // v0.2 fallback; full renderer in SE2b
+    if (run.strike) wrap('s');
+    if (run.underline) wrap('u');
+    if (run.highlight) wrap('mark').dataset.highlight = run.highlight;
+    if (run.href) { const safe = safeUrl(run.href); if (safe) { const wrapper = element(document, 'a'); wrapper.href = safe; wrapper.target = '_blank'; wrapper.rel = 'noopener noreferrer'; wrapper.append(node); node = wrapper; } }
+    if (!run.citationId) return [node];
+    const marker = element(document, 'sup', `[${report.citations.findIndex((citation) => citation.id === run.citationId) + 1}]`); marker.dataset.citationId = run.citationId;
+    return [node, marker];
+  });
+}
+
 export function renderDefaultBlock(block: Block, context: RenderContext): HTMLElement {
   const { document } = context, { content } = block;
   switch (content.type) {
     case 'section': { const section = element(document, 'section'); section.append(element(document, 'h2', content.title)); return section; }
-    case 'heading': return element(document, content.level === 2 ? 'h2' : 'h3', content.text);
-    case 'paragraph': {
-      const paragraph = element(document, 'p');
-      for (const run of content.runs) {
-        let node: Node = document.createTextNode(run.text);
-        if (run.code) { const wrapper = element(document, 'code'); wrapper.append(node); node = wrapper; }
-        if (run.italic) { const wrapper = element(document, 'em'); wrapper.append(node); node = wrapper; }
-        if (run.bold) { const wrapper = element(document, 'strong'); wrapper.append(node); node = wrapper; }
-        if (run.href) { const safe = safeUrl(run.href); if (safe) { const wrapper = element(document, 'a'); wrapper.href = safe; wrapper.target = '_blank'; wrapper.rel = 'noopener noreferrer'; wrapper.append(node); node = wrapper; } }
-        paragraph.append(node);
-      }
-      return paragraph;
-    }
+    case 'heading': return element(document, content.level === 1 ? 'h1' : content.level === 2 ? 'h2' : 'h3', content.text);
+    case 'paragraph': { const paragraph = element(document, 'p'); paragraph.append(...renderRuns(document, context.report, content.runs)); return paragraph; }
     case 'list': {
       const list = element(document, content.ordered ? 'ol' : 'ul');
-      content.items.forEach((item) => list.append(element(document, 'li', item)));
+      // v0.2 fallback; full renderer in SE2b: todo state is shown as a text prefix and indent is ignored.
+      content.items.forEach((item, index) => list.append(element(document, 'li', content.style === 'todo' ? `${content.checked?.[index] ? '☑' : '☐'} ${item}` : item)));
       return list;
     }
     case 'table': {
       const table = element(document, 'table'), head = element(document, 'thead'), headings = element(document, 'tr');
-      content.columns.forEach((column) => { const th = element(document, 'th', column); th.scope = 'col'; headings.append(th); });
+      // v0.2 fallback; full renderer in SE2b: caption and column alignment only.
+      if (content.caption) table.append(element(document, 'caption', content.caption));
+      content.columns.forEach((column, index) => { const th = element(document, 'th', column); th.scope = 'col'; if (content.align?.[index]) th.style.textAlign = content.align[index]!; headings.append(th); });
       head.append(headings); table.append(head);
       const body = element(document, 'tbody');
-      content.rows.forEach((row) => { const tr = element(document, 'tr'); row.forEach((cell) => tr.append(element(document, 'td', cell))); body.append(tr); });
+      content.rows.forEach((row) => { const tr = element(document, 'tr'); row.forEach((cell, index) => { const td = element(document, 'td', cell); if (content.align?.[index]) td.style.textAlign = content.align[index]!; tr.append(td); }); body.append(tr); });
       table.append(body); return table;
     }
     case 'chart': {
@@ -142,6 +152,24 @@ export function renderDefaultBlock(block: Block, context: RenderContext): HTMLEl
       return figure;
     }
     case 'timestamp': return time(document, content.at, content.label);
+    // v0.2 fallback; full renderer in SE2b. Everything below is deliberately plain.
+    case 'quote': { const quote = element(document, 'blockquote'); quote.append(...renderRuns(document, context.report, content.runs)); if (content.attribution) quote.append(element(document, 'cite', content.attribution)); return quote; }
+    case 'callout': {
+      const callout = element(document, 'aside'); callout.dataset.tone = content.tone;
+      if (content.title) callout.append(element(document, 'strong', content.title));
+      const body = element(document, 'p'); body.append(...renderRuns(document, context.report, content.runs)); callout.append(body); return callout;
+    }
+    case 'code': { const pre = element(document, 'pre'), code = element(document, 'code', content.text); if (content.language) code.dataset.language = content.language; pre.append(code); return pre; }
+    case 'divider': return element(document, 'hr');
+    case 'image': { const figure = element(document, 'figure'); figure.className = 'super-editor-image'; figure.append(safeLink(document, content.url, content.alt || content.url)); if (content.caption) figure.append(element(document, 'figcaption', content.caption)); return figure; }
+    case 'toggle': return element(document, 'p', `▸ ${content.title}`);
+    case 'metrics': { const list = element(document, 'ul'); content.items.forEach((item) => list.append(element(document, 'li', `${item.label}: ${item.value}`))); return list; }
+    case 'toc': {
+      const nav = element(document, 'nav'), list = element(document, 'ol'); nav.setAttribute('aria-label', 'Table of contents');
+      context.report.blocks.forEach((entry) => { if (entry.content.type === 'heading') list.append(element(document, 'li', entry.content.text)); else if (entry.content.type === 'section') list.append(element(document, 'li', entry.content.title)); });
+      nav.append(list); return nav;
+    }
+    case 'pageBreak': { const rule = element(document, 'hr'); rule.className = 'super-editor-page-break'; return rule; }
   }
 }
 
