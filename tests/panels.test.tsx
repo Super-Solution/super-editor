@@ -106,8 +106,11 @@ test('FindReplace: replace changes the current block, replace all changes every 
     assert.match(text(h.container, '.se-find-status span'), /Replaced 1 occurrence/);
     assert.deepEqual(outcomes, [[true, 1]]);
     assert.equal(editor.getSnapshot().blocks.find((block) => block.id === 'callout-info')!.content.type, 'callout');
-    await act(async () => click(h.dom, [...panel.querySelectorAll('button')].find((button) => button.textContent === 'Replace all')!));
+    const replaceAll = [...panel.querySelectorAll('button')].find((button) => button.textContent === 'Replace all')!;
+    replaceAll.focus();
+    await act(async () => click(h.dom, replaceAll));
     assert.match(text(h.container, '.se-find-status span'), /Replaced 4 occurrences/);
+    assert.equal(h.dom.window.document.activeElement, replace, 'focus stays in the panel after Replace all disables itself');
     assert.equal(editor.getRevisions().at(-1)!.operations.length, 4, 'one transaction for all blocks');
     assert.equal(editor.getRevisions().at(-1)!.actor.id, 'local-human');
     assert.match(JSON.stringify(editor.getSnapshot().blocks.filter((block) => block.id.startsWith('callout-'))), /A info box/);

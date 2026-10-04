@@ -22,7 +22,7 @@ npm run example
 npm run dev
 ```
 
-Open the localhost URL printed by Vite. The React demo includes a research notebook, nested sections, H2/H3, typed inline formatting, tables, pie/bar/trend charts, citations, timestamps, page formatting, paragraph editing, undo/redo, JSON export, and an agent proposal conflict demonstration.
+Open the localhost URL printed by Vite. The React demo is a small workspace built from the packages the way a host would use them: a page switcher (two fixtures and every report template), the interactive `ReportEditor`, an outline that follows the page, find and replace, History with diffs and restore, an Agent panel that drives `runAgentAction` (a refused stale edit, a rebase-safe one, dry runs), Sources, theme and density switches, a save indicator, and JSON, Markdown, HTML, text and print export. Its code is the composition example: see [examples/README.md](examples/README.md#the-workspace-demo).
 
 ## Packages
 
