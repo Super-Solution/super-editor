@@ -11,7 +11,7 @@ export type Labels = {
   document: {
     untitled: string; landmark: string; revision: string; updated: string; sources: string; blockSources: string;
     accessed: string; published: string; unsafeUrl: string; empty: string;
-    announceUpdated: string; actorHuman: string; actorAgent: string; actorSystem: string;
+    announceUpdated: string; announceUpdatedBy: string; actorHuman: string; actorAgent: string; actorSystem: string;
   };
   blocks: {
     copyCode: string; copied: string; copyFailed: string; toc: string; tocEmpty: string;
@@ -51,7 +51,7 @@ export const defaultLabels: Labels = {
   document: {
     untitled: 'Untitled document', landmark: 'Report', revision: 'Revision {revision}', updated: 'Updated', sources: 'Sources',
     blockSources: 'Sources: {list}', accessed: 'Accessed', published: 'Published', unsafeUrl: '(unsafe URL omitted)', empty: 'This document is empty.',
-    announceUpdated: 'Document updated to revision {revision} by {actor}.', actorHuman: 'a person', actorAgent: 'an agent', actorSystem: 'the system',
+    announceUpdated: 'Document updated to revision {revision}.', announceUpdatedBy: 'Document updated to revision {revision} by {actor}.', actorHuman: 'a person', actorAgent: 'an agent', actorSystem: 'the system',
   },
   blocks: {
     copyCode: 'Copy', copied: 'Copied', copyFailed: 'Copy failed', toc: 'Table of contents', tocEmpty: 'No headings yet.',
