@@ -303,3 +303,5 @@ export function mountEditor(container: HTMLElement, editor: Editor, options: Mou
 }
 
 export { getChartModel, chartColors, contentWithText, editableText, localId } from './presentation.js';
+
+export * from './interaction/index.js';
