@@ -29,7 +29,7 @@ export { CLIPBOARD_MIME, parseBlocksPayload, planPaste, serializeBlocks } from '
 export type { ClipboardPayload, PasteContext, PastePlan } from './clipboard.js';
 export { MARKS, deleteRange, highlightState, insertText, linkAt, markState, normalizeRuns as normalizeInlineRuns, replaceRange, runsPlainText, setHighlight, setLink, sliceRuns, splitRuns, toggleMark, wordRangeAt } from './inline.js';
 export type { Mark, MarkState } from './inline.js';
-export { getSelectionOffsets, readRunsFrom, renderRunsInto, setSelectionOffsets } from './inline-dom.js';
+export { getSelectionOffsets, readRunsFrom, renderRunsInto, selectionClientRect, setSelectionOffsets } from './inline-dom.js';
 export { cellField, fieldKeys, fieldText, itemField, parseField, withFieldRuns, withFieldText } from './fields.js';
 export { listChecked, listIndent, listNumbers, listSetChecked, listSetIndent, listSplice, tableAddColumn, tableAddRow, tableRemoveColumn, tableRemoveRow, tableSetAlign } from './structure.js';
 export { patchChartSpec } from './chart-edit.js';

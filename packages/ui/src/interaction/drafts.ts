@@ -53,7 +53,7 @@ export function createDrafts(deps: DraftDeps) {
       setConflict(id, info); deps.onConflict(info); deps.onFeedback({ kind: 'conflict', message: info.message, blockIds: [id] });
     }
   }
-  const unsubscribe = deps.editor.subscribe(check);
+  let unsubscribe: (() => void) | null = null;
 
   function flush(id: string): ApplyResult | null {
     const draft = drafts.get(id);
@@ -136,6 +136,9 @@ export function createDrafts(deps: DraftDeps) {
       return result;
     },
     check,
-    dispose(): void { unsubscribe(); for (const draft of drafts.values()) stop(draft); drafts.clear(); },
+    /** Starts following the document (idempotent). */
+    start(): void { if (!unsubscribe) unsubscribe = deps.editor.subscribe(check); },
+    /** Stops following the document and drops all drafts; flush first to keep typing. */
+    dispose(): void { unsubscribe?.(); unsubscribe = null; for (const draft of drafts.values()) stop(draft); drafts.clear(); },
   };
 }

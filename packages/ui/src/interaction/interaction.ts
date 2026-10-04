@@ -56,6 +56,8 @@ export type InteractionOptions = {
   copyText?: (text: string) => void | Promise<void>;
   /** Base URL for "copy link to block". Default: the current page without its hash. */
   linkBase?: () => string;
+  /** Subscribe to the editor immediately. Default true. UI frameworks pass false and call `activate()` from an effect. */
+  autoStart?: boolean;
 };
 /** The live editing surface of one text field, registered by the DOM layer. */
 export type EditableHandle = {
@@ -74,8 +76,16 @@ export interface Interaction {
   readonly editor: Editor;
   readonly actor: InteractionActor;
   readonly platform: Platform;
+  /** Unique per instance; used to build DOM ids for ARIA relationships. */
+  readonly id: string;
   getState(): InteractionState;
   subscribe(listener: () => void): () => void;
+  /** Starts following the document. Called for you unless `autoStart: false`. */
+  activate(): void;
+  /** Commits pending typing and stops following the document. `activate()` resumes. */
+  deactivate(): void;
+  /** Every feedback event, for live regions and toasts. Independent of the `onFeedback` option. */
+  subscribeFeedback(listener: (event: FeedbackEvent) => void): () => void;
   setReadOnly(readOnly: boolean): void;
   setHover(id: string | null): void;
   /** Leaves the innermost thing: slash menu, prompt, menu, help, editing (selecting the block), then the block selection. Returns whether anything closed. */
@@ -134,6 +144,8 @@ export interface Interaction {
       setAlign(blockId: string, column: number, align: 'left' | 'center' | 'right'): ApplyResult | null;
     };
     patchChart(blockId: string, patch: ChartPatch): ApplyResult | null;
+    setCodeLanguage(blockId: string, language: string): ApplyResult | null;
+    setFormat(patch: Partial<ResearchDocument['format']>): ApplyResult | null;
     copyId(blockId: string): void; copyLink(blockId: string): void;
   };
   readonly slash: {
@@ -174,6 +186,7 @@ export interface Interaction {
   destroy(): void;
 }
 
+let instanceCounter = 0;
 const HUMAN_DEFAULT = { id: 'local-human', kind: 'human' as const };
 const clampCaret = (caret: Caret, length: number): number => caret === 'start' ? 0 : caret === 'end' ? length : Math.max(0, Math.min(length, caret));
 
@@ -181,6 +194,8 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
   const actor = options.actor ?? HUMAN_DEFAULT;
   if (!actor || actor.kind !== 'human' || typeof actor.id !== 'string' || !actor.id) throw new TypeError('createInteraction requires a human actor ({ id, kind: "human" }); agents edit through the API, MCP or CLI transports.');
   const platform = options.platform ?? detectPlatform();
+  const instanceId = `se-${++instanceCounter}`;
+  const feedbackListeners = new Set<(event: FeedbackEvent) => void>();
   const catalog = options.slashItems ? options.slashItems(createSlashCatalog(options.slashLabels)) : createSlashCatalog(options.slashLabels);
   const store = createStore<InteractionState>({
     readOnly: !!options.readOnly, selection: emptySelection, editing: null, hover: null, slash: null, menu: null, help: false,
@@ -199,7 +214,10 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
   };
 
   // ---- feedback and applying -------------------------------------------------------------------------------------
-  const notify = (event: FeedbackEvent): void => { try { options.onFeedback?.(event); } catch { /* Host callbacks must not break editing. */ } };
+  const notify = (event: FeedbackEvent): void => {
+    try { options.onFeedback?.(event); } catch { /* Host callbacks must not break editing. */ }
+    for (const listener of [...feedbackListeners]) { try { listener(event); } catch { /* ignore */ } }
+  };
   const describe = (issues: readonly EditorIssue[]): string => {
     const first = issues[0];
     if (!first) return 'The change could not be applied.';
@@ -345,6 +363,13 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
       setAlign: (blockId, column, align) => immediate(blockId, 'tableAlign', (content) => content.type === 'table' ? tableSetAlign(content, column, align) : null),
     },
     patchChart: (blockId, patch) => immediate(blockId, 'patchChart', (content) => content.type === 'chart' ? { ...content, spec: patchChartSpec(content.spec, patch) } : null),
+    setCodeLanguage: (blockId, language) => immediate(blockId, 'setCodeLanguage', (content) => content.type === 'code' ? { ...content, language: language.replace(/[^A-Za-z0-9+#._-]/g, '').slice(0, 40) } : null),
+    setFormat(patch) {
+      if (!writable()) return null;
+      flushAll();
+      const result = run('setFormat', [{ type: 'setFormat', format: { ...doc().format, ...patch } }]);
+      return result;
+    },
     copyId(blockId) { void writeClipboard(blockId).then(() => notify({ kind: 'success', message: 'Block ID copied', blockIds: [blockId] })); },
     copyLink(blockId) {
       const base = options.linkBase?.() ?? (globalThis as { location?: { href?: string } }).location?.href?.split('#')[0] ?? '';
@@ -958,8 +983,10 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
   // ---- shortcuts / misc --------------------------------------------------------------------------------------------
   const registry = createShortcutRegistry<ShortcutContext>({ platform });
   const api: Interaction = {
-    editor, actor: actor as InteractionActor, platform,
+    editor, actor: actor as InteractionActor, platform, id: instanceId,
     getState: store.get, subscribe: store.subscribe,
+    activate, deactivate,
+    subscribeFeedback(listener) { feedbackListeners.add(listener); return () => { feedbackListeners.delete(listener); }; },
     setReadOnly(readOnly) {
       if (readOnly) { flushAll(); store.set({ readOnly: true, editing: null, slash: null, menu: null, prompt: null, drag: null, textSelection: null, chartEditor: null }); }
       else store.set({ readOnly: false });
@@ -982,13 +1009,13 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     closeChartEditor() { store.set({ chartEditor: null }); },
     selection, edit, format, commands, slash, drag, menu, clipboard,
     shortcuts: Object.assign(registry, { handleKeyDown(event: KeyEventLike): boolean { return registry.handle(event, { interaction: api, state: store.get() }); } }),
-    destroy() { destroyed = true; unsubscribe(); drafts.dispose(); handles.clear(); },
+    destroy() { deactivate(); destroyed = true; handles.clear(); feedbackListeners.clear(); },
   };
   if (options.shortcuts !== false) registerDefaultShortcuts(api, registry);
   if (options.shortcuts) for (const [id, keys] of Object.entries(options.shortcuts)) registry.override(id, keys);
 
   // Keep every part of the state pointing at blocks that still exist.
-  const unsubscribe = editor.subscribe(() => {
+  const prune = (): void => {
     if (destroyed) return;
     const state = store.get(), exists = (id: string): boolean => !!blockOf(id);
     const patch: Partial<InteractionState> = {};
@@ -1001,7 +1028,21 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     if (state.chartEditor && !exists(state.chartEditor)) patch.chartEditor = null;
     if (state.drag && !state.drag.ids.every(exists)) patch.drag = null;
     if (Object.keys(patch).length) store.set(patch);
-  });
+  };
+  let stopPruning: (() => void) | null = null;
+  function activate(): void {
+    if (stopPruning) return;
+    destroyed = false;
+    stopPruning = editor.subscribe(prune);
+    drafts.start();
+  }
+  function deactivate(): void {
+    if (!stopPruning) return;
+    drafts.flushAll();
+    stopPruning(); stopPruning = null;
+    drafts.dispose();
+  }
+  if (options.autoStart !== false) activate();
   return api;
 }
 export { compatibleChartKinds };

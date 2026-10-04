@@ -196,7 +196,7 @@ test('React view supports SSR with literal content, accessible charts, replaceab
   assert.match(enabled, /referrerPolicy="no-referrer"/);
   assert.doesNotMatch(enabled, /allow-same-origin/);
   assert.match(enabled, /<aside>Extension<\/aside>/);
-  assert.match(renderToStaticMarkup(<ReportEditor editor={fixture()} renderControls={false} />), /Edit paragraph/);
+  assert.match(renderToStaticMarkup(<ReportEditor editor={fixture()} renderControls={false} interaction={false} />), /Edit paragraph/);
 });
 
 test('React editor subscribes, preserves conflicting drafts and releases its subscription', async () => {
@@ -209,7 +209,7 @@ test('React editor subscribes, preserves conflicting drafts and releases its sub
     const actual = fixture(); let activeSubscriptions = 0;
     const editor: Editor = { ...actual, subscribe(listener) { activeSubscriptions++; const unsubscribe = actual.subscribe(listener); return () => { activeSubscriptions--; unsubscribe(); }; } };
     const container = dom.window.document.getElementById('app')!, root = createRoot(container);
-    await act(async () => root.render(<ReportEditor editor={editor} />));
+    await act(async () => root.render(<ReportEditor editor={editor} interaction={false} />));
     assert.equal(activeSubscriptions, 1);
     await act(async () => click(dom.window.document, container.querySelector('#summary')!, 'Edit paragraph'));
     const textarea = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Edit block summary"]')!;
@@ -226,7 +226,7 @@ test('React editor subscribes, preserves conflicting drafts and releases its sub
     assert.match(container.querySelector('#summary')!.textContent!, /React agent replaced content/);
 
     const editorA = fixture();
-    await act(async () => root.render(<ReportEditor editor={editorA} />));
+    await act(async () => root.render(<ReportEditor editor={editorA} interaction={false} />));
     assert.equal(activeSubscriptions, 0);
     await act(async () => click(dom.window.document, container.querySelector('#summary')!, 'Edit paragraph'));
     const editorATextarea = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Edit block summary"]')!;
@@ -234,7 +234,7 @@ test('React editor subscribes, preserves conflicting drafts and releases its sub
     const documentB = structuredClone(editorA.getSnapshot());
     documentB.blocks.find((block) => block.id === 'summary')!.content = { type: 'paragraph', runs: [{ text: 'Editor B original' }] };
     const editorB = createEditor(documentB, { now: () => at });
-    await act(async () => root.render(<ReportEditor editor={editorB} />));
+    await act(async () => root.render(<ReportEditor editor={editorB} interaction={false} />));
     assert.equal(container.querySelectorAll('textarea').length, 0, 'Drafts must be reset on editor identity change, even with matching revision/version/IDs.');
     assert.equal((editorB.getSnapshot().blocks.find((block) => block.id === 'summary')!.content as Extract<BlockContent, { type: 'paragraph' }>).runs[0]!.text, 'Editor B original');
     assert.match(container.querySelector('#summary')!.textContent!, /Editor B original/);

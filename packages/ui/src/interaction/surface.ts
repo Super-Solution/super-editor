@@ -23,6 +23,7 @@ export type SurfaceOptions = {
   measure?: (root: HTMLElement, interaction: Interaction) => LayoutBox[];
 };
 export type SurfaceBinding = {
+  readonly root: HTMLElement;
   layout(): LayoutIndex;
   /** Fresh content-space box of a rendered block, or null when it is not on screen. */
   rectOf(id: string): Box | null;
@@ -66,7 +67,7 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
   const doc = root.ownerDocument, view = doc.defaultView;
   const gutter = options.gutterWidth ?? 56, threshold = options.dragThreshold ?? 4, longPress = options.longPressMs ?? 350;
   const dropOptions: DropOptions = { expandLeft: gutter, ...options.dropOptions };
-  let cache: LayoutIndex | null = null, destroyed = false;
+  let cache: LayoutIndex | null = null, destroyed = false, lastLayoutKey = '';
   const listeners = new Set<() => void>();
   const disposers: (() => void)[] = [];
   const listen = (target: EventTarget, type: string, handler: (event: never) => void, capture: boolean | AddEventListenerOptions = false): void => {
@@ -92,7 +93,11 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
     root.toggleAttribute('data-se-editing', !!state.editing);
     root.toggleAttribute('data-se-selecting', state.selection.ids.length > 0);
     root.toggleAttribute('data-se-readonly', state.readOnly);
-    invalidate();
+    // Only state that changes what is rendered in the flow (not overlays such as hover or drag targets) invalidates measured boxes.
+    const layoutKey = `${state.editing?.blockId ?? ''}:${state.editing?.field ?? ''}:${state.sync?.seq ?? 0}:${Object.keys(state.conflicts).join(',')}:${state.readOnly}`;
+    if (layoutKey !== lastLayoutKey) { lastLayoutKey = layoutKey; invalidate(); }
+    // Keys act on a block selection only while focus is inside the document, so pull focus there when blocks get selected.
+    if (state.selection.ids.length && !state.editing && !root.contains(doc.activeElement) && !state.drag) root.focus({ preventScroll: true });
   };
   disposers.push(interaction.subscribe(syncAttributes));
   syncAttributes();
@@ -138,7 +143,7 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
   function beginDrag(): void {
     if (!pending) return;
     if (!interaction.drag.start(pending.ids, pending.pointerType)) { endPointer(); return; }
-    dragging = true;
+    dragging = true; lastClientY = pending.y;
     (view?.navigator as { vibrate?: (ms: number) => boolean } | undefined)?.vibrate?.(8);
   }
   function autoScroll(): void {
@@ -147,7 +152,7 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
     const parent = scrollParent(root), edge = 56;
     const top = parent ? parent.getBoundingClientRect().top : 0, bottom = parent ? parent.getBoundingClientRect().bottom : view.innerHeight;
     const speed = lastClientY < top + edge ? -(edge - (lastClientY - top)) / edge * 18 : lastClientY > bottom - edge ? (edge - (bottom - lastClientY)) / edge * 18 : 0;
-    if (speed) { if (parent) parent.scrollTop += speed; else view.scrollBy(0, speed); }
+    if (speed) { if (parent) parent.scrollTop += speed; else { try { view.scrollBy(0, speed); } catch { /* No layout engine. */ } } }
     scrollFrame = view.requestAnimationFrame(autoScroll);
   }
   function onPointerMove(event: PointerEvent): void {
@@ -279,7 +284,7 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
   });
 
   return {
-    layout, rectOf, invalidate, toContent,
+    root, layout, rectOf, invalidate, toContent,
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     destroy() { if (destroyed) return; destroyed = true; endPointer(); disposers.forEach((dispose) => dispose()); listeners.clear(); },
   };

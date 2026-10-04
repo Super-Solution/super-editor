@@ -27,7 +27,7 @@ export function attachEditable(element: HTMLElement, options: EditableOptions): 
   const doc = element.ownerDocument;
   let composing = false, suppressFocus = false, lastData: string | null = null, appliedSync = interaction.getState().sync?.seq ?? 0, appliedFocus = -1, destroyed = false;
   const citationOptions = options.citationLabel ? { citationLabel: options.citationLabel } : {};
-  element.setAttribute('contenteditable', 'true'); element.setAttribute('role', 'textbox'); element.setAttribute('aria-multiline', mode === 'rich' ? 'true' : 'false');
+  element.setAttribute('contenteditable', 'true'); element.setAttribute('tabindex', '-1'); element.setAttribute('role', 'textbox'); element.setAttribute('aria-multiline', mode === 'rich' ? 'true' : 'false');
   element.setAttribute('spellcheck', 'true'); element.setAttribute('data-se-editable', ''); element.setAttribute('data-field', field); element.setAttribute('data-se-block-id', blockId);
   if (options.placeholder) element.setAttribute('data-placeholder', options.placeholder);
   if (options.label) element.setAttribute('aria-label', options.label);
@@ -121,6 +121,15 @@ export function attachEditable(element: HTMLElement, options: EditableOptions): 
         if (request.field === field && focused()) { const length = textLength(element); setSelectionOffsets(element, Math.min(request.start, length), Math.min(request.end, length)); interaction.edit.reportSelection(blockId, field, Math.min(request.start, length), Math.min(request.end, length)); }
         else if (request.field === null && focused()) { const length = textLength(element); setSelectionOffsets(element, Math.min(request.start, length), Math.min(request.end, length)); }
       }
+    }
+    // The field is the combobox of an open slash menu: point assistive technology at the listbox and its highlighted option.
+    const slash = state.slash;
+    if (slash && slash.blockId === blockId && slash.field === field) {
+      const active = slash.items[slash.activeIndex];
+      element.setAttribute('aria-haspopup', 'listbox'); element.setAttribute('aria-expanded', 'true'); element.setAttribute('aria-controls', `${interaction.id}-slash`);
+      if (active) element.setAttribute('aria-activedescendant', `${interaction.id}-slash-${active.id}`); else element.removeAttribute('aria-activedescendant');
+    } else if (element.hasAttribute('aria-controls')) {
+      for (const name of ['aria-haspopup', 'aria-expanded', 'aria-controls', 'aria-activedescendant']) element.removeAttribute(name);
     }
     const editing = state.editing;
     if (editing && editing.blockId === blockId && editing.field === field && editing.seq !== appliedFocus) {
