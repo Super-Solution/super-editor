@@ -282,9 +282,11 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
   });
 
   // ---- leaving the document -------------------------------------------------------------------------------------
+  // A layer this editor renders under <body> (the shortcut dialog) carries data-se-owner; focus in it is still focus in the editor.
+  const inOwnLayer = (node: Node | null): boolean => (node as Element | null)?.closest?.('[data-se-owner]')?.getAttribute('data-se-owner') === interaction.id;
   listen(root, 'focusout', (event: FocusEvent) => {
     const next = event.relatedTarget as Node | null;
-    if (next && root.contains(next)) return;
+    if (next && (root.contains(next) || inOwnLayer(next))) return;
     // Switching windows or tabs keeps the editing session; moving focus elsewhere on the page ends it.
     if (!next && !doc.hasFocus()) return;
     const editing = interaction.getState().editing;
@@ -292,7 +294,7 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
     // Replacing the focused field (Enter, turn into) also reports a focusout. Judge after the new field has taken focus.
     setTimeout(() => {
       const current = interaction.getState().editing;
-      if (!destroyed && current && current.seq === editing.seq && !root.contains(doc.activeElement)) interaction.edit.stop();
+      if (!destroyed && current && current.seq === editing.seq && !root.contains(doc.activeElement) && !inOwnLayer(doc.activeElement)) interaction.edit.stop();
     }, 0);
   });
 

@@ -38,4 +38,6 @@ The stylesheet defaults to neutral colors. Tokens inherit from the host wrapper 
 }
 ```
 
+The stylesheet states what a CSS reset (Tailwind's preflight, modern-normalize) would otherwise take from the document: list markers (disc, circle and square for nested bullets, decimal for numbers and the sources list, none for to-do lists) and the size and weight of headings (`--se-h1-size`, `--se-h2-size`, `--se-h3-size`, `--se-heading-weight`). The rules are scoped to `.super-editor-document` and use class selectors with no `!important`, so a reset before or after the stylesheet does not remove them and a host can still out-rank them. Heat-map cell labels use whichever of `--se-chart-ink-dark` and `--se-chart-ink-light` reads better on the cell (WCAG contrast; 4.5:1 where either reaches it), computed from the colors the page's tokens really have, so dark pages and host palettes stay readable; SVG and PNG exports resolve the same choice from the export theme.
+
 The host can omit the stylesheet and supply its own layout, or replace individual renderers and controls. The document page/font settings are presentation settings, not Word pagination or a full print-layout engine.

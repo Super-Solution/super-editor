@@ -4,6 +4,8 @@ import type { ApplyResult } from '@super-solution/editor-core';
 import type { Labels, PartialLabels } from '@super-solution/editor-ui';
 import { defaultLabels } from '@super-solution/editor-ui';
 import { LabelsContext, useLabels } from '../render/context.js';
+import { OverlayPortal, usePortalSetting } from '../portal.js';
+import type { PortalContainer } from '../portal.js';
 
 export type ToastTone = 'success' | 'error' | 'info' | 'warning' | 'conflict';
 export type ToastAction = { label: string; onClick: () => void };
@@ -54,10 +56,16 @@ export type ToastProviderProps = {
   duration?: number;
   /** Where the stack sits. Default `bottom-right`. */
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'bottom-center';
+  /**
+   * Mount the stack under another element (default `document.body`), so an ancestor with a `transform`, `filter` or `container-type`
+   * cannot trap its `position: fixed` box; `false` keeps it in place. Left out, a stack inside `ReportEditor` follows the editor's
+   * `portalContainer` and a stand-alone `ToastProvider` renders where you put it.
+   */
+  portalContainer?: PortalContainer;
 };
 
 /** Provides `useToasts()` and renders the toast stack. Success and info are polite; errors and conflicts are alerts. */
-export function ToastProvider({ children, labels: override, max = 4, duration = 5_000, position = 'bottom-right' }: ToastProviderProps): ReactNode {
+export function ToastProvider({ children, labels: override, max = 4, duration = 5_000, position = 'bottom-right', portalContainer }: ToastProviderProps): ReactNode {
   const labels = useLabels(override);
   const [toasts, setToasts] = useState<readonly Toast[]>([]);
   const dismiss = useCallback((id: string) => setToasts((current) => current.filter((toast) => toast.id !== id)), []);
@@ -82,7 +90,7 @@ export function ToastProvider({ children, labels: override, max = 4, duration = 
   }), [toasts, show, dismiss, labels]);
   return <ToastContext.Provider value={api}>
     {children}
-    <ToastViewport toasts={toasts} onDismiss={dismiss} defaultDuration={duration} position={position} labels={labels} />
+    <ToastViewport toasts={toasts} onDismiss={dismiss} defaultDuration={duration} position={position} labels={labels} portalContainer={portalContainer} />
   </ToastContext.Provider>;
 }
 
@@ -119,9 +127,10 @@ function ToastItem({ toast, onDismiss, defaultDuration, labels }: { toast: Toast
 }
 
 /** The visible stack. `ToastProvider` renders one; render your own only when you manage toast state yourself. */
-export function ToastViewport({ toasts, onDismiss, defaultDuration = 5_000, position = 'bottom-right', labels }: { toasts: readonly Toast[]; onDismiss: (id: string) => void; defaultDuration?: number; position?: ToastProviderProps['position']; labels?: Labels }): ReactNode {
-  const inherited = useContext(LabelsContext), resolved = labels ?? inherited;
-  return <section className="se-toasts" data-position={position} role="region" aria-label={resolved.toasts.region}>
+export function ToastViewport({ toasts, onDismiss, defaultDuration = 5_000, position = 'bottom-right', labels, portalContainer }: { toasts: readonly Toast[]; onDismiss: (id: string) => void; defaultDuration?: number; position?: ToastProviderProps['position']; labels?: Labels; portalContainer?: PortalContainer }): ReactNode {
+  const inherited = useContext(LabelsContext), resolved = labels ?? inherited, setting = usePortalSetting();
+  const stack = <section className="se-toasts" data-position={position} role="region" aria-label={resolved.toasts.region}>
     <ul>{toasts.map((toast) => <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} defaultDuration={defaultDuration} labels={resolved} />)}</ul>
   </section>;
+  return portalContainer === undefined && !setting ? stack : <OverlayPortal container={portalContainer}>{stack}</OverlayPortal>;
 }

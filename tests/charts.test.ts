@@ -4,6 +4,7 @@ import type { ChartSpec } from '@super-solution/editor-core';
 import {
   bandScale, chartDataTable, chartFileName, chartToSvg, createPaint, decimalsForStep, describeChart, formatCompact, formatCurrency, formatNumber, formatPercent, formatTick, formatValue,
   hitTest, isRenderedKind, labelStride, layoutChart, linearScale, niceNumber, niceTicks, pointScale, sceneToSvg, stepHit, tooltipPlacement, truncate, waterfallSteps, safeColor,
+  contrastRatio, mixHex, parseColor, pickInk,
 } from '@super-solution/editor-ui';
 import type { ChartLayout, SceneNode } from '@super-solution/editor-ui';
 
@@ -327,4 +328,110 @@ test('exported SVG is self-contained: resolved colors, title, legend and provena
   assert.equal(chartFileName(base({ kind: 'line', title: 'BTC / ETH: weekly (2026)' }), 'png'), 'btc-eth-weekly-2026.png');
   assert.equal(chartFileName(base({ kind: 'line', title: '!!!' }), 'svg'), 'chart.svg');
   assert.equal(chartFileName(base({ kind: 'line', title: '比特幣 週報' }), 'svg'), '比特幣-週報.svg');
+});
+
+// ---- heat-map label contrast ---------------------------------------------------------------------------------------------------------
+
+/** Each cell's fill and the ink of its value label (the label follows its cell's rect in the scene). */
+function heatCells(layout: ChartLayout): { fill: string; ink: string }[] {
+  const nodes = leaves(layout.scene), cells: { fill: string; ink: string }[] = [];
+  nodes.forEach((node, index) => {
+    const before = nodes[index - 1];
+    if (node.tag === 'text' && node.attrs['text-anchor'] === 'middle' && before?.tag === 'rect' && before.attrs.rx === 2) cells.push({ fill: String(before.attrs.fill), ink: String(node.attrs.fill) });
+  });
+  return cells;
+}
+const ramp = (rows: number, columns: number, low: number, high: number): number[][] => Array.from({ length: rows }, (_, r) => Array.from({ length: columns }, (_, c) => low + (high - low) * ((r * columns + c) / (rows * columns - 1))));
+const heatSpec = (values: number[][]): ChartSpec => base({ kind: 'heatmap', matrix: { rows: values.map((_, index) => `r${index}`), columns: values[0]!.map((_, index) => `c${index}`), values } });
+const inkOf = (cell: { ink: string }): string => /ink-(\w+)/.exec(cell.ink)![1]!;
+
+test('contrastRatio, pickInk and parseColor follow WCAG and CSS', () => {
+  assert.equal(contrastRatio('#000000', '#ffffff'), 21);
+  assert.equal(contrastRatio('#ffffff', '#ffffff'), 1);
+  assert.ok(contrastRatio('#767676', '#ffffff') >= 4.5 && contrastRatio('#777777', '#ffffff') < 4.5, 'the well-known AA edge: #767676 passes on white and #777777 does not');
+  const dark = { color: '#000000', value: 'dark' }, light = { color: '#ffffff', value: 'light' };
+  assert.equal(pickInk('#ffffff', dark, light), 'dark');
+  assert.equal(pickInk('#000000', dark, light), 'light');
+  assert.equal(pickInk('#2563eb', dark, light), 'light', 'only white reaches 4.5:1 on the series blue');
+  assert.equal(pickInk('#ea580c', dark, light), 'dark', 'only black reaches 4.5:1 on the heat orange');
+  // Neither reaches it: the better one still wins.
+  assert.equal(pickInk('#808080', { color: '#707070', value: 'a' }, { color: '#a0a0a0', value: 'b' }), 'b');
+  assert.equal(pickInk('#808080', { color: '#303030', value: 'a' }, { color: '#9a9a9a', value: 'b' }), 'a');
+  // Both reach it: the larger ratio.
+  assert.equal(pickInk('#f0f0f0', { color: '#000000', value: 'a' }, { color: '#222222', value: 'b' }), 'a');
+  for (const [text, hex] of [
+    ['#abc', '#aabbcc'], ['#AABBCC', '#aabbcc'], ['#aabbccdd', '#aabbcc'], ['rgb(37, 99, 235)', '#2563eb'], ['rgb(37 99 235 / 50%)', '#2563eb'], ['rgba(37,99,235,.5)', '#2563eb'], ['rgb(100% 0% 0%)', '#ff0000'],
+    ['hsl(221 83% 53%)', '#2463eb'], ['hsl(0, 100%, 50%)', '#ff0000'], ['oklch(0.546 0.245 262.881)', '#155dfc'], ['oklch(100% 0 0)', '#ffffff'], ['oklab(0 0 0)', '#000000'], ['white', '#ffffff'], ['black', '#000000'], ['  #FFF ', '#ffffff'],
+  ] as const) assert.equal(parseColor(text), hex, text);
+  for (const text of ['', 'none', 'var(--x)', 'color-mix(in srgb, red, blue)', 'rgb(none 0 0)', 'currentColor', 'Canvas', '#12', 'rgb(1 2)', 'rebeccapurple', 'oklch(from red l c h)']) assert.equal(parseColor(text), null, text);
+});
+
+test('heat-map labels reach WCAG 4.5:1 on every cell, in the light and dark palettes, in the layout and in the exported SVG', () => {
+  for (const values of [ramp(10, 10, -1, 1), ramp(10, 10, 0, 100), ramp(6, 8, -250, 40), ramp(5, 5, 3, 3.0001), [[-1, 0, 1]]]) {
+    for (const theme of ['light', 'dark'] as const) {
+      const layout = layoutChart(heatSpec(values), { width: 800, paint: createPaint({ mode: 'static', theme }) });
+      const cells = heatCells(layout);
+      assert.equal(cells.length, values.length * values[0]!.length, `${theme}: every cell is labelled`);
+      for (const { fill, ink } of cells) {
+        assert.match(fill, /^#[0-9a-f]{6}$/, 'a static export has resolved fills');
+        assert.ok(contrastRatio(fill, ink) >= 4.5, `${theme}: ${ink} on ${fill} is ${contrastRatio(fill, ink).toFixed(2)}:1`);
+      }
+    }
+  }
+  // Both inks are in use when the fills run from pale to saturated (so the check above is not satisfied by one color for everything).
+  for (const theme of ['light', 'dark'] as const) {
+    const inks = new Set(heatCells(layoutChart(heatSpec(ramp(10, 10, -1, 1)), { width: 800, paint: createPaint({ mode: 'static', theme }) })).map((cell) => cell.ink));
+    assert.deepEqual([...inks].sort(), ['#000000', '#ffffff'], theme);
+  }
+  // The exported SVG carries them as plain colors, and nothing of the old fixed ink is left.
+  for (const theme of ['light', 'dark'] as const) {
+    const { svg } = chartToSvg(heatSpec(ramp(8, 8, -1, 1)), { theme, width: 800 });
+    assert.doesNotMatch(svg, /#111827|var\(--/);
+    assert.match(svg, /<text[^>]*fill="#000000"[^>]*text-anchor="middle"/);
+    assert.match(svg, /<text[^>]*fill="#ffffff"[^>]*text-anchor="middle"/);
+  }
+  // The zero cell of a diverging map is the neutral color: pale on light, near black on dark. That is where a fixed dark ink failed.
+  for (const [theme, expected] of [['light', '#000000'], ['dark', '#ffffff']] as const) {
+    const zero = heatCells(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640, paint: createPaint({ mode: 'static', theme }) }))[1]!;
+    assert.equal(zero.ink, expected, `${theme} zero cell`);
+  }
+});
+
+test('heat-map labels follow the colors a page really uses (host palettes, dark pages), and fall back to the better ink when none reaches 4.5:1', () => {
+  // A deterministic sweep of host palettes: the ink must be the better one, and 4.5:1 whenever either ink reaches it.
+  let seed = 7;
+  const random = (): number => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+  const hex = (): string => `#${Math.floor(random() * 0x1000000).toString(16).padStart(6, '0')}`;
+  const values = ramp(6, 6, -1, 1);
+  for (const [inkDark, inkLight] of [['#000000', '#ffffff'], ['#111827', '#ffffff'], ['#1f2937', '#f9fafb'], ['#404040', '#d0d0d0']] as const) {
+    for (let round = 0; round < 80; round++) {
+      const colors = { heatMid: hex(), heatPos: hex(), heatNeg: hex(), inkDark, inkLight };
+      const layout = layoutChart(heatSpec(values), { width: 640, paint: createPaint({ colors }) });
+      const flat = values.flat(), limit = Math.max(...flat.map(Math.abs));
+      const cells = heatCells(layout);
+      assert.equal(cells.length, flat.length);
+      cells.forEach((cell, index) => {
+        const value = flat[index]!;
+        const background = mixHex(colors.heatMid, value < 0 ? colors.heatNeg : colors.heatPos, Math.abs(value) / limit);
+        const onDark = contrastRatio(background, inkDark), onLight = contrastRatio(background, inkLight);
+        const expected = (onDark >= 4.5) !== (onLight >= 4.5) ? (onDark >= 4.5 ? 'dark' : 'light') : (onDark >= onLight ? 'dark' : 'light');
+        assert.equal(inkOf(cell), expected, `${JSON.stringify(colors)} value ${value}`);
+        if (inkDark === '#000000') assert.ok(Math.max(onDark, onLight) >= 4.5, 'pure black and white can always reach 4.5:1');
+      });
+    }
+  }
+  // The label is painted from the ink token (so a host can restyle it) with the built-in color as the fallback.
+  const sample = heatCells(layoutChart(heatSpec([[0, 1]]), { width: 640, paint: createPaint({ colors: { heatMid: '#ffffff', heatPos: '#000000' } }) }));
+  assert.deepEqual(sample.map((cell) => cell.ink), ['var(--se-chart-ink-dark, #000000)', 'var(--se-chart-ink-light, #ffffff)']);
+  // A dark page: near zero the cell is dark, so the ink is light, and it stays painted from the live tokens.
+  const darkPage = { heatMid: '#1c2026', heatPos: '#60a5fa', heatNeg: '#fb923c' };
+  const near = heatCells(layoutChart(heatSpec([[-1, -.05, 0, .05, 1]]), { width: 640, paint: createPaint({ colors: darkPage }) }));
+  assert.deepEqual(near.map(inkOf), ['dark', 'light', 'light', 'light', 'dark']);
+  assert.match(near[2]!.fill, /^color-mix\(in srgb, var\(--se-heat-high, #2563eb\) 0%, var\(--se-heat-mid, #f8fafc\)\)$/);
+  // Without live colors the built-in light palette is assumed, which is what the markup of a server render uses.
+  assert.deepEqual(heatCells(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640 })).map(inkOf), ['dark', 'dark', 'light']);
+  // For paper: print.css swaps in the light palette whatever the screen shows, so each label also says which ink suits those cells.
+  const printed = leaves(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640, paint: createPaint({ colors: darkPage }) }).scene).filter((node) => node.attrs['data-print-ink'] !== undefined);
+  assert.deepEqual(printed.map((node) => node.attrs['data-print-ink']), ['dark', 'dark', 'light']);
+  assert.equal(leaves(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640, paint: createPaint({ mode: 'static' }) }).scene).filter((node) => node.attrs['data-print-ink'] !== undefined).length, 0, 'not in exports');
 });

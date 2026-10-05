@@ -1,23 +1,31 @@
 import { formatNumber, formatTick } from './format.js';
-import { luminance, mixHex, tokenFallbacks } from './palette.js';
+import { mixHex, pickInk, tokenFallbacks, type TokenName } from './palette.js';
 import { truncate } from './scale.js';
 import { rect, text, type SceneNode } from './scene.js';
 import { describeChart } from './table.js';
 import { FONT, emptyLayout, maxLabelWidth, textStyle } from './shared.js';
 import type { ChartContext, ChartLayout, Hit, Rect } from './types.js';
 
-/** Color of a heat cell for ratio `t` in 0..1 (sequential) or -1..1 (diverging). */
-export function heatColor(ctx: ChartContext, value: number, min: number, max: number): { fill: string; dark: boolean } {
+/**
+ * Fill of a heat cell for `value` in `min..max` (sequential, or diverging when the range crosses zero), and the label ink for it.
+ * The ink is whichever of the dark and light ink tokens has the higher WCAG contrast on the cell, and the first of them to reach
+ * 4.5:1 when only one does. The cell is judged by the colors the tokens really have (`paint.value`): exact in a static export,
+ * and the live page values in the browser (see `readTokenColors`), so a dark theme or a host palette gets readable labels too.
+ */
+export function heatColor(ctx: ChartContext, value: number, min: number, max: number): { fill: string; ink: string; printInk?: 'dark' | 'light' } {
   const { paint } = ctx;
   const diverging = min < 0 && max > 0;
   const limit = Math.max(Math.abs(min), Math.abs(max)) || 1;
   const t = diverging ? Math.abs(value) / limit : (max === min ? .5 : (value - min) / (max - min));
-  const fill = diverging ? paint.mix('heatMid', value >= 0 ? 'heatPos' : 'heatNeg', t) : paint.mix('heatMid', 'heatPos', t);
-  // Text sits on the cell; choose its ink by the static color's luminance (css mode uses the light theme's tokens as an estimate).
-  const theme = paint.theme;
-  const mid = tokenFallbacks.heatMid[theme], end = (diverging && value < 0 ? tokenFallbacks.heatNeg : tokenFallbacks.heatPos)[theme];
-  const approx = mixHex(mid, end, t);
-  return { fill, dark: luminance(approx) > .45 };
+  const end: TokenName = diverging && value < 0 ? 'heatNeg' : 'heatPos';
+  const fill = paint.mix('heatMid', end, t);
+  const background = mixHex(paint.value('heatMid'), paint.value(end), t);
+  const dark = paint.value('inkDark'), light = paint.value('inkLight');
+  const ink = pickInk(background, { color: dark, value: paint.token('inkDark') }, { color: light, value: paint.token('inkLight') });
+  if (paint.mode === 'static') return { fill, ink };
+  // Printing swaps in the light palette whatever the screen theme (print.css), so the page also needs the ink that suits those cells.
+  const paper = mixHex(tokenFallbacks.heatMid.light, tokenFallbacks[end].light, t);
+  return { fill, ink, printInk: pickInk<'dark' | 'light'>(paper, { color: dark, value: 'dark' }, { color: light, value: 'light' }) };
 }
 
 export function layoutHeatmap(ctx: ChartContext): ChartLayout {
@@ -52,10 +60,10 @@ export function layoutHeatmap(ctx: ChartContext): ChartLayout {
     scene.push(node);
     columns.forEach((column, c) => {
       const value = values[r]![c]!;
-      const { fill, dark } = heatColor(ctx, value, min, max);
+      const { fill, ink, printInk } = heatColor(ctx, value, min, max);
       const x = plot.x + c * cellWidth, y = plot.y + r * cellHeight;
       scene.push(rect(x, y, Math.max(0, cellWidth - 1), Math.max(0, cellHeight - 1), { fill, rx: 2 }));
-      if (showValues) scene.push(text(x + cellWidth / 2, y + cellHeight / 2 + fontSize / 2.8, formatNumber(value, ctx.locale, decimals), { 'font-size': fontSize, fill: dark ? '#111827' : '#ffffff', 'text-anchor': 'middle' }));
+      if (showValues) scene.push(text(x + cellWidth / 2, y + cellHeight / 2 + fontSize / 2.8, formatNumber(value, ctx.locale, decimals), { 'font-size': fontSize, fill: ink, 'text-anchor': 'middle', ...(printInk ? { 'data-print-ink': printInk } : {}) }));
       hits.push({
         id: `${r}:${c}`, shape: { type: 'rect', x, y, width: cellWidth, height: cellHeight }, anchor: { x: x + cellWidth / 2, y },
         title: `${row} × ${column}`, rows: [{ color: fill, label: ctx.labels.value, value: formatNumber(value, ctx.locale) }],
