@@ -1,6 +1,6 @@
 {
   "name": "@super-solution/editor-ui",
-  "version": "0.3.0-next.1",
+  "version": "0.3.0-next.2",
   "description": "Composable DOM research report renderer",
   "license": "Apache-2.0",
   "type": "module",
@@ -35,6 +35,6 @@
     "tag": "next"
   },
   "dependencies": {
-    "@super-solution/editor-core": "0.3.0-next.1"
+    "@super-solution/editor-core": "0.3.0-next.2"
   }
 }

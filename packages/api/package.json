@@ -1,6 +1,6 @@
 {
   "name": "@super-solution/editor-api",
-  "version": "0.3.0-next.1",
+  "version": "0.3.0-next.2",
   "description": "HTTP adapter for guarded research report operations",
   "license": "Apache-2.0",
   "type": "module",
@@ -34,6 +34,6 @@
     "tag": "next"
   },
   "dependencies": {
-    "@super-solution/editor-core": "0.3.0-next.1"
+    "@super-solution/editor-core": "0.3.0-next.2"
   }
 }
