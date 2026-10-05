@@ -2,7 +2,7 @@
 
 All notable changes to the six `@super-solution/editor-*` packages (released together, same version). Prereleases ship on the `next` npm channel. The document format stays `schemaVersion: 1`; every change below is additive.
 
-## Unreleased
+## 0.3.0-next.2 (2026-10-05)
 
 - **Demo workspace** (`npm run build:demo`, `examples/demo/`): pages for the research report, every block and chart, each template kind and an empty page; outline rail; interactive editor with find and replace; history with diff and restore; an Agent tab that drives `runAgentAction` (including a refused stale update, a rebase-safe one and dry runs); sources; per-part switches; theme and density; JSON, Markdown, HTML, text and print export; phone drawers. Built only from the public exports.
 - Fixed: `FindReplace` keeps focus in the panel after "Replace all" disables its button, so Escape still closes it.
