@@ -334,7 +334,7 @@ function specificity(selector: string): Triple {
 }
 const beats = (x: Declaration, y: Declaration): boolean => (compare(x.specificity, y.specificity) || x.order - y.order) > 0;
 /** A small cascade: the declaration that wins `property` for `element`, then inheritance through `inherit` and for inherited properties. */
-function cascade(sheets: string, element: Element, property: 'list-style-type' | 'font-size' | 'font-weight'): string | undefined {
+function cascade(sheets: string, element: Element, property: string): string | undefined {
   const declarations: Declaration[] = [];
   let order = 0;
   for (const rule of topLevelRules(sheets)) {
@@ -347,9 +347,11 @@ function cascade(sheets: string, element: Element, property: 'list-style-type' |
         const colon = part.indexOf(':');
         if (colon < 0) continue;
         const name = part.slice(0, colon).trim(), value = part.slice(colon + 1).trim();
-        const wanted = property === 'list-style-type' ? name === 'list-style' || name === 'list-style-type' : name === property;
+        const wanted = property === 'list-style-type' ? name === 'list-style' || name === 'list-style-type'
+          : property === 'text-decoration-line' ? name === 'text-decoration' || name === 'text-decoration-line' : name === property;
         if (!wanted) continue;
-        const resolved = property === 'list-style-type' && name === 'list-style' ? (value.split(/\s+/).find((token) => !/^(outside|inside)$/.test(token)) ?? value) : value;
+        const resolved = property === 'list-style-type' && name === 'list-style' ? (value.split(/\s+/).find((token) => !/^(outside|inside)$/.test(token)) ?? value)
+          : property === 'text-decoration-line' && name === 'text-decoration' ? (value.split(/\s+/).find((token) => /^(none|underline|overline|line-through|inherit)$/.test(token)) ?? value) : value;
         declarations.push({ property, value: resolved, specificity: specificity(selector), order });
       }
     }
@@ -447,4 +449,40 @@ test('the published stylesheet carries the reset-proof rules', () => {
     ]) assert.ok(css.includes(rule), `${name} has ${rule}`);
     assert.ok(!/\.se-surface \.se-swatch\b/.test(css), `${name} has no rule that reaches chart swatches`);
   }
+});
+
+test('document links keep their underline under a reset; citation markers and the table of contents stay plain', () => {
+  const editorCss = inlineCss('styles.css');
+  const editor = seed([
+    { id: 'sec', parentId: null, citationIds: [], content: { type: 'section', title: 'Section' } },
+    { id: 'p', parentId: 'sec', citationIds: ['src'], content: { type: 'paragraph', runs: [{ text: 'Read the ' }, { text: 'note', href: 'https://example.com/note' }, { text: '.', citationId: 'src' }] } },
+    { id: 'toc', parentId: null, citationIds: [], content: { type: 'toc' } },
+  ], [{ type: 'addCitation', citation: { id: 'src', title: 'Source', url: 'https://example.com/s', accessedAt: at } }]);
+  const dom = new JSDOM('<!doctype html><body></body>');
+  const article = renderDocument(editor.getSnapshot(), { document: dom.window.document });
+  dom.window.document.body.append(article);
+  const link = article.querySelector('p a:not(.se-citation-link)'), toc = article.querySelector('.se-toc a'), cite = article.querySelector('a.se-citation-link');
+  assert.ok(link && toc && cite, 'fixture has a paragraph link, a TOC link and a citation marker');
+  const LINK_RESET = 'a { color: inherit; text-decoration: inherit; }';
+  for (const [name, css] of [['alone', editorCss], ['reset first', `${LINK_RESET}
+${editorCss}`], ['reset last', `${editorCss}
+${LINK_RESET}`]] as const) {
+    assert.equal(cascade(css, link, 'text-decoration-line'), 'underline', `paragraph link, ${name}`);
+    assert.equal(cascade(css, link, 'color'), 'var(--se-link)', `paragraph link color, ${name}`);
+    assert.equal(cascade(css, toc, 'text-decoration'), 'none', `TOC link, ${name}`);
+    assert.equal(cascade(css, cite, 'text-decoration'), 'none', `citation marker, ${name}`);
+  }
+});
+
+test('component buttons keep their own sizes: the generic control rule never outranks a component class', () => {
+  const css = inlineCss('styles.css');
+  const dom = new JSDOM('<!doctype html><body><div class="super-editor"><button class="se-chart-button">a</button><button class="se-legend-button">b</button><button class="se-link-button">c</button><button>plain</button></div></body>');
+  const [chart, legend, linkButton, plain] = [...dom.window.document.querySelectorAll('button')];
+  assert.equal(cascade(css, chart!, 'padding'), '.25rem .55rem');
+  assert.equal(cascade(css, chart!, 'border'), '1px solid var(--se-border)');
+  assert.equal(cascade(css, legend!, 'padding'), '.15rem .45rem');
+  assert.equal(cascade(css, linkButton!, 'padding'), '0');
+  assert.equal(cascade(css, linkButton!, 'border'), '0');
+  // A bare button inside the editor still gets the generic control look.
+  assert.equal(cascade(css, plain!, 'padding'), '.4rem .6rem');
 });

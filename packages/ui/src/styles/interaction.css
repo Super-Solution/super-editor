@@ -1,7 +1,7 @@
 /*
  * Interaction layer: gutter, outlines, drag indicator, menus, toolbars, in-place editing.
  * No colour is hard-coded: everything reads the --se-* tokens (tokens.css), so data-se-theme="dark" | "auto" and host overrides
- * apply here too. Every rule is scoped under .se-surface so it outranks the generic ".super-editor button" rules.
+ * apply here too. Every rule is scoped under .se-surface so it outranks the generic ".super-editor :where(button)" rules.
  */
 .se-surface { position: relative; outline: none; -webkit-tap-highlight-color: transparent; }
 .se-surface:focus-visible { outline: 2px solid var(--se-focus); outline-offset: 4px; border-radius: var(--se-radius-sm); }
