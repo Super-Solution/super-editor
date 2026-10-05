@@ -62,6 +62,8 @@ const typeInto = (env: Env, element: HTMLElement, value: string, caret = value.l
   element.dispatchEvent(event);
 });
 const q = <T extends Element = HTMLElement>(env: Env, selector: string): T | null => env.container.querySelector<T>(selector);
+/** Layers the editor renders under <body> (the shortcut dialog and the toast stack) are not inside the container: look in the whole document. */
+const qd = <T extends Element = HTMLElement>(env: Env, selector: string): T | null => env.doc.querySelector<T>(selector);
 const flush = (): Promise<void> => act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
 /** Fake geometry: every top-level block 40px tall, so hover and drop have something to hit in a layout-less DOM. */
 const measure = (editor: Editor) => (): LayoutBox[] => { let y = 0; return editor.getSnapshot().blocks.filter((block) => block.parentId === null).map((block) => { const box = { id: block.id, parentId: null, left: 100, right: 700, top: y, bottom: y + 40 }; y += 40; return box; }); };
@@ -197,13 +199,13 @@ test('shortcut help opens with Mod+/ as a labelled modal dialog and closes with 
     const surface = q(env, '.se-surface')!;
     surface.focus();
     await press(env, surface, '/', { ctrlKey: true, code: 'Slash' });
-    const dialog = q(env, '[role="dialog"][aria-modal="true"]')!;
+    const dialog = qd(env, '[role="dialog"][aria-modal="true"]')!;
     assert.ok(dialog);
     assert.ok(env.doc.getElementById(dialog.getAttribute('aria-labelledby')!));
     const text = dialog.textContent!;
     assert.match(text, /Bold/); assert.match(text, /Ctrl/); assert.match(text, /Markdown shortcuts/);
     await press(env, dialog, 'Escape');
-    assert.equal(q(env, '[role="dialog"]'), null);
+    assert.equal(qd(env, '[role="dialog"]'), null);
     await env.unmount();
   });
 });
@@ -291,7 +293,7 @@ test('block selection: toolbar with count and actions, Delete shows an Undo toas
     assert.equal(q(env, '.se-selected') !== null, true);
     await press(env, surface, 'Backspace');
     assert.deepEqual(editor.getSnapshot().blocks.map((block) => block.id), ['c']);
-    const toast = q(env, '.se-toast')!;
+    const toast = qd(env, '.se-toast')!;
     assert.ok(toast, 'success toast from the rendering layer');
     assert.match(toast.textContent!, /Deleted 2 blocks/);
     const undo = [...toast.querySelectorAll('button')].find((button) => button.textContent === 'Undo')!;
@@ -313,7 +315,7 @@ test('refused edits become toasts through toastFromApplyResult; hosts that pass 
     // Drive a command through the DOM: select a block and press Delete while another writer commits first.
     await fire(env, q(env, '[data-block-id="b"]')!, 'click', { ctrlKey: true });
     await press(env, q(env, '.se-surface')!, 'Backspace');
-    const toast = q(env, '.se-toast')!;
+    const toast = qd(env, '.se-toast')!;
     assert.equal(toast.getAttribute('data-tone'), 'conflict');
     assert.equal(toast.getAttribute('role'), 'alert');
     assert.equal(real.getSnapshot().blocks.length, 2, 'the refused delete changed nothing');
@@ -326,7 +328,7 @@ test('refused edits become toasts through toastFromApplyResult; hosts that pass 
     await fire(env, q(env, '[data-block-id="a"]')!, 'click', { ctrlKey: true });
     await press(env, q(env, '.se-surface')!, 'Backspace');
     assert.deepEqual(events, ['success']);
-    assert.equal(q(env, '.se-toasts'), null, 'no built-in toast stack when the host handles feedback');
+    assert.equal(qd(env, '.se-toasts'), null, 'no built-in toast stack when the host handles feedback');
     await env.unmount();
   });
 });

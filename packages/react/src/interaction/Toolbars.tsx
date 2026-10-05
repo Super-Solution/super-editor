@@ -54,10 +54,10 @@ export function FormattingToolbar({ interaction: explicit }: { interaction?: Int
       aria-label={labels.highlight} title={`${labels.highlight}${hint(interaction, 'text.highlight')}`} onClick={() => setColors((open) => !open)}><span className="se-tool-highlight" aria-hidden="true">A</span></button>
     <button type="button" className="se-tool" aria-pressed={selection.link !== null} aria-label={labels.link} title={`${labels.link}${hint(interaction, 'text.link')}`} onClick={() => interaction.format.openLink()}>
       <span aria-hidden="true">{'\u{1F517}︎'}</span></button>
-    {colors ? <div className="se-swatches" role="group" aria-label={labels.highlight}>
-      {HIGHLIGHTS.map((color: Highlight) => <button key={color} type="button" className="se-swatch" data-highlight={color} aria-label={labels.highlightColor(color)} aria-pressed={selection.highlight === color}
+    {colors ? <div className="se-highlight-swatches" role="group" aria-label={labels.highlight}>
+      {HIGHLIGHTS.map((color: Highlight) => <button key={color} type="button" className="se-highlight-swatch" data-highlight={color} aria-label={labels.highlightColor(color)} aria-pressed={selection.highlight === color}
         onClick={() => { interaction.format.highlight(color); setColors(false); }} />)}
-      <button type="button" className="se-swatch se-swatch-none" aria-label={labels.clearHighlight} onClick={() => { interaction.format.highlight(null); setColors(false); }}><span aria-hidden="true">{'×'}</span></button>
+      <button type="button" className="se-highlight-swatch se-highlight-swatch-none" aria-label={labels.clearHighlight} onClick={() => { interaction.format.highlight(null); setColors(false); }}><span aria-hidden="true">{'×'}</span></button>
     </div> : null}
   </div>;
 }

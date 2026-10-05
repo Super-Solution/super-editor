@@ -38,6 +38,8 @@
   --se-up: #16a34a; --se-down: #dc2626;
   --se-chart-axis: #9ca3af; --se-chart-grid: #e5e7eb; --se-chart-neutral: #64748b; --se-chart-band: rgba(100, 116, 139, .10);
   --se-heat-high: #2563eb; --se-heat-low: #ea580c; --se-heat-mid: #f8fafc;
+  /* Label ink on data-driven fills (heat-map cells): the chart picks whichever of the two reads better on each cell (WCAG contrast). */
+  --se-chart-ink-dark: #000000; --se-chart-ink-light: #ffffff;
   --se-series-1: #2563eb; --se-series-2: #f97316; --se-series-3: #16a34a; --se-series-4: #9333ea; --se-series-5: #db2777;
   --se-series-6: #0891b2; --se-series-7: #ca8a04; --se-series-8: #64748b; --se-series-9: #dc2626; --se-series-10: #4d7c0f;
 
@@ -46,7 +48,7 @@
   --se-font-serif: "Iowan Old Style", "Palatino Linotype", Georgia, "Noto Serif TC", "Noto Serif SC", serif;
   --se-font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
   --se-leading: 1.65;
-  --se-h1-size: 2.1em; --se-h2-size: 1.45em; --se-h3-size: 1.15em;
+  --se-h1-size: 2.1em; --se-h2-size: 1.45em; --se-h3-size: 1.15em; --se-heading-weight: 700;
   --se-small-size: .8em;
 
   /* Spacing and shape (density tokens override these) */
@@ -56,6 +58,9 @@
   --se-radius: 6px; --se-radius-sm: 4px;
   --se-gap-1: .25rem; --se-gap-2: .5rem; --se-gap-3: .75rem; --se-gap-4: 1rem;
   --se-ease: 140ms cubic-bezier(.2, .8, .2, 1);
+
+  /* Stacking of the layers that sit on the page itself (the shortcut dialog and the toast stack render under <body>). */
+  --se-z-dialog: 60; --se-z-toast: 1000;
 }
 
 [data-se-theme="dark"],

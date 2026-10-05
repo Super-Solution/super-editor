@@ -574,10 +574,10 @@ test('React: custom block and chart renderers still win, with fallbacks to the d
 test('styles: tokens define every variable the other sheets use; dark theme, density and print are covered', () => {
   const dir = new URL('../packages/ui/src/', import.meta.url);
   const read = (name: string) => readFileSync(new URL(name, dir), 'utf8');
-  const tokens = read('styles/tokens.css'), blocks = read('styles/blocks.css'), charts = read('styles/charts.css'), panels = read('styles/panels.css'), print = read('styles/print.css');
+  const tokens = read('styles/tokens.css'), blocks = read('styles/blocks.css'), charts = read('styles/charts.css'), panels = read('styles/panels.css'), print = read('styles/print.css'), interaction = read('styles/interaction.css');
   const defined = new Set(Array.from(tokens.matchAll(/(--se-[a-z0-9-]+)\s*:/g), (match) => match[1]!));
   const inline = new Set(['--se-swatch']);
-  for (const [name, sheet] of [['blocks', blocks], ['charts', charts], ['panels', panels], ['print', print]] as const) {
+  for (const [name, sheet] of [['blocks', blocks], ['charts', charts], ['panels', panels], ['print', print], ['interaction', interaction]] as const) {
     const used = new Set(Array.from(sheet.matchAll(/var\((--se-[a-z0-9-]+)/g), (match) => match[1]!));
     const missing = [...used].filter((variable) => !defined.has(variable) && !inline.has(variable));
     assert.deepEqual(missing, [], `${name}.css uses undefined tokens`);

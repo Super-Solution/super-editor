@@ -3,7 +3,8 @@ import { attributes, element, sceneToDom, srOnly, svgElement, timeElement } from
 import { chartFileName, chartToPng, chartToSvg, downloadBlob } from './export.js';
 import { resolveChartLabels, template, type ChartLabels } from './labels.js';
 import { hitTest, hoverScene, layoutChart, stepHit, tooltipPlacement } from './layout.js';
-import { createPaint, type ChartTheme } from './palette.js';
+import { readTokenColors, tokenColorsKey, watchTheme } from './live.js';
+import { createPaint, type ChartTheme, type TokenColors } from './palette.js';
 import { chartDataTable } from './table.js';
 import type { ChartLayout, Hit } from './types.js';
 
@@ -37,6 +38,9 @@ export function renderChartFigure(spec: ChartSpec, options: ChartFigureOptions =
   figure.append(caption);
 
   const hidden = new Set<string>();
+  // Heat-map labels are inked by contrast against the colors the page's tokens really have, which are known once the figure is attached.
+  const heat = spec.kind === 'heatmap';
+  let colors: TokenColors = {}, colorsKey = tokenColorsKey(colors);
   let width = options.width ?? 640, layout: ChartLayout = layoutChart(spec, { width, hidden, labels, locale: options.locale });
   let active: Hit | undefined, showData = false;
 
@@ -54,6 +58,13 @@ export function renderChartFigure(spec: ChartSpec, options: ChartFigureOptions =
 
   const message = element(doc, 'p', undefined, 'se-chart-message');
   const stage = element(doc, 'div', undefined, 'se-chart-stage');
+  const refreshColors = (): boolean => {
+    if (!heat || !figure.isConnected) return false;
+    const next = readTokenColors(stage), key = tokenColorsKey(next);
+    if (key === colorsKey) return false;
+    colors = next; colorsKey = key;
+    return true;
+  };
   const svg = svgElement(doc, 'svg', { role: 'img', preserveAspectRatio: 'xMidYMid meet', class: 'se-chart-svg' });
   const overlay = svgElement(doc, 'g', { class: 'se-chart-overlay', 'pointer-events': 'none' });
   const tooltip = element(doc, 'div', undefined, 'se-tooltip');
@@ -114,7 +125,7 @@ export function renderChartFigure(spec: ChartSpec, options: ChartFigureOptions =
   };
 
   const draw = (): void => {
-    layout = layoutChart(spec, { width, hidden, labels, locale: options.locale });
+    layout = layoutChart(spec, { width, hidden, labels, locale: options.locale, paint: createPaint({ colors }) });
     if (active) active = layout.hits.find((hit) => hit.id === active!.id);
     const showSvg = layout.scene.length > 0;
     svg.replaceChildren();
@@ -191,10 +202,21 @@ export function renderChartFigure(spec: ChartSpec, options: ChartFigureOptions =
     svgButton.addEventListener('click', () => void exportWith('svg'));
     pngButton.addEventListener('click', () => void exportWith('png'));
     const Observer = doc.defaultView?.ResizeObserver ?? (typeof ResizeObserver === 'undefined' ? undefined : ResizeObserver);
-    if (Observer && options.width === undefined) {
+    const follow = options.width === undefined;
+    if (Observer && (follow || heat)) {
+      let watching = false;
       new Observer((entries) => {
-        const next = Math.round(entries[0]?.contentRect.width ?? 0);
-        if (next >= 160 && Math.abs(next - width) >= 8) { width = next; draw(); }
+        let changed = false;
+        if (follow) {
+          const next = Math.round(entries[0]?.contentRect.width ?? 0);
+          if (next >= 160 && Math.abs(next - width) >= 8) { width = next; changed = true; }
+        }
+        // The first callback means the figure is on the page: read the tokens, and keep reading them when the theme changes.
+        if (heat && figure.isConnected) {
+          if (!watching) { watching = true; watchTheme(stage, () => { if (refreshColors()) draw(); }); }
+          if (refreshColors()) changed = true;
+        }
+        if (changed) draw();
       }).observe(stage);
     }
   }

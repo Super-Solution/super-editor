@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { INPUT_RULE_DOCS, compatibleChartKinds } from '@super-solution/editor-ui';
 import type { Interaction, ShortcutInfo } from '@super-solution/editor-ui';
+import { OverlayPortal } from '../portal.js';
 import { useBlockRect, useDocumentRevision, useInteraction, useInteractionState, useInteractionLabels, useSurface } from './context.js';
 import { useIsoLayoutEffect } from './util.js';
 
@@ -14,7 +15,11 @@ function groupShortcuts(list: readonly ShortcutInfo[]): { group: string; items: 
   }
   return [...groups].map(([group, items]) => ({ group, items }));
 }
-/** Modal list of every shortcut (platform-aware) and the markdown shortcuts. Opens with Mod+/ or "?". */
+/**
+ * Modal list of every shortcut (platform-aware) and the markdown shortcuts. Opens with Mod+/ or "?".
+ * It is drawn with `position: fixed`, so it renders through a portal (see `OverlayPortal`): an editor inside an element with a
+ * `transform`, `filter` or `container-type` still gets a dialog that covers the viewport.
+ */
 export function ShortcutHelp({ interaction: explicit }: { interaction?: Interaction }): ReactNode {
   const interaction = useInteraction(explicit), labels = useInteractionLabels();
   const open = useInteractionState(interaction, (state) => state.help);
@@ -35,7 +40,8 @@ export function ShortcutHelp({ interaction: explicit }: { interaction?: Interact
     const first = nodes[0]!, last = nodes[nodes.length - 1]!;
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   };
-  return <div className="se-dialog-backdrop" data-se-popup onMouseDown={(event) => { if (event.target === event.currentTarget) interaction.closeHelp(); }}>
+  // data-se-owner: focus moving into the dialog is not "leaving the editor" (the dialog is no longer inside the surface element).
+  return <OverlayPortal><div className="se-dialog-backdrop" data-se-popup data-se-owner={interaction.id} onMouseDown={(event) => { if (event.target === event.currentTarget) interaction.closeHelp(); }}>
     <div ref={dialog} className="se-popup se-dialog se-shortcuts" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
       <header className="se-dialog-header"><h2 id={titleId}>{labels.shortcutHelp}</h2>
         <button ref={close} type="button" className="se-button" onClick={() => interaction.closeHelp()} aria-label={labels.shortcutHelpClose}><span aria-hidden="true">{'×'}</span></button></header>
@@ -47,7 +53,7 @@ export function ShortcutHelp({ interaction: explicit }: { interaction?: Interact
       </div>
       <footer className="se-dialog-footer">{labels.shortcutHelpHint}</footer>
     </div>
-  </div>;
+  </div></OverlayPortal>;
 }
 
 /** Quick settings for the selected chart: title, type, caption, source and bar layout. Only types the data can be drawn as are offered. */

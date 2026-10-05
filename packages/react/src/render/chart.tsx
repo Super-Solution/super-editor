@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react';
 import type { ChartSpec } from '@super-solution/editor-core';
 import {
-  chartDataTable, chartFileName, chartToPng, chartToSvg, createPaint, downloadBlob, hitTest, hoverScene, layoutChart, stepHit, template, tooltipPlacement,
+  chartDataTable, chartFileName, chartToPng, chartToSvg, createPaint, downloadBlob, hitTest, hoverScene, layoutChart, readTokenColors, stepHit, template, tokenColorsKey, tooltipPlacement,
+  watchTheme,
 } from '@super-solution/editor-ui';
-import type { ChartLabels, ChartTheme, Hit, SceneNode } from '@super-solution/editor-ui';
+import type { ChartLabels, ChartTheme, Hit, SceneNode, TokenColors } from '@super-solution/editor-ui';
 import { useLabels } from './context.js';
+
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 /** Scene attributes use SVG names (`stroke-width`); React wants camelCase, except data-* and aria-*. */
 export function reactAttributes(attrs: Record<string, string | number>): Record<string, string | number> {
@@ -69,10 +72,21 @@ export function ChartView({ spec, labels: chartLabelOverride, locale, actions = 
     observer.observe(target);
     return () => observer.disconnect();
   }, [fixedWidth]);
-  const layout = useMemo(() => layoutChart(spec, { width, hidden, labels, locale }), [spec, width, hidden, labels, locale]);
+  // Heat-map labels are inked by contrast against the colors the page's tokens really have, so they are read once the figure is on
+  // screen and again whenever the theme changes. Before that (and on the server) the built-in light palette is assumed.
+  const heat = spec.kind === 'heatmap';
+  const [colors, setColors] = useState<TokenColors>({});
+  useIsoLayoutEffect(() => {
+    const target = stage.current;
+    if (!heat || !target) return;
+    const read = (): void => setColors((current) => { const next = readTokenColors(target); return tokenColorsKey(next) === tokenColorsKey(current) ? current : next; });
+    read();
+    return watchTheme(target, read);
+  }, [heat]);
+  const paint = useMemo(() => createPaint({ colors }), [colors]);
+  const layout = useMemo(() => layoutChart(spec, { width, hidden, labels, locale, paint }), [spec, width, hidden, labels, locale, paint]);
   const table = useMemo(() => chartDataTable(spec, labels), [spec, labels]);
   const active: Hit | undefined = activeId === undefined ? undefined : layout.hits.find((hit) => hit.id === activeId);
-  const paint = useMemo(() => createPaint(), []);
   const message = layout.message ?? layout.note;
 
   const toUnits = useCallback((event: PointerEvent): { x: number; y: number } | null => {

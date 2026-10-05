@@ -10,6 +10,8 @@ import { InteractionContext, InteractionLabelsContext, SurfaceContext, useIntera
 import { useSurfaceBinding } from './hooks.js';
 import { mergeInteractionLabels } from './labels.js';
 import type { InteractionLabels } from './labels.js';
+import { PortalProvider } from '../portal.js';
+import type { PortalContainer } from '../portal.js';
 
 /** Which parts of the interaction layer a surface shows. Everything defaults to on; switch off what the host replaces. */
 export type InteractionParts = {
@@ -23,6 +25,8 @@ export type InteractiveSurfaceProps = InteractionParts & {
   labels?: Partial<InteractionLabels>;
   /** Pointer and layout tuning (gutter width, long-press time, drag threshold, drop options). */
   surface?: SurfaceOptions;
+  /** Where the shortcut dialog is mounted: `document.body` by default, an element (or a function returning one), or `false` to keep it in place. */
+  portalContainer?: PortalContainer;
 };
 
 /**
@@ -35,7 +39,7 @@ export function InteractiveSurface(props: InteractiveSurfaceProps): ReactNode {
   const { ref, binding } = useSurfaceBinding(interaction, props.surface);
   const labels = mergeInteractionLabels(props.labels);
   const on = (flag: boolean | undefined): boolean => flag !== false;
-  return <InteractionContext.Provider value={interaction}><InteractionLabelsContext.Provider value={labels}><SurfaceContext.Provider value={binding}>
+  const surface = <InteractionContext.Provider value={interaction}><InteractionLabelsContext.Provider value={labels}><SurfaceContext.Provider value={binding}>
     <div ref={ref} className={`se-surface${props.className ? ` ${props.className}` : ''}`} tabIndex={0} role="group" aria-label={labels.surface}>
       {on(props.conflictNotice) ? <ConflictNotice /> : null}
       {props.children}
@@ -55,4 +59,5 @@ export function InteractiveSurface(props: InteractiveSurfaceProps): ReactNode {
       </div> : null}
     </div>
   </SurfaceContext.Provider></InteractionLabelsContext.Provider></InteractionContext.Provider>;
+  return <PortalProvider container={props.portalContainer}>{surface}</PortalProvider>;
 }

@@ -25,6 +25,9 @@
   .se-block-gutter, .se-selection-toolbar, .se-slash-menu, .se-panel, .se-toasts, .se-status-bar, .se-code-copy, .se-citation-card, .se-tooltip { display: none !important; }
   .se-legend-button { border: 0; padding: 0; background: none; }
   .se-chart-data:not([data-open="true"]) { display: none; }
+  /* Heat-map labels are inked for the screen theme; on paper the cells use the light palette, so the chart also says which ink suits those. */
+  .se-chart-svg text[data-print-ink="dark"] { fill: var(--se-chart-ink-dark, #000000); }
+  .se-chart-svg text[data-print-ink="light"] { fill: var(--se-chart-ink-light, #ffffff); }
   /* Flow */
   .super-editor-block { break-inside: avoid; }
   .super-editor-block[data-block-type="section"], .super-editor-block[data-block-type="toggle"] { break-inside: auto; }

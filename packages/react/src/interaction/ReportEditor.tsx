@@ -15,6 +15,8 @@ import type { InteractionParts, InteractiveSurfaceProps } from './InteractiveSur
 import type { InteractionLabels } from './labels.js';
 import { FeedbackToasts } from './Notices.js';
 import { keepFocus } from './util.js';
+import { PortalProvider } from '../portal.js';
+import type { PortalContainer } from '../portal.js';
 
 /** Props of `ReportEditor` that configure the interaction layer. All optional: the defaults give a Notion-style editor. */
 export type InteractionProps = InteractionParts & {
@@ -38,6 +40,14 @@ export type InteractionProps = InteractionParts & {
   /** Show the built-in toasts for success, refused edits and conflicts. Default: on unless `onFeedback` is given. */
   feedback?: boolean;
   surface?: InteractiveSurfaceProps['surface'];
+  /**
+   * Where the shortcut dialog and the toast stack are mounted. Both are `position: fixed`, which an ancestor with a `transform`,
+   * `filter`, `container-type` or `contain` would trap inside the editor's box, so by default they render under `document.body`
+   * inside a `.super-editor.se-portal` element that carries the editor's `data-se-theme`, `data-se-density`, `dir` and `lang`.
+   * Pass an element (or a function returning one) to mount them there instead, for example the root your own theme or inert
+   * handling is scoped to; `false` keeps them in place. Nothing is rendered through a portal on the server.
+   */
+  portalContainer?: PortalContainer;
 };
 
 const EDITABLE_RENDERERS = ['paragraph', 'heading', 'section', 'quote', 'callout', 'code', 'list', 'table', 'toggle'] as const;
@@ -74,7 +84,7 @@ export type InteractiveReportEditorProps = Omit<ReportViewProps, 'document' | 'r
 /** The interaction-enabled editor: a `ReportView` inside an `InteractiveSurface`, with in-place editing of text, lists, tables and toggles. */
 export function InteractiveReportEditor(props: InteractiveReportEditorProps): ReactNode {
   const {
-    editor, actor, renderControls, interaction: _enabled, readOnly, interactionLabels, shortcuts, slashItems, slashLabels, commitDelayMs, linkSchemes, onConflict, onFeedback, onReload, surface,
+    editor, actor, renderControls, interaction: _enabled, readOnly, interactionLabels, shortcuts, slashItems, slashLabels, commitDelayMs, linkSchemes, onConflict, onFeedback, onReload, surface, portalContainer,
     gutter, hoverOutline, selectionOverlay, dropIndicator, slashMenu, formattingToolbar, selectionToolbar, blockMenu, linkEditor, shortcutHelp, chartEditor, conflictNotice, feedback,
     ...viewProps
   } = props;
@@ -108,10 +118,13 @@ export function InteractiveReportEditor(props: InteractiveReportEditorProps): Re
     </InteractiveSurface>
     {toasts ? <FeedbackToasts interaction={instance} {...(onReload ? { onReload } : {})} /> : null}
   </>;
-  // The wrapper carries the theme attributes, so popups and toasts (siblings of the document) pick up the same tokens.
+  // The wrapper carries the theme attributes, so popups pick up the same tokens; the layers that render under <body> (dialog, toasts)
+  // get the same attributes from OverlayPortal.
   return <InteractionProvider interaction={instance} {...(interactionLabels ? { labels: interactionLabels } : {})}>
-    <div className="super-editor se-editor" data-se-readonly={readOnly ? '' : undefined} data-se-theme={viewProps.theme} data-se-density={viewProps.density}>
-      {toasts ? <ToastProvider {...(viewProps.labels ? { labels: viewProps.labels } : {})}>{content}</ToastProvider> : content}
-    </div>
+    <PortalProvider container={portalContainer}>
+      <div className="super-editor se-editor" data-se-readonly={readOnly ? '' : undefined} data-se-theme={viewProps.theme} data-se-density={viewProps.density}>
+        {toasts ? <ToastProvider {...(viewProps.labels ? { labels: viewProps.labels } : {})}>{content}</ToastProvider> : content}
+      </div>
+    </PortalProvider>
   </InteractionProvider>;
 }
