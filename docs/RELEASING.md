@@ -15,9 +15,18 @@ Core has no DOM, React, network or filesystem imports. API, MCP and CLI reuse Co
 
 ## Prerequisites still owned by the organization
 
-The organization owner supplied `NPM_TOKEN` in GitHub. The workflow only references that existing secret; it does not create secrets, alter their visibility, change npm ownership, log into a personal npm account, or request additional GitHub token write permissions. Secret values must never be pasted into source, logs or local configuration. Publication consumes the token only in the publish step through setup-node's ephemeral registry configuration.
+Configure Trusted Publishing separately for each of the six packages in the table above:
+GitHub organization Super-Solution, repository super-editor, workflow filename
+publish.yml, environment empty, and allow direct npm publish. An npm maintainer
+must complete account 2FA for this one-time setup. Setting trust does not change or
+republish existing versions. Configure near the next planned release: a new trust
+configuration expires if unused for two days.
 
-Read-only public registry checks returned 404 for all six names during implementation. A 404 does not prove that the scope is unowned or that the token can publish. The available GitHub connector did not expose organization-secret metadata, so selected-repository visibility and npm token scope/expiry/2FA requirements remain unverified. The workflow fails before publication if the existing secret is unavailable; npm enforces the token's actual publish permissions. Any needed secret-access or credential change is a separate owner action, not performed here.
+The manual release uses GitHub-hosted runners and npm OIDC authentication without
+an npm token. Existing token-based tag-repair/authentication maintenance workflows
+are separate from publishing and are not migrated by this change; do not revoke a
+shared organization token until those remaining consumers are accounted for.
+No paid usage or secret changes are part of this setup.
 
 ## Verification before publication
 
@@ -49,11 +58,11 @@ It accepts only a stable version (`1.2.3`, channel `latest`) or a prerelease of 
 
 After reviewed code is merged to `main`, an authorized repository operator runs **Publish npm packages** using `workflow_dispatch`, selecting `main`, the exact committed version, and its matching channel. There is no push/PR publication trigger. An input cannot change the package version: a new version requires a reviewed commit updating all six manifests, internal exact dependency versions, root version, publishConfig tag and lockfile.
 
-The workflow checks out the exact requested commit and runs the complete checks itself. Only that run's six tarballs and manifest are passed to the publication job. Publication verifies the source SHA, manifest identity, package order, byte size, SHA256 and SHA512 integrity before any npm write. Release order is core -> ui -> react -> api -> mcp -> cli. All registry preflights finish before the first publish.
+The workflow checks out the exact requested commit and runs the complete checks itself. The same job publishes its locally verified six tarballs and manifest; no Actions artifact upload/download is needed. Publication verifies the source SHA, manifest identity, package order, byte size, SHA256 and SHA512 integrity before any npm write. Release order is core -> ui -> react -> api -> mcp -> cli. All registry preflights finish before the first publish.
 
-A version already on npm with different bytes causes an error; it is never overwritten. On retry after a partial release, an existing version with identical integrity is skipped. Missing versions are published in order. There is no unpublish, force, permission-bypass or automated rollback. A partial release can happen if the registry/token fails mid-run; correct the external problem and re-run the same verified commit, or review a new version. Published immutable bytes cannot be edited in place.
+A version already on npm with different bytes causes an error; it is never overwritten. On retry after a partial release, an existing version with identical integrity is skipped. Missing versions are published in order. There is no unpublish, force, permission-bypass or automated rollback. A partial release can happen if the registry/authentication fails mid-run; correct the external problem and re-run the same verified commit, or review a new version. Published immutable bytes cannot be edited in place.
 
-All actions are pinned to verified full commit SHAs. The workflow uses only `contents: read` for GITHUB_TOKEN and does not add OIDC/id-token permissions or configure a new trusted publisher. Future stable releases use `latest` only when the committed version has no prerelease suffix and all publishConfig tags match.
+All actions are pinned to verified full commit SHAs. The workflow uses `contents: read` and `id-token: write`; npm validates the separately configured trusted publisher identity. Future stable releases use `latest` only when the committed version has no prerelease suffix and all publishConfig tags match.
 
 ## Consumer migration
 

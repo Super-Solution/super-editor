@@ -34,7 +34,7 @@ for (const item of pending) {
   if (item.channel === 'next' && (await readRegistry(item.name))?.['dist-tags']?.latest !== beforeLatest.get(item.name)) {
     throw new Error(`Latest changed after preflight: ${item.name}; no publication attempted for this package.`);
   }
-  // npm consumes the workflow's ephemeral NODE_AUTH_TOKEN through setup-node's auth configuration.
+  // npm obtains a short-lived OIDC credential from this GitHub-hosted workflow.
   // Never inspect or log credential values here; no lifecycle scripts, force or unpublish.
   execFileSync(process.execPath, [npmCli, 'publish', item.tarball, '--access', 'public', '--tag', item.channel, '--registry', registry, '--ignore-scripts'], { cwd: root, stdio: 'inherit' });
   console.log(`Published ${item.name}@${item.version} to ${item.channel}.`);
