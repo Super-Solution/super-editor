@@ -1,15 +1,51 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "super-editor-core"
 version = "0.1.0"
-description = "Python port of the Super Editor guarded transaction core (flat paragraph documents). Proof of concept."
+description = "Guarded transactions, block text extraction, structural diff and revision summaries for Super Editor documents (Python port of the TypeScript core)."
+readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "GPL-3.0-or-later" }
-authors = [{ name = "SUPER SOLUTION LABS INC" }]
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "SUPER SOLUTION LABS INC", email = "contact@supersolution.io" }]
+keywords = ["editor", "documents", "agents", "transactions"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Typing :: Typed",
+]
 dependencies = []
 
-[tool.setuptools]
-packages = ["super_editor"]
+[project.urls]
+Repository = "https://github.com/Super-Solution/super-editor"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+super_editor = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+mypy_path = "src"
+files = ["src"]

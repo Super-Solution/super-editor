@@ -13,7 +13,7 @@ packages/core, ui, cli      headless model, DOM renderer, command line
 packages/bindings/          one folder per UI framework: react, element (web component)
 packages/integrations/      chat-plugin (super-chat)
 backends/typescript/        api, mcp (AGPL servers)
-backends/go, backends/python  proofs of concept of the guarded write rules, tested against conformance/
+backends/go, backends/python  proofs of concept of the guarded write rules and the pure document functions, tested against conformance/
 ```
 
 ## Status and licensing

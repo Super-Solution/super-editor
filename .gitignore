@@ -10,3 +10,7 @@ packages/**/LICENSE
 backends/**/LICENSE
 __pycache__/
 *.egg-info/
+!backends/python/LICENSE
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/

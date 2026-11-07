@@ -12,6 +12,7 @@ shared test data.
 Not covered: content and document schema validation (content is opaque here), nesting,
 the other nine operation types, undo/redo, rebase-safe conflicts and the clock-callback API.
 """
+
 from __future__ import annotations
 
 import copy
@@ -95,7 +96,8 @@ class Editor:
             raise _Rejected("not-found", block_id)
         if block["version"] != expected:
             raise _Rejected("conflict", block_id)
-        return block
+        result: dict[str, Any] = block
+        return result
 
     @staticmethod
     def _put(doc: dict[str, Any], block: dict[str, Any], operation: dict[str, Any]) -> None:
@@ -117,7 +119,9 @@ class Editor:
                 position = anchor + 1
         blocks.insert(position, block)
 
-    def _operation(self, doc: dict[str, Any], op: dict[str, Any], high_water: dict[str, int], at: str, pending: set[str]) -> None:
+    def _operation(
+        self, doc: dict[str, Any], op: dict[str, Any], high_water: dict[str, int], at: str, pending: set[str]
+    ) -> None:
         kind = op["type"]
         if kind == "insertBlock":
             incoming = op["block"]
