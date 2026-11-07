@@ -1,0 +1,9 @@
+node_modules/
+dist/
+demo-dist/
+*.tsbuildinfo
+.npm-cache/
+artifacts/
+*.local
+coverage/
+packages/*/LICENSE

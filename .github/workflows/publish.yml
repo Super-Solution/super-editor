@@ -1,0 +1,51 @@
+name: Publish npm packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact version already committed in all six packages
+        required: true
+        type: string
+      channel:
+        description: next for prereleases; latest only for committed stable versions
+        required: true
+        default: next
+        type: choice
+        options: [next, latest]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: super-editor-npm-publication
+  cancel-in-progress: false
+
+env:
+  RELEASE_VERSION: ${{ inputs.version }}
+  RELEASE_CHANNEL: ${{ inputs.channel }}
+
+jobs:
+  publish:
+    if: github.repository == 'Super-Solution/super-editor' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.12.0'
+          package-manager-cache: false
+      - run: node scripts/check-release-request.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - run: npm run build:demo
+      - run: npm run example
+      - run: npm run release:check -- --require-clean
+      - name: Publish verified tarballs in dependency order using OIDC
+        run: npm run release:publish

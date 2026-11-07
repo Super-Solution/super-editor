@@ -1,0 +1,47 @@
+{
+  "name": "@supersolutions/super-editor-cli",
+  "version": "0.1.0",
+  "description": "Local JSON research report CLI",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Super-Solution/super-editor.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/Super-Solution/super-editor#readme",
+  "bugs": {
+    "url": "https://github.com/Super-Solution/super-editor/issues"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "latest"
+  },
+  "dependencies": {
+    "@supersolutions/super-editor-core": "0.1.0"
+  },
+  "bin": {
+    "super-editor": "./dist/cli.js"
+  },
+  "author": "SUPER SOLUTION LABS INC"
+}
