@@ -1,0 +1,37 @@
+{
+  "name": "@supersolutions/super-editor-core",
+  "version": "0.1.0",
+  "description": "Headless versioned research documents and validated operations",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Super-Solution/super-editor.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/Super-Solution/super-editor#readme",
+  "bugs": {
+    "url": "https://github.com/Super-Solution/super-editor/issues"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "latest"
+  },
+  "author": "SUPER SOLUTION LABS INC"
+}

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+demo-dist/
+*.tsbuildinfo
+.npm-cache/
+artifacts/
+*.local
+coverage/
+packages/**/LICENSE
+backends/**/LICENSE
+__pycache__/
+*.egg-info/

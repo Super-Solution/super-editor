@@ -1,0 +1,56 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "noEmitOnError": true,
+    "paths": {
+      "@supersolutions/super-editor-core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@supersolutions/super-editor-ui": [
+        "./packages/ui/src/index.ts"
+      ],
+      "@supersolutions/super-editor-react": [
+        "./packages/bindings/react/src/index.tsx"
+      ],
+      "@supersolutions/super-editor-element": [
+        "./packages/bindings/element/src/index.ts"
+      ],
+      "@supersolutions/super-editor-chat-plugin": [
+        "./packages/integrations/chat-plugin/src/index.ts"
+      ],
+      "@supersolutions/super-editor-api": [
+        "./backends/typescript/api/src/index.ts"
+      ],
+      "@supersolutions/super-editor-mcp": [
+        "./backends/typescript/mcp/src/index.ts"
+      ],
+      "@supersolutions/super-editor-cli": [
+        "./packages/cli/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "backends/**/*.ts",
+    "examples/**/*.ts",
+    "examples/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
+  ]
+}

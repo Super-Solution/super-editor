@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 1,
+  "id": "weekly-research",
+  "title": "Weekly research notebook",
+  "revision": 1,
+  "createdAt": "2026-10-03T00:00:00.000Z",
+  "updatedAt": "2026-10-03T00:00:00.000Z",
+  "format": {
+    "page": "screen",
+    "font": "sans",
+    "fontSize": 16,
+    "lineHeight": 1.6
+  },
+  "blocks": [
+    {
+      "id": "macro",
+      "parentId": null,
+      "content": {
+        "type": "section",
+        "title": "Macro outlook"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "portfolio",
+      "parentId": null,
+      "content": {
+        "type": "section",
+        "title": "Portfolio research"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "as-of",
+      "parentId": null,
+      "content": {
+        "type": "timestamp",
+        "at": "2026-10-03T00:00:00.000Z",
+        "label": "Fixture as of"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "macro-heading",
+      "parentId": "macro",
+      "content": {
+        "type": "heading",
+        "level": 2,
+        "text": "A measured view of growth"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "macro-summary",
+      "parentId": "macro",
+      "content": {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "Illustrative scenario: ",
+            "bold": true
+          },
+          {
+            "text": "growth moderates while inflation remains uneven. These fictional observations show a research workflow, not live data or recommendations."
+          }
+        ]
+      },
+      "citationIds": [
+        "source-method"
+      ],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "macro-trend",
+      "parentId": "macro",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "trend",
+          "title": "Illustrative inflation path",
+          "labels": [
+            "Q1",
+            "Q2",
+            "Q3",
+            "Q4"
+          ],
+          "series": [
+            {
+              "name": "Scenario",
+              "values": [
+                3.8,
+                3.3,
+                3.1,
+                2.9
+              ]
+            }
+          ],
+          "unit": "%",
+          "asOf": "2026-10-03T00:00:00.000Z"
+        }
+      },
+      "citationIds": [
+        "source-method"
+      ],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "portfolio-heading",
+      "parentId": "portfolio",
+      "content": {
+        "type": "heading",
+        "level": 3,
+        "text": "Exposure and concentration"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "portfolio-summary",
+      "parentId": "portfolio",
+      "content": {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "Review concentration, duration, liquidity, and the assumptions behind each thesis. Allocation figures below are a fixture."
+          }
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "allocation",
+      "parentId": "portfolio",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "pie",
+          "title": "Illustrative allocation",
+          "labels": [
+            "Equity",
+            "Bonds",
+            "Cash"
+          ],
+          "series": [
+            {
+              "name": "Weight",
+              "values": [
+                55,
+                30,
+                15
+              ]
+            }
+          ],
+          "unit": "%"
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "factor",
+      "parentId": "portfolio",
+      "content": {
+        "type": "chart",
+        "spec": {
+          "kind": "bar",
+          "title": "Illustrative factor exposure",
+          "labels": [
+            "Quality",
+            "Value",
+            "Momentum"
+          ],
+          "series": [
+            {
+              "name": "Score",
+              "values": [
+                0.6,
+                -0.2,
+                0.3
+              ]
+            }
+          ]
+        }
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "research-table",
+      "parentId": "portfolio",
+      "content": {
+        "type": "table",
+        "columns": [
+          "Research area",
+          "Review question"
+        ],
+        "rows": [
+          [
+            "Stock / ETF",
+            "What changes the earnings or index thesis?"
+          ],
+          [
+            "Arbitrage research",
+            "Do costs, borrow constraints, and timing erase the spread?"
+          ]
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "next-steps",
+      "parentId": "portfolio",
+      "content": {
+        "type": "list",
+        "ordered": false,
+        "items": [
+          "Refresh source citations before distribution.",
+          "Separate observed data from scenario assumptions.",
+          "Record human review and unresolved questions."
+        ]
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    },
+    {
+      "id": "chart-embed",
+      "parentId": "portfolio",
+      "content": {
+        "type": "embed",
+        "provider": "superchart",
+        "url": "https://example.com/superchart-placeholder",
+        "title": "SuperChart provider slot"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-03T00:00:00.000Z",
+      "updatedAt": "2026-10-03T00:00:00.000Z"
+    }
+  ],
+  "citations": [
+    {
+      "id": "source-method",
+      "title": "Example methodology",
+      "url": "https://example.com/research-method",
+      "accessedAt": "2026-10-03T00:00:00.000Z"
+    }
+  ],
+  "retiredBlockIds": []
+}

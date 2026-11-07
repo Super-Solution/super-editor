@@ -1,0 +1,12 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later
+   Copyright 2026 SUPER SOLUTION LABS INC */
+/*
+ * Super Editor stylesheet. The published file inlines these imports into one asset.
+ * Tokens first (every color, font and spacing value is a --se-* variable), then blocks, charts, panels and print.
+ */
+@import './styles/tokens.css';
+@import './styles/blocks.css';
+@import './styles/charts.css';
+@import './styles/panels.css';
+@import './styles/interaction.css';
+@import './styles/print.css';

@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "super-editor-core"
+version = "0.1.0"
+description = "Python port of the Super Editor guarded transaction core (flat paragraph documents). Proof of concept."
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "SUPER SOLUTION LABS INC" }]
+dependencies = []
+
+[tool.setuptools]
+packages = ["super_editor"]

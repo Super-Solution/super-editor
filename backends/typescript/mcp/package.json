@@ -1,0 +1,47 @@
+{
+  "name": "@supersolutions/super-editor-mcp",
+  "version": "0.1.0",
+  "description": "MCP server and tool dispatcher for guarded research report documents",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Super-Solution/super-editor.git",
+    "directory": "backends/typescript/mcp"
+  },
+  "homepage": "https://github.com/Super-Solution/super-editor#readme",
+  "bugs": {
+    "url": "https://github.com/Super-Solution/super-editor/issues"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./stdio": {
+      "types": "./dist/stdio.d.ts",
+      "import": "./dist/stdio.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "latest"
+  },
+  "dependencies": {
+    "@supersolutions/super-editor-core": "0.1.0"
+  },
+  "bin": {
+    "super-editor-mcp": "./dist/stdio.js"
+  },
+  "author": "SUPER SOLUTION LABS INC"
+}
