@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
-import { chmod, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import test from 'node:test';
@@ -422,6 +422,24 @@ test('saving an edit keeps the permissions of the document it replaces', async (
     await persistAtomic(file, '{"a":1}');
     assert.equal((await stat(file)).mode & 0o777, 0o640);
     assert.equal(await readFile(file, 'utf8'), '{"a":1}\n');
+  } finally {
+    await cleanup(directory);
+  }
+});
+
+test('saving through a symlink updates the document it points at and leaves the link in place', async (t) => {
+  if (process.platform === 'win32') return t.skip('symlinks need privileges on Windows');
+  const { directory, file } = await scratch();
+  try {
+    const target = join(directory, 'real.json');
+    await writeFile(target, '{}\n', { mode: 0o640 });
+    await chmod(target, 0o640);
+    await symlink(target, file);
+    await persistAtomic(file, '{"a":1}');
+    assert.equal((await lstat(file)).isSymbolicLink(), true, 'the link is still a link');
+    assert.equal(await readFile(target, 'utf8'), '{"a":1}\n', 'the real document holds the edit');
+    assert.equal((await stat(target)).mode & 0o777, 0o640);
+    assert.deepEqual((await readdir(directory)).sort(), ['real.json', basename(file)], 'no temporary file is left next to either');
   } finally {
     await cleanup(directory);
   }

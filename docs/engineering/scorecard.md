@@ -13,7 +13,7 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | Customizability | 7 | 7 | Not assessed yet |
 | Consistency | 8 | 8 | TypeScript, Go and Python share generated conformance data; a change to an export has to land in all three |
 | Developer experience | 6 | 7 | `require()` of the packages works and bundlers can tree-shake (tests pin both). A fresh clone cannot `npm ci` until `@supersolutions/super-protocol` is published (documented in `docs/RELEASING.md`) |
-| Reliability | 8 | 8 | Not re-measured |
+| Reliability | 8 | 9 | Round 6: no writer (CLI, MCP, Go, Python) loses permissions or breaks a symlink on save; tests pin it |
 | Maintainability | 7 | 7 | Not assessed yet |
 
 ## Round history
@@ -25,3 +25,4 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | 3 | Copy-on-write commits | Performance stays 8 (82 to 38 ms per edit at 5,000 blocks) |
 | 4 | Package metadata | Developer experience 6 to 7 |
 | 5 | Unicode at the edges | Correctness 8 to 9 (three text-cutting sites, one selection bug) |
+| 6 | Saving to disk | Reliability 8 to 9 |

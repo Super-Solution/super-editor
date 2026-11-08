@@ -99,6 +99,26 @@ package is published). To build here, `npm install --no-package-lock` with the p
   units; for text outside the BMP the cut points still differ (documented in iteration 2).
 * **Gate.** TypeScript 374 tests pass.
 
+### Round 6: saving documents to disk (CLI, MCP, Go and Python servers)
+
+* **Method.** Round 8 of the earlier series fixed the CLI losing a document's permission bits on save. This round
+  checked the same property, and symlinks, in every other writer: the MCP file store, the Go server's `-save` and the
+  Python server's `--save`. Reproduced with a `0644` document and a symlink to it.
+* **Defects.**
+  * MCP file store: every edit reset the document to `0600` (the CLI had been fixed, this twin had not).
+  * CLI and MCP: an edit through a symlink (`report.json -> ~/Dropbox/report.json`) renamed the temporary file over the
+    link, so the link became a regular file and the real document silently stopped receiving edits.
+  * Go server: always wrote `0644` (a private `0600` document became world-readable on the first save), used the fixed
+    name `<file>.tmp` (two processes collide; a planted symlink at that name is followed) and replaced symlinks.
+  * Python server: same fixed `.tmp` name and symlink replacement; permissions followed the umask.
+* **Fix.** All four resolve the symlink first and replace the real file, keep its permission bits, and use a unique
+  exclusively created temporary file in the same directory (`fsync` before the rename). New tests: CLI and MCP symlink and
+  permission tests, `TestWriteAtomicKeepsPermissionsAndSymlinks` (Go), `test_server_saving.py` (Python). The TypeScript and Go
+  tests fail without the change.
+* **Not changed.** The lock file (`<file>.lock`) and the history log still live next to the name the user passed, not next
+  to the link target, so a link and its target do not share a lock. Moving them would orphan history logs created next to a link.
+* **Gate.** TypeScript 376 tests, `go vet` and `go test`, `ruff`, `mypy` and `pytest` (17 tests) pass.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected

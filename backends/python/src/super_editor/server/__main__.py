@@ -8,9 +8,12 @@ The handler does not authenticate; run it on a private network or behind your ow
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
+import stat
 import sys
+import tempfile
 import threading
 from socketserver import ThreadingMixIn
 from typing import Any
@@ -21,6 +24,35 @@ from .actions import current_iso
 from .http import Cors, Options
 from .service import EditorService, Service
 from .wsgi import create_wsgi_app
+
+
+def _write_atomic(path: str, document: dict[str, Any]) -> None:
+    """Replace ``path`` with a fully written temporary file.
+
+    A symlink is followed (the link stays a link), the permission bits of the existing file are kept, and the
+    temporary name is unique and created exclusively, so nothing can be pre-planted at it.
+    """
+    target = os.path.realpath(path)
+    try:
+        mode: int | None = stat.S_IMODE(os.stat(target).st_mode)
+    except FileNotFoundError:
+        mode = None
+    descriptor, temporary = tempfile.mkstemp(
+        dir=os.path.dirname(target), prefix=f".{os.path.basename(target)}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            if mode is not None and hasattr(os, "fchmod"):
+                os.fchmod(handle.fileno(), mode)
+            json.dump(document, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, target)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
+        raise
 
 
 class _Saving:
@@ -41,11 +73,7 @@ class _Saving:
     def _save(self, result: dict[str, Any]) -> dict[str, Any]:
         if result.get("ok") and not result.get("duplicate"):
             try:
-                temporary = self._path + ".tmp"
-                with open(temporary, "w", encoding="utf-8") as handle:
-                    json.dump(self._inner.read(), handle, ensure_ascii=False, indent=2)
-                    handle.write("\n")
-                os.replace(temporary, self._path)
+                _write_atomic(self._path, self._inner.read())
             except OSError as error:
                 print(f"saving {self._path}: {error}", file=sys.stderr)
         return result

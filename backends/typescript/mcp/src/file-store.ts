@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { randomUUID } from 'node:crypto';
-import { appendFileSync, closeSync, existsSync, fsyncSync, linkSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeSync } from 'node:fs';
+import { appendFileSync, closeSync, existsSync, fchmodSync, fsyncSync, linkSync, openSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import type { ApplyResult, EditorIssue, ReportService, ResearchDocument } from '@supersolutions/super-editor-core';
 import { TRANSPORT_LIMITS, createEditor, createReportService, formatIssues, parseDocument, serializeDocument, summarizeRevision, withHints } from '@supersolutions/super-editor-core';
@@ -26,14 +26,25 @@ export function parseDocumentText(text: string, path: string): ResearchDocument 
   return parsed.value;
 }
 
-/** Writes via a temporary file and rename so a reader never sees a half-written document. `createOnly` refuses to replace a file. */
-export function writeDocumentFile(path: string, document: ResearchDocument, createOnly = false): string {
+/**
+ * Writes via a temporary file and rename so a reader never sees a half-written document. `createOnly` refuses to replace a file.
+ * An overwrite goes to the file a symlink points at (the link stays a link) and keeps that file's permission bits.
+ */
+export function writeDocumentFile(requested: string, document: ResearchDocument, createOnly = false): string {
   const json = `${serializeDocument(document)}\n`;
+  let path = requested, mode: number | undefined;
+  if (!createOnly) {
+    try { path = realpathSync(requested); mode = statSync(path).mode & 0o777; }
+    catch (error) { if (!isFsError(error, 'ENOENT')) throw error; path = requested; }
+  }
   const temporary = resolve(dirname(path), `.${basename(path)}.${randomUUID()}.tmp`);
   const handle = openSync(temporary, 'wx', 0o600);
   try {
-    try { writeSync(handle, json, null, 'utf8'); fsyncSync(handle); }
-    finally { closeSync(handle); }
+    try {
+      // The rename replaces the file, so the new one keeps the permissions the user gave the old one.
+      if (mode !== undefined) fchmodSync(handle, mode);
+      writeSync(handle, json, null, 'utf8'); fsyncSync(handle);
+    } finally { closeSync(handle); }
     if (createOnly) linkSync(temporary, path); else renameSync(temporary, path);
   } finally {
     try { unlinkSync(temporary); } catch (error) { if (!isFsError(error, 'ENOENT')) throw error; }

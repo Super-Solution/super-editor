@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { randomUUID } from 'node:crypto';
-import { appendFile, link, open, readFile, rename, stat, unlink } from 'node:fs/promises';
+import { appendFile, link, open, readFile, realpath, rename, stat, unlink } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { TRANSPORT_LIMITS, formatIssues, parseDocument, summarizeRevision } from '@supersolutions/super-editor-core';
 import type { EditorIssue, ResearchDocument, Revision } from '@supersolutions/super-editor-core';
@@ -34,7 +34,12 @@ export class InvalidDocument extends Error {
   constructor(readonly issues: EditorIssue[]) { super(formatIssues(issues)); }
 }
 
-export async function persistAtomic(file: string, json: string, createOnly = false): Promise<void> {
+export async function persistAtomic(path: string, json: string, createOnly = false): Promise<void> {
+  // Edit through a symlink: the rename must replace the document the link points at, not the link itself.
+  const file = createOnly ? path : await realpath(path).catch((cause: unknown) => {
+    if (isFsError(cause, 'ENOENT')) return path;
+    throw cause;
+  });
   const temporary = resolve(dirname(file), `.${basename(file)}.${randomUUID()}.tmp`);
   let created = false;
   try {

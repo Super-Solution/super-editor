@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -250,5 +250,27 @@ test('the built server binary also starts when launched through a symlink', asyn
     catch { t.skip('symlinks are not permitted here'); return; }
     const { stdout } = await execFileAsync(process.execPath, [link, '--help']);
     assert.equal(stdout, STDIO_HELP);
+  } finally { await cleanup(directory); }
+});
+
+test('the file service keeps the permissions of the document and edits through a symlink in place', async (t) => {
+  if (process.platform === 'win32') return t.skip('POSIX permission bits and symlinks');
+  const { directory, file } = await scratch();
+  try {
+    await writeFile(file, serializeDocument(initial()));
+    await chmod(file, 0o640);
+    const link = join(directory, 'link.json');
+    await symlink(file, link);
+    const edit = (id: string, baseRevision: number, title: string) => ({ id, actor: { id: 'a', kind: 'agent' }, baseRevision, operations: [{ type: 'setTitle', title }] });
+
+    const direct = createFileService(file);
+    assert.equal(direct.apply(edit('one', 0, 'Direct')).ok, true);
+    assert.equal((await stat(file)).mode & 0o777, 0o640, 'an edit does not narrow a shared document to owner-only');
+
+    const viaLink = createFileService(link);
+    assert.equal(viaLink.apply(edit('two', 1, 'Through the link')).ok, true);
+    assert.equal((await lstat(link)).isSymbolicLink(), true, 'the link is still a link');
+    assert.equal(JSON.parse(await readFile(file, 'utf8')).title, 'Through the link', 'the document the link points at holds the edit');
+    assert.deepEqual((await readdir(directory)).sort(), ['link.json', 'report.json']);
   } finally { await cleanup(directory); }
 });

@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -55,16 +56,42 @@ func (s saving) Redo(actor, expected any) editor.Result {
 	return s.edit(func() editor.Result { return s.Service.Redo(actor, expected) })
 }
 
-func writeAtomic(path string, document map[string]any) error {
+// writeAtomic replaces the document with a fully written temporary file. It edits the file a symlink points at (the link
+// stays a link) and keeps that file's permission bits; the temporary name is unique, so nothing can be pre-planted at it.
+func writeAtomic(path string, document map[string]any) (err error) {
 	raw, err := json.MarshalIndent(document, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(raw, '\n'), 0o644); err != nil {
+	target := path
+	if resolved, linkErr := filepath.EvalSymlinks(path); linkErr == nil {
+		target = resolved
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(target), "."+filepath.Base(target)+".*.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	defer func() {
+		if err != nil {
+			_ = tmp.Close()
+			_ = os.Remove(tmp.Name())
+		}
+	}()
+	if info, statErr := os.Stat(target); statErr == nil {
+		if err = tmp.Chmod(info.Mode().Perm()); err != nil {
+			return err
+		}
+	}
+	if _, err = tmp.Write(append(raw, '\n')); err != nil {
+		return err
+	}
+	if err = tmp.Sync(); err != nil {
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), target)
 }
 
 func main() {
