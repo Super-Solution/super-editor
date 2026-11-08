@@ -131,7 +131,7 @@ package is published). To build here, `npm install --no-package-lock` with the p
   the usual need of a UI that unmounts. Documented in `docs/API.md`.
 * **Tests.** A stalled body, a `fetch` that never settles and the caller's signal (before and after a request) in
   `tests/http.test.ts`; the stalled-body case fails without the fix.
-* **Gate.** `npm run build` (includes the test type check) and TypeScript 377 tests pass.
+* **Gate.** `npm run build` (includes the test type check) and TypeScript 376 tests pass.
 
 ## Iteration 1 (2026-11-08): audit and server scoping
 
