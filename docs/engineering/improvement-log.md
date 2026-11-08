@@ -135,3 +135,14 @@ These are the places where the obvious port differs from JavaScript, and what pi
 * Fix: the adapter now matches `[0-9]+` (ASCII only). The handler already refuses anything else with 413.
 * Tests: `tests/test_server_wsgi.py` (two cases; the non-ASCII one fails without the fix).
 * Gate: `ruff check`, `ruff format --check`, strict `mypy`, `pytest` (16 tests, 3450 subtests) pass.
+
+### Round 8 (2026-11-08) — CLI saves keep file permissions
+
+* Audit: the TypeScript HTTP body reader (already streaming and bounded, `\d` is ASCII-only: fine) and the
+  CLI's `persistAtomic`. The temporary file is created `0600` and renamed over the document, so a document
+  shared with a group (`0640`, `0644`) became owner-only on its first CLI edit.
+* Fix: for an overwrite, the temporary file takes the permission bits of the file it replaces; creating a
+  new document is unchanged (`0600`).
+* Test: `saving an edit keeps the permissions of the document it replaces` (fails without the fix; skipped on
+  Windows).
+* Gate: `npx tsc -b` and the TypeScript suite (267 tests) pass; Go and Python are untouched.

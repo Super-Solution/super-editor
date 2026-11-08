@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import test from 'node:test';
@@ -10,6 +10,7 @@ import { parseDocument } from '../packages/core/src/index.js';
 import type { ResearchDocument } from '../packages/core/src/index.js';
 import { CLI_HELP, runCli } from '../packages/cli/src/cli.js';
 import { COMMANDS } from '../packages/cli/src/commands.js';
+import { persistAtomic } from '../packages/cli/src/files.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -410,4 +411,18 @@ test('the built binary also starts when launched through a symlink, the way a pa
     const { stdout } = await execFileAsync(process.execPath, [link, 'help']);
     assert.match(stdout, /^Super Editor: read and edit a research report/);
   } finally { await cleanup(directory); }
+});
+
+test('saving an edit keeps the permissions of the document it replaces', async (t) => {
+  if (process.platform === 'win32') return t.skip('POSIX permission bits');
+  const { directory, file } = await scratch();
+  try {
+    await writeFile(file, '{}\n', { mode: 0o640 });
+    await chmod(file, 0o640);
+    await persistAtomic(file, '{"a":1}');
+    assert.equal((await stat(file)).mode & 0o777, 0o640);
+    assert.equal(await readFile(file, 'utf8'), '{"a":1}\n');
+  } finally {
+    await cleanup(directory);
+  }
 });

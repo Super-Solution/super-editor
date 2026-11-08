@@ -41,6 +41,15 @@ export async function persistAtomic(file: string, json: string, createOnly = fal
     const handle = await open(temporary, 'wx', 0o600);
     created = true;
     try {
+      // The rename replaces the file, so the new one must keep the permissions the user gave the old one
+      // (a document shared with a group would otherwise turn owner-only on its first edit).
+      if (!createOnly) {
+        const existing = await stat(file).catch((cause: unknown) => {
+          if (isFsError(cause, 'ENOENT')) return undefined;
+          throw cause;
+        });
+        if (existing !== undefined) await handle.chmod(existing.mode & 0o777);
+      }
       await handle.writeFile(`${json}\n`, 'utf8');
       await handle.sync();
     } finally {
