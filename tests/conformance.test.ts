@@ -11,6 +11,9 @@ import { createEditor, diffDocuments, summarizeRevision } from '../packages/core
 import { textParts } from '../packages/core/src/text.js';
 import { readActor, safeUrl, timestamp } from '../packages/core/src/validation.js';
 import { validateDocument, validateTransaction } from '../packages/core/src/index.js';
+import { findBlocks, fromMarkdown, getOutline, runs, stats, toHTML, toMarkdown, toPlainText } from '../packages/core/src/index.js';
+import { inlineToPlain, runsToMarkdown } from '../packages/core/src/inline.js';
+import { countWords } from '../packages/core/src/stats.js';
 
 const data = JSON.parse(readFileSync(new URL('../conformance/guarded-apply.v1.json', import.meta.url), 'utf8'));
 
@@ -85,4 +88,33 @@ test('the reference reproduces every editor scenario', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(editor.getSnapshot())), scenario.final, `${scenario.name} final`);
   }
   assert.ok(steps >= 1000);
+});
+
+const renderData = JSON.parse(readFileSync(new URL('../conformance/render.v1.json', import.meta.url), 'utf8'));
+
+test('the reference reproduces every render case', () => {
+  const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+  for (const c of renderData.inline) {
+    const parsed = runs(c.input);
+    assert.deepEqual(plain(parsed), c.runs, `inline ${JSON.stringify(c.input)}`);
+    assert.equal(runsToMarkdown(parsed), c.markdown, `inline markdown ${JSON.stringify(c.input)}`);
+    assert.equal(inlineToPlain(c.input), c.plain, `inline plain ${JSON.stringify(c.input)}`);
+  }
+  for (const c of renderData.runsToMarkdown) assert.equal(runsToMarkdown(c.runs), c.markdown);
+  for (const c of renderData.fromMarkdown) assert.deepEqual(plain(fromMarkdown(c.markdown, c.options)), c.blocks, JSON.stringify(c.markdown));
+  for (const c of renderData.badPrefixes) assert.throws(() => fromMarkdown('x', { idPrefix: c.idPrefix }));
+  for (const [index, c] of renderData.documents.entries()) {
+    const doc = c.document;
+    assert.equal(toMarkdown(doc), c.markdown, `document ${index} markdown`);
+    assert.equal(toMarkdown(doc, { title: false, chartRows: 2 }), c.markdownBare, `document ${index} markdownBare`);
+    assert.equal(toHTML(doc), c.html, `document ${index} html`);
+    assert.equal(toHTML(doc, { title: false, chartRows: 2 }), c.htmlBare, `document ${index} htmlBare`);
+    assert.equal(toHTML(doc, { standalone: true }), c.htmlStandalone, `document ${index} htmlStandalone`);
+    assert.equal(toPlainText(doc), c.text, `document ${index} text`);
+    assert.equal(toPlainText(doc, { title: false, chartRows: 1 }), c.textBare, `document ${index} textBare`);
+    assert.deepEqual(plain(stats(doc)), c.stats, `document ${index} stats`);
+    assert.deepEqual(plain(getOutline(doc)), c.outline, `document ${index} outline`);
+    for (const q of c.queries) assert.deepEqual(findBlocks(doc, q.selector).map((block: { id: string }) => block.id), q.ids, `document ${index} query ${JSON.stringify(q.selector)}`);
+  }
+  for (const w of renderData.words) assert.deepEqual(countWords(w.text), { latin: w.latin, cjk: w.cjk }, JSON.stringify(w.text));
 });

@@ -17,7 +17,9 @@ all 14 operations, rebase-safe stale transactions, undo and redo and the revisio
 editor is `super_editor.GuardedEditor`.) `super_editor.validation` validates documents, transactions, actors, timestamps and URLs with the reference's
 first-failure issues.
 
-Not covered yet: markdown/HTML export
-and word statistics (which need Unicode script data). See the conformance README for the exact scope.
+The read side lives in `super_editor.export` (`to_markdown`), `html_export` (`to_html`), `text` (`to_plain_text`,
+`document_stats`, `count_words`), `query` (`find_blocks`, `get_outline`, `ordered_blocks`), `inline` (inline markdown) and
+`markdown_import` (`from_markdown`). Word counting uses the Unicode data of the running Python, so a Python and Node release
+that disagree on a recent character can differ on exotic text. See the conformance README for the exact scope.
 
 GPL-3.0-or-later; a commercial licence is available from SUPER SOLUTION LABS INC (contact@supersolution.io).

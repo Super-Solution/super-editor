@@ -7,6 +7,9 @@
 
 - `editor`: the session editor: guarded transactions over the full model (17 block types, nesting), all 14
   operations, rebase-safe stale transactions, undo and redo, the revision log (`editor.New`, `Apply`, `Undo`, `Redo`).
+- `render`: the read side: inline markdown (`ParseInline`, `RunsToMarkdown`), Markdown, HTML and plain-text export
+  (`ToMarkdown`, `ToHTML`, `ToPlainText`), `Stats`, `CountWords`, `Outline`, `FindBlocks` and block-level markdown
+  import (`FromMarkdown`).
 - `validation`: the document, transaction, actor, timestamp and URL validators (`ValidateDocument`, `ValidateTransaction`,
   `ReadActor`, `Timestamp`, `SafeURL`) with the reference's first-failure issues, JavaScript string lengths and key order.
   `Decode` reads JSON keeping member order.
