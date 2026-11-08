@@ -26,3 +26,4 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | 4 | Package metadata | Developer experience 6 to 7 |
 | 5 | Unicode at the edges | Correctness 8 to 9 (three text-cutting sites, one selection bug) |
 | 6 | Saving to disk | Reliability 8 to 9 |
+| 7 | HTTP client | Reliability stays 9 (a documented timeout now holds; abort signal added) |

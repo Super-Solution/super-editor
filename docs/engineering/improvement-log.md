@@ -119,6 +119,20 @@ package is published). To build here, `npm install --no-package-lock` with the p
   to the link target, so a link and its target do not share a lock. Moving them would orphan history logs created next to a link.
 * **Gate.** TypeScript 376 tests, `go vet` and `go test`, `ruff`, `mypy` and `pytest` (17 tests) pass.
 
+### Round 7: the typed HTTP client
+
+* **Method.** Read `createHttpClient` for what happens when the server misbehaves, and reproduced it against a real
+  `http.createServer` that sends the headers and a partial body and never ends the response.
+* **Defect.** `timeoutMs` was cleared as soon as the response headers arrived, so a stalled body hung `await response.text()`
+  forever: the documented "timeout (default 30 s)" did not cover it (3 s later the call was still pending). A custom `fetch`
+  that ignores the abort signal also hung.
+* **Fix.** One deadline now covers send and body, raced against both so a `fetch` that ignores the signal is cut off too.
+  New option `signal`: aborting it cancels the requests in flight and refuses new ones (`HttpClientError`, "was aborted"),
+  the usual need of a UI that unmounts. Documented in `docs/API.md`.
+* **Tests.** A stalled body, a `fetch` that never settles and the caller's signal (before and after a request) in
+  `tests/http.test.ts`; the stalled-body case fails without the fix.
+* **Gate.** `npm run build` (includes the test type check) and TypeScript 377 tests pass.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected
