@@ -5,6 +5,10 @@
 - `documents`: block text extraction (`TextParts`), the structural diff between two documents
   (`DiffDocuments`) and one-line revision summaries (`SummarizeRevision`).
 
+- `validation`: the document, transaction, actor, timestamp and URL validators (`ValidateDocument`, `ValidateTransaction`,
+  `ReadActor`, `Timestamp`, `SafeURL`) with the reference's first-failure issues, JavaScript string lengths and key order.
+  `Decode` reads JSON keeping member order.
+
 The TypeScript package in `packages/core` is the reference; both packages reproduce every case in
 [`../../conformance`](../../conformance/README.md). Standard library only.
 

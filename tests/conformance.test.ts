@@ -9,6 +9,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createEditor, diffDocuments, summarizeRevision } from '../packages/core/src/index.js';
 import { textParts } from '../packages/core/src/text.js';
+import { readActor, safeUrl, timestamp } from '../packages/core/src/validation.js';
+import { validateDocument, validateTransaction } from '../packages/core/src/index.js';
 
 const data = JSON.parse(readFileSync(new URL('../conformance/guarded-apply.v1.json', import.meta.url), 'utf8'));
 
@@ -42,4 +44,23 @@ test('the reference reproduces every document-ops case', () => {
   for (const [index, c] of ops.text_parts.entries()) assert.deepEqual(textParts(c.content), c.expect, `text_parts ${index}`);
   for (const [index, c] of ops.diff.entries()) assert.deepEqual(JSON.parse(JSON.stringify(diffDocuments(c.a, c.b))), c.expect, `diff ${index}`);
   for (const [index, c] of ops.summarize_revision.entries()) assert.equal(summarizeRevision(c.revision), c.expect, `summary ${index}`);
+});
+
+const validation = JSON.parse(readFileSync(new URL('../conformance/validation.v1.json', import.meta.url), 'utf8'));
+
+test('the reference reproduces every validation case', () => {
+  assert.ok(validation.cases.length >= 1000);
+  const attempt = (read: () => unknown): unknown => {
+    try { return { ok: true, value: read() }; } catch (error) { return { ok: false, issues: [(error as { issue: unknown }).issue] }; }
+  };
+  for (const [index, c] of validation.cases.entries()) {
+    const label = `validation case ${index} (${c.kind})`;
+    let got: unknown;
+    if (c.kind === 'document') got = validateDocument(c.input);
+    else if (c.kind === 'transaction') got = validateTransaction(c.input);
+    else if (c.kind === 'actor') got = attempt(() => readActor(c.input));
+    else if (c.kind === 'timestamp') got = attempt(() => timestamp(c.input));
+    else { const href = safeUrl(c.input); got = href === null ? { ok: false, issues: [] } : { ok: true, value: href }; }
+    assert.deepEqual(JSON.parse(JSON.stringify(got)), c.expect, label);
+  }
 });

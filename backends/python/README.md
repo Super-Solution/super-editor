@@ -12,7 +12,10 @@ pytest                    # or: PYTHONPATH=src python -m unittest discover -s te
 ruff check . && mypy
 ```
 
-Not covered: schema validation of whole documents, nested blocks in transactions, markdown/HTML export
+`super_editor.validation` validates documents, transactions, actors, timestamps and URLs with the reference's
+first-failure issues.
+
+Not covered yet: nested blocks in transactions, markdown/HTML export
 and word statistics (which need Unicode script data). See the conformance README for the exact scope.
 
 GPL-3.0-or-later; a commercial licence is available from SUPER SOLUTION LABS INC (contact@supersolution.io).
