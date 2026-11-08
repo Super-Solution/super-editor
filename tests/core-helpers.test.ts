@@ -383,3 +383,18 @@ test('every failed apply carries a hint; withHints, defaultHint and formatIssues
   assert.match(text, /^- \[not-found\] transaction\.operations\[0\]: Block does not exist\. \(block zzz\)\n {2}hint: /);
   assert.equal(formatIssues([]), '');
 });
+
+test('markdown export round-trips a trailing # and blank lines inside a paragraph', () => {
+  const current = seed([
+    { id: 'h1', parentId: null, content: { type: 'heading', level: 2, text: 'Learning C #' }, citationIds: [] },
+    { id: 'h2', parentId: null, content: { type: 'heading', level: 2, text: 'C# and F#' }, citationIds: [] },
+    { id: 'p1', parentId: null, content: { type: 'paragraph', runs: [{ text: 'one\n\ntwo' }, { text: '\n', bold: true }, { text: '\n three' }] }, citationIds: [] },
+  ]);
+  const markdown = toMarkdown(current.getSnapshot(), { title: false });
+  const blocks = fromMarkdown(markdown, { idPrefix: 'rt' });
+  assert.deepEqual(blocks.slice(0, 3).map(block => block.content.type), ['heading', 'heading', 'paragraph'], markdown);
+  assert.equal(blocks.length, 4, 'three blocks plus the footnote');
+  assert.deepEqual(blocks.slice(0, 2).map(block => (block.content as { text: string }).text), ['Learning C #', 'C# and F#']);
+  assert.match(markdown, /^## Learning C \\#$/m);
+  assert.equal(blocks[2]!.content.type === 'paragraph' ? blocks[2]!.content.runs.map(run => run.text).join('') : '', 'one\ntwo\nthree');
+});

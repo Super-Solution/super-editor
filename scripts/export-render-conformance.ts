@@ -37,7 +37,7 @@ inlineInputs.add(`[${'x'.repeat(2500)}](https://example.com)`);
 inlineInputs.add(`[x](https://example.com/${'a'.repeat(4300)})`);
 const inline = [...inlineInputs].map(input => { const parsed = runs(input); return { input, runs: parsed, markdown: runsToMarkdown(parsed), plain: inlineToPlain(input) }; });
 
-const RUN_TEXT = ['text', ' lead', 'trail ', ' both ', 'a*b', 'under_score', '`tick`', 'two  \nlines', '\nstart', 'end\n', '', 'x', '#', '> q', '1. n', '- d', '<tag>', '&amp;', '[l]', 'é', '日本', 'a\\b', '~~'];
+const RUN_TEXT = ['text', ' lead', 'trail ', ' both ', 'a*b', 'under_score', '`tick`', 'two  \nlines', '\nstart', 'end\n', '', 'x', '#', '> q', '1. n', '- d', '<tag>', '&amp;', '[l]', 'é', '日本', 'a\\b', '~~', 'one\n\ntwo', 'one\n \ntwo', '\n\n', 'tail\n\n', '\n\nhead'];
 const runsToMd: { runs: InlineRun[]; markdown: string }[] = [];
 for (let i = 0; i < 500; i++) {
   const list: InlineRun[] = Array.from({ length: 1 + rand(4) }, () => {
@@ -138,6 +138,14 @@ documents.push(build('charts', [[
   op.insertBlock(b.chart('ch8', chart.line({ title: 'Long', labels: Array.from({ length: 30 }, (_, i) => `L${i}`), values: Array.from({ length: 30 }, (_, i) => i * 1.5) }))),
 ]]));
 
+documents.push(build('markdown-edges', [[
+  // A trailing "#" after a space is an ATX closing sequence; a blank line inside a run must not split the paragraph.
+  op.insertBlock(b.heading('e1', 1, 'Learning C #')), op.insertBlock(b.heading('e2', 2, '#')), op.insertBlock(b.heading('e3', 3, 'C# and F#')), op.insertBlock(b.heading('e4', 2, 'ends with ## ##')),
+  op.insertBlock(b.heading('e5', 2, 'back\\slash \\#')), op.insertBlock(b.section('e6', 'Section #')), op.insertBlock(b.heading('e7', 1, 'tabbed\t#')),
+  op.insertBlock(b.paragraph('e8', [{ text: 'one\n\ntwo' }, { text: '\n', bold: true }, { text: '\n three' }])),
+  op.insertBlock(b.paragraph('e9', [{ text: 'a\n \n\t\nb', code: true }])), op.insertBlock(b.quote('e10', [{ text: 'q1\n\nq2' }])),
+]]));
+documents.push(createDocument({ id: 'doc-title-hash', title: 'Title ends with #' }, { now: () => BASE }));
 documents.push(build('empty-parts', [[op.insertBlock(b.paragraph('only', [{ text: '' }]))]]));
 documents.push(createDocument({ id: 'doc-blank', title: '' }, { now: () => BASE }));
 documents.push(createDocument({ id: 'doc-title-only', title: 'Just a title' }, { now: () => BASE }));

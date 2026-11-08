@@ -11,8 +11,10 @@
 package render
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/Super-Solution/super-editor/backends/go/validation"
 )
@@ -463,6 +465,22 @@ func isWordByte(r rune) bool {
 	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_'
 }
 
+// EscapeHeadingText is EscapeInline for text after an ATX marker: a trailing run of '#' after a space would read
+// back as a closing sequence and vanish.
+func EscapeHeadingText(text string) string {
+	escaped := EscapeInline(text)
+	body := strings.TrimRight(escaped, "#")
+	if len(body) == len(escaped) {
+		return escaped
+	}
+	if body != "" {
+		if last, _ := utf8.DecodeLastRuneInString(body); !isJSSpace(last) {
+			return escaped
+		}
+	}
+	return body + strings.Repeat("\\#", len(escaped)-len(body))
+}
+
 // EscapeInline escapes inline markdown specials. Line-start constructs are escaped separately by EscapeLineStarts.
 func EscapeInline(text string) string {
 	var first strings.Builder
@@ -669,8 +687,11 @@ func RunsToMarkdown(input []Run) string {
 			out.WriteString("[^" + r.CitationID + "]")
 		}
 	}
-	return out.String()
+	// A blank line ends a paragraph in Markdown: consecutive line breaks collapse into one hard break.
+	return blankLines.ReplaceAllString(out.String(), "\n")
 }
+
+var blankLines = regexp.MustCompile(`\n(?:[ \t]*\n)+`)
 
 // InlineToPlain is the plain text of a markdown-lite string, for list items and table cells that hold plain
 // strings. Link targets are kept in parentheses.

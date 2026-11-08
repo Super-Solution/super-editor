@@ -140,6 +140,10 @@ export function runs(markdown: string): InlineRun[] {
 export function escapeInline(text: string): string {
   return text.replace(/[\\`*_~[\]<]/g, '\\$&').replace(/&(?=#?\w+;)/g, '\\&');
 }
+/** `escapeInline` for text that follows an ATX marker (`## `): a trailing `#` run after a space would read back as a closing sequence and vanish. */
+export function escapeHeadingText(text: string): string {
+  return escapeInline(text).replace(/(^|\s)(#+)$/, (_match, lead: string, hashes: string) => `${lead}${hashes.replace(/#/g, '\\#')}`);
+}
 export function escapeLineStarts(text: string): string {
   return text.replace(/^( {0,3})(#{1,6}(?=\s|$)|>|[-+](?=\s|$))/gm, '$1\\$2').replace(/^( {0,3}\d+)([.)])(?=\s|$)/gm, '$1\\$2').replace(/^( {0,3})([=-])(?=[=-]*\s*$)/gm, '$1\\$2');
 }
@@ -164,7 +168,8 @@ export function runsToMarkdown(input: readonly InlineRun[]): string {
     }
     if (run.citationId !== undefined) out += `[^${run.citationId}]`;
   }
-  return out;
+  // A blank line ends a paragraph in Markdown, so consecutive line breaks collapse into one hard break instead of splitting the block on re-import.
+  return out.replace(/\n(?:[ \t]*\n)+/g, '\n');
 }
 
 /** Plain text of a markdown-lite string, for list items and table cells that hold plain strings. Link targets are kept in parentheses. */

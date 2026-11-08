@@ -10,6 +10,7 @@ the parser's size limits.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from typing import Any
 
@@ -327,6 +328,18 @@ def _space_or_end(src: str, i: int) -> bool:
     return _at_line_end(src, i) or src[i] in JS_SPACE
 
 
+def escape_heading_text(text: str) -> str:
+    """``escape_inline`` for text after an ATX marker.
+
+    A trailing ``#`` run after a space would read back as a closing sequence and vanish.
+    """
+    escaped = escape_inline(text)
+    body = escaped.rstrip("#")
+    if len(body) == len(escaped) or (body and body[-1] not in JS_SPACE):
+        return escaped
+    return body + "\\#" * (len(escaped) - len(body))
+
+
 def escape_line_starts(text: str) -> str:  # noqa: C901
     """Escape constructs that would start a block at the beginning of a line."""
     src = text
@@ -383,6 +396,9 @@ def _code_span(text: str) -> str:
     return f"{fence}{text}{fence}"
 
 
+_BLANK_LINES = re.compile(r"\n(?:[ \t]*\n)+")
+
+
 def _hard_breaks(text: str) -> str:
     return text.replace("\n", "  \n")
 
@@ -417,7 +433,8 @@ def runs_to_markdown(runs: list[Run]) -> str:
             out.append(_hard_breaks(lead) + inner + _hard_breaks(trail))
         if "citationId" in run:
             out.append(f"[^{run['citationId']}]")
-    return "".join(out)
+    # A blank line ends a paragraph in Markdown: consecutive line breaks collapse into one hard break.
+    return _BLANK_LINES.sub("\n", "".join(out))
 
 
 def inline_to_plain(markdown: str) -> str:

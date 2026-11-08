@@ -2,6 +2,35 @@
 
 Newest first. Each iteration records what was found, decided and checked, and what is left.
 
+## Library excellence directive: 15 rounds (2026-11-08)
+
+Constraints for every round: public API stays compatible, nothing is published, licences and git history are not touched, no
+new dependencies. Each round audits one area, reproduces what it finds, fixes it with a regression test and runs the local
+gate (`npm run build`, `npm test`, `go vet` and `go test`, `ruff`, `mypy` and `pytest`). Scores are in `scorecard.md`.
+
+Local setup note: `package-lock.json` still lists only `packages/*` as workspaces and `@supersolutions/super-protocol` is not
+on npm, so `npm ci` fails on a fresh clone (the release steps in `docs/RELEASING.md` regenerate the lockfile after that
+package is published). To build here, `npm install --no-package-lock` with the protocol package linked from super-chat.
+
+### Round 1: Markdown export fidelity
+
+* **Method.** A seeded fuzz (6,000 documents per seed, adversarial text such as `*`, `_`, `` ` ``, `[`, `<`, `&amp;`, `#`, `>`,
+  CJK and emoji in paragraphs, quotes, headings and lists) exports to Markdown, imports it again with `fromMarkdown` and
+  compares block count, block type and text. A separate fuzz drove `createEditor` with random insert, update, move, delete,
+  duplicate, replace and citation operations plus undo and redo (6,300 runs): no defect, so the engine was left alone.
+* **Defect 1: a heading ending in ` #` lost the `#`.** `## Learning C #` reads back as the heading `Learning C` (the `#` is
+  an ATX closing sequence). Affected headings, section titles and the document title. Fix: a trailing `#` run that follows
+  whitespace (or is the whole text) is escaped (`\#`).
+* **Defect 2: a blank line inside a paragraph split it in two on re-import.** A run containing `\n\n` (or newlines around
+  whitespace-only lines) exported as `  \n  \n`, which is a blank line. Consecutive line breaks now collapse into one hard
+  break, in paragraphs, quotes and callouts.
+* **Ports.** `render.v1.json` gained a `markdown-edges` document, a title ending in `#` and five more run texts; the Go
+  (`EscapeHeadingText`, `blankLines`) and Python (`escape_heading_text`, `_BLANK_LINES`) ports were changed to match and fail
+  against the new data without the change.
+* **Still open (rare).** A paragraph that starts with four or more spaces reads back as an indented code block, and a list
+  item such as `--- ---` reads back as a thematic break. Both need a decision on how much leading whitespace to preserve.
+* **Gate.** TypeScript 369 tests, Go (`go vet`, `go test`), Python (`ruff`, `mypy`, 16 tests) pass.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected
