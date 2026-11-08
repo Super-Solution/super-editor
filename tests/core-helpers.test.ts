@@ -410,7 +410,7 @@ test('clipText and the text previews never leave half of a surrogate pair', () =
   const service = createReportService(createEditor(createDocument({ id: 'emoji', title: 'T' })));
   const inserted = runAgentAction(service, 'insert_blocks', { blocks: [{ id: 'p1', parentId: null, content: { type: 'paragraph', runs: [{ text: '😀'.repeat(200) }] }, citationIds: [] }] }, { actor: agent });
   assert.equal(inserted.ok, true, JSON.stringify(inserted));
-  const found = runAgentAction(service, 'find_blocks', {}, { actor: agent }) as { blocks: { text: string }[] };
+  const found = runAgentAction(service, 'find_blocks', {}, { actor: agent }) as unknown as { blocks: { text: string }[] };
   assert.ok(found.blocks[0]!.text.endsWith('…'));
   assert.equal(lone.test(found.blocks[0]!.text), false, 'the preview is well-formed Unicode');
 });
