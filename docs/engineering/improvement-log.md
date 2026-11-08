@@ -125,3 +125,13 @@ These are the places where the obvious port differs from JavaScript, and what pi
   optimistic-concurrency answers for a stale base revision).
 - The Go command now sets read, write and idle timeouts and a header size limit.
 - Audit: `npm audit` (0 vulnerabilities), `go test -race ./...`, ruff, strict mypy and pytest are green.
+
+### Round 5 (2026-11-08) — WSGI Content-Length
+
+* Audit: the Python WSGI adapter and `python -m super_editor.server`. Locking is sound (`Editor` holds an
+  `RLock`, `_Saving` serializes edit plus save). One bug: the adapter trusted `str.isdigit()` before
+  `int()`, but `"²".isdigit()` is true and `int("²")` raises, so a hostile `Content-Length` escaped as an
+  unhandled error (a bare 500) instead of the handler's 413.
+* Fix: the adapter now matches `[0-9]+` (ASCII only). The handler already refuses anything else with 413.
+* Tests: `tests/test_server_wsgi.py` (two cases; the non-ASCII one fails without the fix).
+* Gate: `ruff check`, `ruff format --check`, strict `mypy`, `pytest` (16 tests, 3450 subtests) pass.

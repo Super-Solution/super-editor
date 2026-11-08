@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import io
+import re
 from collections.abc import Callable, Iterable
 from typing import Any
 from urllib.parse import quote
@@ -48,7 +49,7 @@ def create_wsgi_app(service: Service, options: Options | None = None) -> WsgiApp
         body: Any = None
         if length not in ("", "0") or headers.get("transfer-encoding") == "chunked":
             stream = environ["wsgi.input"]
-            body = _Limited(stream, int(length)) if length.isdigit() else stream
+            body = _Limited(stream, int(length)) if re.fullmatch("[0-9]+", length) else stream
         path, query = _raw_path(environ)
         response = handler.handle(Request(environ["REQUEST_METHOD"], path, query, headers, body))
         reason = _STATUS.get(response.status, "OK")
