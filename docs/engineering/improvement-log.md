@@ -31,6 +31,22 @@ package is published). To build here, `npm install --no-package-lock` with the p
   item such as `--- ---` reads back as a thematic break. Both need a decision on how much leading whitespace to preserve.
 * **Gate.** TypeScript 369 tests, Go (`go vet`, `go test`), Python (`ruff`, `mypy`, 16 tests) pass.
 
+### Round 2: validation hot path (performance)
+
+* **Method.** `npm run bench` (new, `scripts/bench-core.ts`) builds documents of 500, 2,000 and 5,000 paragraphs and times
+  a single `updateBlock`, `validateDocument`, the exports, `undo` plus `redo` and serialization. A CPU profile of
+  `validateDocument` on 5,000 blocks showed `timestamp` (about 500 ms of 2.5 s over 30 runs), `object` and the document
+  being serialized twice for the size limit.
+* **Changes.** `timestamp` remembers up to 1,024 strings it already proved valid (a document repeats a handful across
+  thousands of blocks; the check is a pure function of the string). `object` no longer allocates an array per key. The
+  total-size check adds the envelope to the running total of the per-block sizes it already computed instead of
+  stringifying every block again; the new boundary test pins that the result is byte-exact (accepted at exactly
+  `LIMITS.json`, refused at one more).
+* **Result (5,000 blocks, same machine).** `validateDocument` 58 ms to 29 ms; one `updateBlock` through `apply` 82 ms to
+  48 ms; `serialize` 62 ms to 46 ms. The remaining cost is per-field path strings built eagerly for every field, which
+  would need a lazy-path rewrite of the validator; not attempted.
+* **Gate.** TypeScript 370 tests pass; Go and Python untouched.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected

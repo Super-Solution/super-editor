@@ -6,7 +6,7 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | Objective | Baseline (before round 1) | Latest | Evidence for the latest score |
 | --- | --- | --- | --- |
 | Correctness | 8 | 8 | Randomised editor fuzz (6,300 runs of 25 steps; every snapshot revalidates, pre-order holds, undo restores, full unwind reaches the empty document) found no defect. A Markdown round-trip fuzz found two (fixed in round 1) and two rarer ones still open (see log) |
-| Performance | 7 | 7 | Not measured yet |
+| Performance | 7 | 8 | `npm run bench`: one edit to a 5,000-block document 82 ms to 48 ms, validation 58 ms to 29 ms (profile-guided). Per-field path strings are still built eagerly |
 | Simplicity | 7 | 7 | Not assessed yet |
 | Extensibility | 7 | 7 | Not assessed yet |
 | Composability | 8 | 8 | Not assessed yet |
@@ -21,3 +21,4 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | Round | Area | Result |
 | --- | --- | --- |
 | 1 | Markdown export fidelity | Correctness 8 (two defects fixed, two open) |
+| 2 | Validation hot path | Performance 7 to 8 |

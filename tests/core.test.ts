@@ -333,3 +333,25 @@ test('mixed report edits can all undo and redo without changing ordered content 
   for (let index = states.length - 2; index >= 0; index--) { success(current.undo(human, current.getSnapshot().revision)); assert.deepEqual(contentState(current.getSnapshot()), states[index]); verifyVersions(); }
   for (let index = 1; index < states.length; index++) { success(current.redo(human, current.getSnapshot().revision)); assert.deepEqual(contentState(current.getSnapshot()), states[index]); verifyVersions(); }
 });
+
+test('the serialized size limit is exact at the boundary', () => {
+  const at = '2026-10-05T12:00:00.000Z';
+  const editor = createEditor(createDocument({ id: 'big', title: 'Big' }, { now: () => at }), { now: () => at });
+  const lengths = [...Array(79).fill(LIMITS.text) as number[], 1];
+  for (let batch = 0; batch < 4; batch++) {
+    const blocks = lengths.slice(batch * 20, batch * 20 + 20).map((length, index) => ({ id: `p${batch * 20 + index}`, parentId: null, content: { type: 'paragraph' as const, runs: [{ text: 'x'.repeat(length) }] }, citationIds: [] }));
+    const result = editor.apply({ id: `fill-${batch}`, actor: { id: 'tester', kind: 'agent' }, baseRevision: editor.getSnapshot().revision, operations: [{ type: 'insertBlocks', blocks }] });
+    assert.equal(result.ok, true, JSON.stringify(result));
+  }
+  const document = JSON.parse(JSON.stringify(editor.getSnapshot())) as ResearchDocument;
+  const last = document.blocks[document.blocks.length - 1]!.content as { runs: { text: string }[] };
+  const sizeWith = (length: number): number => { last.runs[0]!.text = 'x'.repeat(length); return JSON.stringify(document).length; };
+  const exact = LIMITS.json - sizeWith(0);
+  assert.ok(exact > 1 && exact <= LIMITS.text, `the last block must be able to absorb the remainder (${exact})`);
+  assert.equal(sizeWith(exact), LIMITS.json);
+  assert.equal(validateDocument(document).ok, true, 'exactly at the limit is accepted');
+  assert.equal(sizeWith(exact + 1), LIMITS.json + 1);
+  const over = validateDocument(document);
+  assert.equal(over.ok, false);
+  assert.match(over.ok ? '' : over.issues[0]!.message, /serialized size/);
+});
