@@ -901,7 +901,7 @@ func blockRefs(value any, path string) []any {
 	return refs
 }
 
-func idMap(value any, path string) record {
+func idMap(value any, path string) *Object {
 	o, ok := asObject(value)
 	if !ok {
 		fail("Expected an object mapping old block IDs to new block IDs.", path, `Example: {"intro":"intro-copy"}. Include the block and every descendant.`)
@@ -910,12 +910,13 @@ func idMap(value any, path string) record {
 	if len(keys) == 0 || len(keys) > limitBlocksPerOperation {
 		fail(fmt.Sprintf("Expected between 1 and %d ID mappings.", limitBlocksPerOperation), path, "")
 	}
-	result := record{}
+	result := &Object{Values: map[string]any{}}
 	var values []string
 	for _, key := range keys {
 		k := id(key, path+"."+key)
 		v := id(o.Values[key], path+"."+key)
-		result[k] = v
+		result.Keys = append(result.Keys, k)
+		result.Values[k] = v
 		values = append(values, v)
 	}
 	unique(values, path, "Every new ID must be different.")
@@ -997,7 +998,7 @@ func operation(value any, path string) record {
 		v := object(value, path, []string{"type", "blockId", "expectedVersion", "newIds"}, "afterId")
 		blockID := id(v.Values["blockId"], path+".blockId")
 		newIDs := idMap(v.Values["newIds"], path+".newIds")
-		if _, ok := newIDs[blockID]; !ok {
+		if _, ok := newIDs.Values[blockID]; !ok {
 			fail("newIds must include the duplicated block itself.", path+".newIds", `Add "`+blockID+`": "<new id>".`)
 		}
 		return merge(record{"type": kind, "blockId": blockID, "expectedVersion": float64(integer(v.Values["expectedVersion"], path+".expectedVersion", 1, maxSafe)), "newIds": newIDs}, after(v))

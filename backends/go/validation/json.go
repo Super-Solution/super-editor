@@ -116,3 +116,27 @@ func Plain(v any) any {
 		return v
 	}
 }
+
+// MarshalJSON writes the members in their recorded (JavaScript property) order.
+func (o *Object) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	for i, key := range o.Keys {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		k, err := json.Marshal(key)
+		if err != nil {
+			return nil, err
+		}
+		v, err := json.Marshal(o.Values[key])
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(k)
+		buf.WriteByte(':')
+		buf.Write(v)
+	}
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
+}

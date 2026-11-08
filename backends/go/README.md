@@ -5,6 +5,8 @@
 - `documents`: block text extraction (`TextParts`), the structural diff between two documents
   (`DiffDocuments`) and one-line revision summaries (`SummarizeRevision`).
 
+- `editor`: the session editor: guarded transactions over the full model (17 block types, nesting), all 14
+  operations, rebase-safe stale transactions, undo and redo, the revision log (`editor.New`, `Apply`, `Undo`, `Redo`).
 - `validation`: the document, transaction, actor, timestamp and URL validators (`ValidateDocument`, `ValidateTransaction`,
   `ReadActor`, `Timestamp`, `SafeURL`) with the reference's first-failure issues, JavaScript string lengths and key order.
   `Decode` reads JSON keeping member order.

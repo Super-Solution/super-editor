@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from super_editor import Editor
+from super_editor.guarded import Editor
 
 DATA = json.loads((Path(__file__).resolve().parents[3] / "conformance" / "guarded-apply.v1.json").read_text())
 

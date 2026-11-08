@@ -64,3 +64,25 @@ test('the reference reproduces every validation case', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(got)), c.expect, label);
   }
 });
+
+const editorData = JSON.parse(readFileSync(new URL('../conformance/editor.v1.json', import.meta.url), 'utf8'));
+
+test('the reference reproduces every editor scenario', () => {
+  let steps = 0;
+  for (const { scenario, steps: list } of editorData.scenarios) {
+    let current = scenario.initial.createdAt;
+    const editor = createEditor(scenario.initial, { now: () => current, ...(scenario.historyLimit === undefined ? {} : { historyLimit: scenario.historyLimit }) });
+    for (const [index, step] of list.entries()) {
+      current = step.now;
+      const result = step.action === 'apply' ? editor.apply(step.input) : step.action === 'undo' ? editor.undo(step.input.actor, step.input.expectedRevision) : editor.redo(step.input.actor, step.input.expectedRevision);
+      const got = result.ok
+        ? { ok: true, ...(result.duplicate ? { duplicate: true } : {}), document: result.document, revision: result.revision }
+        : { ok: false, issues: result.issues, currentRevision: result.currentRevision };
+      assert.deepEqual(JSON.parse(JSON.stringify(got)), step.expect, `${scenario.name} step ${index}`);
+      steps++;
+    }
+    assert.deepEqual(JSON.parse(JSON.stringify(editor.getRevisions())), scenario.revisions, `${scenario.name} revisions`);
+    assert.deepEqual(JSON.parse(JSON.stringify(editor.getSnapshot())), scenario.final, `${scenario.name} final`);
+  }
+  assert.ok(steps >= 1000);
+});
