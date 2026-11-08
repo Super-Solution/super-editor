@@ -11,6 +11,7 @@ import { ancestorsOf, blockText, childrenOf, descendantsOf, findBlocks, getBlock
 import { transactionSchema } from './schemas.js';
 import { createReportService, type ReportService } from './service.js';
 import { stats, type DocumentStats } from './stats.js';
+import { clipText } from './text.js';
 import { TEMPLATE_KINDS, createTemplate, listTemplates, templateTitle, type TemplateInfo, type TemplateKind } from './templates.js';
 import type { Actor, Block, BlockContent, BlockInput, BlockType, ChartSpec, EditorIssue, Operation, ResearchDocument, Transaction } from './types.js';
 import { LIMITS, validateTransaction } from './validation.js';
@@ -161,7 +162,7 @@ function need(doc: ResearchDocument, id: string, label = 'Block'): Block {
 }
 function preview(value: string): string {
   const flat = value.replace(/\s+/g, ' ').trim();
-  return flat.length > TRANSPORT_LIMITS.textPreviewChars ? `${flat.slice(0, TRANSPORT_LIMITS.textPreviewChars - 1)}…` : flat;
+  return flat.length > TRANSPORT_LIMITS.textPreviewChars ? `${clipText(flat, TRANSPORT_LIMITS.textPreviewChars - 1)}…` : flat;
 }
 function childCounts(doc: ResearchDocument): Map<string, number> {
   const counts = new Map<string, number>();
@@ -630,7 +631,7 @@ const importMarkdownAction = define({
     const operations: Operation[] = [];
     if (bool(ctx, 'setTitle') === true) {
       const heading = /^\s*#\s+(.+?)\s*#*\s*$/m.exec(markdown.split('\n').find(line => line.trim() !== '') ?? '');
-      if (heading?.[1]) operations.push({ type: 'setTitle', title: heading[1].slice(0, LIMITS.title) });
+      if (heading?.[1]) operations.push({ type: 'setTitle', title: clipText(heading[1], LIMITS.title) });
     }
     if (replace) {
       const roots = ctx.doc.blocks.filter(block => block.parentId === null);

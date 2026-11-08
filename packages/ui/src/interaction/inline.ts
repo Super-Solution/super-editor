@@ -130,12 +130,18 @@ export function replaceRange(runs: readonly InlineRun[], start: number, end: num
   const from = Math.min(start, end), to = Math.max(start, end);
   return insertText(deleteRange(runs, from, to), from, text);
 }
-/** Word under or touching `offset`, as a [start, end) pair, or null when the caret sits between separators. */
+/** Word under or touching `offset`, as a [start, end) pair, or null when the caret sits between separators. Characters outside the BMP (rare CJK ideographs, mathematical letters) count as one character. */
 export function wordRangeAt(text: string, offset: number): { start: number; end: number } | null {
   const word = /[\p{L}\p{N}_'’-]/u;
+  const isHigh = (unit: number): boolean => unit >= 0xd800 && unit <= 0xdbff, isLow = (unit: number): boolean => unit >= 0xdc00 && unit <= 0xdfff;
+  /** Width of the character that ends at `index` (2 for a surrogate pair). */
+  const widthBefore = (index: number): number => index >= 2 && isLow(text.charCodeAt(index - 1)) && isHigh(text.charCodeAt(index - 2)) ? 2 : 1;
+  const widthAt = (index: number): number => index + 1 < text.length && isHigh(text.charCodeAt(index)) && isLow(text.charCodeAt(index + 1)) ? 2 : 1;
   let start = offset, end = offset;
-  while (start > 0 && word.test(text[start - 1]!)) start--;
-  while (end < text.length && word.test(text[end]!)) end++;
+  // A caret between the halves of a pair belongs to the whole character.
+  if (start > 0 && start < text.length && isLow(text.charCodeAt(start)) && isHigh(text.charCodeAt(start - 1))) start = end = start - 1;
+  while (start > 0 && word.test(text.slice(start - widthBefore(start), start))) start -= widthBefore(start);
+  while (end < text.length && word.test(text.slice(end, end + widthAt(end)))) end += widthAt(end);
   return end > start ? { start, end } : null;
 }
 export function runsEqual(a: readonly InlineRun[], b: readonly InlineRun[]): boolean { return JSON.stringify(normalizeRuns(a)) === JSON.stringify(normalizeRuns(b)); }

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ancestorsOf, b, blockText, chart, childrenOf, createBlockId, createDocument, createEditor, defaultHint, descendantsOf, diffDocuments, findBlocks, formatIssues, fromMarkdown, getBlock, getOutline, op,
+  ancestorsOf, b, blockText, chart, childrenOf, clipText, createReportService, runAgentAction, createBlockId, createDocument, createEditor, defaultHint, descendantsOf, diffDocuments, findBlocks, formatIssues, fromMarkdown, getBlock, getOutline, op,
   orderedBlocks, plainRuns, reservedIds, runs, stats, summarizeRevision, toHTML, toMarkdown, toPlainText, transaction, validateDocument, validateTransaction, withHints,
 } from '../packages/core/src/index.js';
 import type { Actor, ApplyResult, BlockInput, Editor, InlineRun, ResearchDocument } from '../packages/core/src/index.js';
@@ -397,4 +397,20 @@ test('markdown export round-trips a trailing # and blank lines inside a paragrap
   assert.deepEqual(blocks.slice(0, 2).map(block => (block.content as { text: string }).text), ['Learning C #', 'C# and F#']);
   assert.match(markdown, /^## Learning C \\#$/m);
   assert.equal(blocks[2]!.content.type === 'paragraph' ? blocks[2]!.content.runs.map(run => run.text).join('') : '', 'one\ntwo\nthree');
+});
+
+test('clipText and the text previews never leave half of a surrogate pair', () => {
+  assert.equal(clipText('abc', 5), 'abc');
+  assert.equal(clipText('abcdef', 3), 'abc');
+  assert.equal(clipText('a😀b', 2), 'a', 'a cut inside the pair backs off');
+  assert.equal(clipText('a😀b', 3), 'a😀');
+  assert.equal(clipText('😀', 1), '');
+  assert.equal(clipText('abc', 0), '');
+  const lone = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+  const service = createReportService(createEditor(createDocument({ id: 'emoji', title: 'T' })));
+  const inserted = runAgentAction(service, 'insert_blocks', { blocks: [{ id: 'p1', parentId: null, content: { type: 'paragraph', runs: [{ text: '😀'.repeat(200) }] }, citationIds: [] }] }, { actor: agent });
+  assert.equal(inserted.ok, true, JSON.stringify(inserted));
+  const found = runAgentAction(service, 'find_blocks', {}, { actor: agent }) as { blocks: { text: string }[] };
+  assert.ok(found.blocks[0]!.text.endsWith('…'));
+  assert.equal(lone.test(found.blocks[0]!.text), false, 'the preview is well-formed Unicode');
 });

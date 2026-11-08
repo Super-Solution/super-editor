@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+import { clipText } from './text.js';
 import type { Block, Operation, ResearchDocument, Revision } from './types.js';
 
 export type DocumentDiff = {
@@ -80,7 +81,7 @@ export function summarizeRevision(revision: Revision): string {
   if (moved) parts.push(`moved ${plural(moved, 'block')}`);
   if (deleted) parts.push(`deleted ${plural(deleted, 'block')}`);
   const title = [...ops].reverse().find((operation): operation is Extract<Operation, { type: 'setTitle' }> => operation.type === 'setTitle');
-  if (title) parts.push(`renamed the document to “${title.title.length > 60 ? `${title.title.slice(0, 57)}...` : title.title}”`);
+  if (title) parts.push(`renamed the document to “${title.title.length > 60 ? `${clipText(title.title, 57)}...` : title.title}”`);
   if (ops.some(operation => operation.type === 'setFormat')) parts.push('changed the page format');
   const added = ops.filter(operation => operation.type === 'addCitation').length, updated = ops.filter(operation => operation.type === 'updateCitation').length, removed = ops.filter(operation => operation.type === 'removeCitation').length;
   if (added) parts.push(`added ${plural(added, 'citation')}`);

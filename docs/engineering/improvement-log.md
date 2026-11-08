@@ -78,6 +78,27 @@ package is published). To build here, `npm install --no-package-lock` with the p
 * **Not changed.** The packages stay ESM only; no CommonJS build was added (no new tooling, and Node 22 is the engine floor).
 * **Gate.** TypeScript 373 tests pass.
 
+### Round 5: Unicode at the edges (surrogate pairs)
+
+* **Method.** A property fuzz of the pure inline algebra (`toggleMark`, `setLink`, `setHighlight`, `insertText`,
+  `deleteRange`, `splitRuns`, `sliceRuns`, `normalizeRuns`, 90,000 random run lists with markers, links, emoji and CJK):
+  text and citation markers are preserved, results are normalized, offsets agree. No defect there. Then a search for every
+  place that cuts user text with `slice`.
+* **Defect 1 (API output).** The text preview of `find_blocks`, `get_outline` and friends cut at 159 UTF-16 units. A paragraph of
+  emoji came back ending in a lone high surrogate (`"\ud83d…"`): well-formed JSON text but not valid Unicode, so a Python
+  client cannot print it and a Go client sees U+FFFD. The same cut applied to a title imported from Markdown (`setTitle`
+  clipped at 1,000 units, which would persist the half pair in the document), to the "renamed the document to" revision
+  summary and to the UI's paste conversion of toggle and section titles.
+* **Fix.** `clipText(text, max)` (new, additive export of `@supersolutions/super-editor-core`) backs off one unit when the cut
+  lands inside a pair; the four call sites use it. Test: `clipText and the text previews never leave half of a surrogate pair`
+  (fails without the change).
+* **Defect 2 (UI).** `wordRangeAt`, which picks the word for a collapsed-caret format command and for double-click, tested
+  one UTF-16 unit at a time, so a word containing a rare ideograph (CJK Extension B) or a mathematical letter stopped at
+  it. It now walks by character, and a caret between the two halves of a pair belongs to the whole character.
+* **Known difference kept.** The Go and Python ports count previews and some limits in code points, TypeScript in UTF-16
+  units; for text outside the BMP the cut points still differ (documented in iteration 2).
+* **Gate.** TypeScript 374 tests pass.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected
