@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/Super-Solution/super-editor/backends/go/editor"
@@ -511,10 +512,11 @@ var basePathPattern = regexp.MustCompile(`^/[^?#]*[^/?#]$`)
 const exposedHeaders = "x-document-revision"
 
 type apiHandler struct {
-	service Service
-	opts    Options
-	limit   int64
-	openapi []byte
+	service     Service
+	opts        Options
+	limit       int64
+	openapi     []byte
+	openapiOnce sync.Once
 }
 
 // NewHandler returns the HTTP API over a service. It binds no port and authenticates nobody: the host does, before
@@ -753,9 +755,7 @@ func (h *apiHandler) run(route *routeSpec, q *request) *response {
 	case "run_action":
 		return h.runAction(q)
 	case "openapi":
-		if h.openapi == nil {
-			h.openapi = marshal(h.openapiDocument())
-		}
+		h.openapiOnce.Do(func() { h.openapi = marshal(h.openapiDocument()) })
 		return &response{status: 200, headers: baseHeaders("application/json; charset=utf-8"), body: h.openapi}
 	case "document_schema":
 		return jsonResponse(spec().documentSchema, 200)

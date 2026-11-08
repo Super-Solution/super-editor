@@ -111,3 +111,17 @@ These are the places where the obvious port differs from JavaScript, and what pi
 - No authentication, rate limiting or persistence layer ships with either server; the handlers expect a gateway.
 - The Rust backend (closed source) has to reproduce `server.v1.json` and `server-spec.v1.json` before it can claim the
   contract.
+
+## Rounds of 15 (audit, fix, local gate, push)
+
+### Round 1 (2026-11-08): concurrency of the Go and Python servers
+
+- **Data race in the Go handler.** The OpenAPI document was built lazily without synchronization; two concurrent first
+  requests wrote the same field. `go test -race` could not see it because no test was concurrent. Fixed with `sync.Once`,
+  and `TestConcurrentRequests` (16 goroutines mixing reads, writes and the OpenAPI route) now fails without the fix under `-race`.
+- **`-save` was not serialized** in the Go command or the Python runner: two simultaneous edits could interleave on the
+  temporary file. Edits and their saves now run under one lock, so the file always holds the last accepted edit (checked
+  with 8 threads x 10 edits against the Python runner: the file ended valid at revision 34; the 409s are the expected
+  optimistic-concurrency answers for a stale base revision).
+- The Go command now sets read, write and idle timeouts and a header size limit.
+- Audit: `npm audit` (0 vulnerabilities), `go test -race ./...`, ruff, strict mypy and pytest are green.

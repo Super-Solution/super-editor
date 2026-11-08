@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Super-Solution/super-editor/backends/go/editor"
@@ -228,4 +229,43 @@ func normalizeIDs(v any) any {
 		}
 	}
 	return v
+}
+
+// TestConcurrentRequests runs reads and writes from many goroutines (go test -race checks the handler's shared state:
+// the lazily built OpenAPI document, the service, the spec).
+func TestConcurrentRequests(t *testing.T) {
+	doc, err := validation.Decode([]byte(`{"schemaVersion":1,"id":"d","title":"T","revision":0,"createdAt":"2026-01-01T00:00:00.000Z","updatedAt":"2026-01-01T00:00:00.000Z","format":{"page":"screen","font":"sans","fontSize":16,"lineHeight":1.6},"blocks":[],"citations":[],"retiredBlockIds":[]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ed, err := editor.New(doc, editor.Options{Now: func() string { return "2026-06-01T00:00:00.000Z" }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := NewHandler(NewService(ed), Options{Now: func() string { return "2026-06-01T00:00:00.000Z" }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			for j := 0; j < 20; j++ {
+				for _, r := range []*http.Request{
+					httptest.NewRequest("GET", "/openapi.json", nil),
+					httptest.NewRequest("GET", "/outline", nil),
+					httptest.NewRequest("POST", "/actions/set_title", strings.NewReader(`{"title":"T`+itoa(i)+`"}`)),
+				} {
+					r.Header.Set("content-type", "application/json")
+					rec := httptest.NewRecorder()
+					h.ServeHTTP(rec, r)
+					if rec.Code >= 500 {
+						t.Errorf("%s %s: %d %s", r.Method, r.URL.Path, rec.Code, rec.Body.String())
+					}
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
 }

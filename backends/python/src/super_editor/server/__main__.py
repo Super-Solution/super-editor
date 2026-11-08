@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 from socketserver import ThreadingMixIn
 from typing import Any
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
@@ -23,11 +24,13 @@ from .wsgi import create_wsgi_app
 
 
 class _Saving:
-    """A service that writes the document back after every accepted edit (temporary file, then rename)."""
+    """A service that writes the document back after every accepted edit (temporary file, then rename). Edits and
+    their saves are serialized, so concurrent requests cannot interleave on the temporary file."""
 
     def __init__(self, inner: Service, path: str) -> None:
         self._inner = inner
         self._path = path
+        self._lock = threading.Lock()
 
     def read(self) -> dict[str, Any]:
         return self._inner.read()
@@ -48,13 +51,16 @@ class _Saving:
         return result
 
     def apply(self, transaction: Any) -> dict[str, Any]:
-        return self._save(self._inner.apply(transaction))
+        with self._lock:
+            return self._save(self._inner.apply(transaction))
 
     def undo(self, actor: Any, expected_revision: Any) -> dict[str, Any]:
-        return self._save(self._inner.undo(actor, expected_revision))
+        with self._lock:
+            return self._save(self._inner.undo(actor, expected_revision))
 
     def redo(self, actor: Any, expected_revision: Any) -> dict[str, Any]:
-        return self._save(self._inner.redo(actor, expected_revision))
+        with self._lock:
+            return self._save(self._inner.redo(actor, expected_revision))
 
 
 class _Threaded(ThreadingMixIn, WSGIServer):

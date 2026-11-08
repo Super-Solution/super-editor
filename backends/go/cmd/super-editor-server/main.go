@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Super-Solution/super-editor/backends/go/editor"
@@ -22,12 +23,18 @@ import (
 )
 
 // saving persists the document after every accepted edit, writing a temporary file and renaming it over the target.
+// Edits and their saves are serialized, so two requests cannot interleave on the temporary file and the file always
+// holds the document of the last accepted edit.
 type saving struct {
 	server.Service
 	path string
+	mu   *sync.Mutex
 }
 
-func (s saving) save(r editor.Result) editor.Result {
+func (s saving) edit(step func() editor.Result) editor.Result {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := step()
 	if r.OK && !r.Duplicate {
 		if err := writeAtomic(s.path, s.Service.Read()); err != nil {
 			log.Printf("saving %s: %v", s.path, err)
@@ -36,12 +43,16 @@ func (s saving) save(r editor.Result) editor.Result {
 	return r
 }
 
-func (s saving) Apply(tx any) editor.Result { return s.save(s.Service.Apply(tx)) }
-func (s saving) Undo(actor, expected any) editor.Result {
-	return s.save(s.Service.Undo(actor, expected))
+func (s saving) Apply(tx any) editor.Result {
+	return s.edit(func() editor.Result { return s.Service.Apply(tx) })
 }
+
+func (s saving) Undo(actor, expected any) editor.Result {
+	return s.edit(func() editor.Result { return s.Service.Undo(actor, expected) })
+}
+
 func (s saving) Redo(actor, expected any) editor.Result {
-	return s.save(s.Service.Redo(actor, expected))
+	return s.edit(func() editor.Result { return s.Service.Redo(actor, expected) })
 }
 
 func writeAtomic(path string, document map[string]any) error {
@@ -83,7 +94,7 @@ func main() {
 	}
 	var service server.Service = server.NewService(ed)
 	if *save && !*readOnly {
-		service = saving{service, *file}
+		service = saving{service, *file, &sync.Mutex{}}
 	}
 	opts := server.Options{ReadOnly: *readOnly, BasePath: *basePath, MaxBodyBytes: *maxBody}
 	if *cors == "*" {
@@ -96,6 +107,10 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Fprintf(os.Stderr, "super-editor-server: %s on http://%s\n", *file, *addr)
-	srv := &http.Server{Addr: *addr, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{
+		Addr: *addr, Handler: handler,
+		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 120 * time.Second,
+		MaxHeaderBytes: 64 << 10,
+	}
 	log.Fatal(srv.ListenAndServe())
 }
