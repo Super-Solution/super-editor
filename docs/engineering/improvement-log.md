@@ -24,7 +24,7 @@ concept and cover a small part of that core:
 | Needed by the HTTP contract | TypeScript core | Go / Python ports |
 | --- | --- | --- |
 | Whole-document validation (17 block types, limits, URL rules) | yes | **no** (content is opaque) |
-| Operations | 16 | 5 (`insertBlock`, `updateBlock`, `moveBlock`, `deleteBlock`, `setTitle`) |
+| Operations | 14 | 5 (`insertBlock`, `updateBlock`, `moveBlock`, `deleteBlock`, `setTitle`) |
 | Nesting (`section`, `toggle`), `afterId` placement in a subtree | yes | **no** (flat documents only) |
 | `conflictPolicy: "rebase-safe"`, `replaceText`, citations | yes | **no** |
 | Undo and redo | yes | **no** |
