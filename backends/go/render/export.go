@@ -596,3 +596,12 @@ func anyStrings(items []string) []any {
 	}
 	return out
 }
+
+// JSNumber formats a number the way JavaScript's String(number) does.
+func JSNumber(f float64) string { return jsNumber(f) }
+
+// Line collapses every whitespace run that holds a newline into one space, then trims (the exporters' one-line form).
+func Line(text string) string { return line(text) }
+
+// JSLower is String.prototype.toLowerCase.
+func JSLower(s string) string { return jsLower(s) }

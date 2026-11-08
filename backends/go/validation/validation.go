@@ -1211,3 +1211,7 @@ func ValidateDocument(value any) Result {
 		return result
 	})
 }
+
+// JSKeyOrder orders object member names the way JavaScript enumerates them: array-index names ascending, then the rest in
+// the order given.
+func JSKeyOrder(keys []string) []string { return jsKeyOrder(keys) }

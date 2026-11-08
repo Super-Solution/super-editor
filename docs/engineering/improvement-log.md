@@ -55,3 +55,59 @@ design question; step 4 is small once the rest is true.
 
 * Everything above. Undo/redo (session history) is the other piece that has to be ported before step 4 can
   claim the full contract.
+
+## Iteration 2 (2026-11-08): the Go and Python servers
+
+Iteration 1 found that a Go or Python server was not a thin layer yet and proposed four steps. All four are done, and each
+ended with generated data that both ports reproduce.
+
+### What was built
+
+| Step | Result | Pinned by |
+| --- | --- | --- |
+| 1. Validation | Whole-document, transaction, actor, timestamp and URL validators with the reference's first-failure issues | `validation.v1.json` (1,437 cases) |
+| 2. Operations | All 14 operations, nesting, `rebase-safe`, `replaceText`, citations, undo and redo, the revision log | `editor.v1.json` (39 scenarios, 1,146 steps) |
+| 3. Export | Markdown, HTML, text, stats, outline, search and markdown import; word counting from Unicode script tables generated from the reference | `render.v1.json` |
+| 4. HTTP | The 21 actions, every route, OpenAPI and the options, as a Go `http.Handler` and a Python handler with a WSGI adapter | `server.v1.json` (1,450 exchanges), `server-spec.v1.json` |
+
+The action table, JSON Schemas, OpenAPI document, routes, limits and report templates are not re-typed in Go or Python:
+`scripts/export-server-spec.ts` writes them once from the TypeScript package and a test fails when an embedded copy is
+stale. Inputs are checked against the action schemas by a small JSON Schema subset (type, enum, const, bounds, length,
+pattern, items, properties, required, `additionalProperties: false`, `anyOf`, local `$ref`) that reports the first failure
+with the same message, path and hint as the reference.
+
+### Behaviour that had to be copied by hand
+
+These are the places where the obvious port differs from JavaScript, and what pins each one:
+
+- String lengths are UTF-16 code units; `\s` is JavaScript's set; numbers print the way `String(number)` does.
+- Object key order follows JavaScript (array-index keys first, then insertion order), because the first validation failure
+  depends on it. Go decodes into an ordered object type for this; Python's dicts keep insertion order.
+- Regexes that need backtracking (RE2 has no backreferences) are written by hand in Go; the one multiline `$` pattern maps
+  `\r`, U+2028 and U+2029 to `\n` first.
+- `fetch` labels a string body without a content type `text/plain`, which is how the reference produces its 415 answers; the
+  tests do the same.
+
+### Known differences (all outside what the shared data covers)
+
+- Lone surrogates in strings are not supported in Go or Python; the reference accepts them.
+- Characters outside the Basic Multilingual Plane are counted by code point in a few size limits, not by UTF-16 unit.
+- The Unicode data of the running Go or Python can differ from Node's on a character added recently (word counts, case
+  folding).
+- Go's `net/http` refuses a malformed percent-escape in the request line before any handler runs, so those requests never
+  reach it; the conformance test skips them and asserts there are only a few.
+- A `HEAD` request returns the headers of the matching `GET`; the recorded bodies are not compared.
+
+### Improvements made along the way
+
+- `scripts/export-server-conformance.ts` replaces `crypto.randomUUID` with a counter, so the fixture is reproducible
+  byte for byte; before, every regeneration changed every generated transaction id.
+- The Go command and the Python runner can save the document after each accepted edit (`-save`, `--save`) by writing a
+  temporary file and renaming it over the target.
+
+### Remaining
+
+- MCP is not ported; `POST /actions/{name}` exposes the same action table over HTTP.
+- No authentication, rate limiting or persistence layer ships with either server; the handlers expect a gateway.
+- The Rust backend (closed source) has to reproduce `server.v1.json` and `server-spec.v1.json` before it can claim the
+  contract.

@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Guarded transactions, block text extraction, structural diff and revision summaries for Super Editor documents (Python port of the TypeScript core)."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "GPL-3.0-or-later"
-license-files = ["LICENSE"]
+license = "GPL-3.0-or-later AND AGPL-3.0-or-later"
+license-files = ["LICENSE", "AGPL-3.0-or-later.txt"]
 authors = [{ name = "SUPER SOLUTION LABS INC", email = "contact@supersolution.io" }]
 keywords = ["editor", "documents", "agents", "transactions"]
 classifiers = [
@@ -31,7 +31,7 @@ dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-super_editor = ["py.typed"]
+super_editor = ["py.typed", "server_spec.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

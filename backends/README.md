@@ -1,15 +1,16 @@
 # Backends
 
 One folder per language. Each implements the same contract and is tested against the shared data in
-[`../conformance`](../conformance/README.md). All code here is GPL-3.0-or-later; the AGPL servers are the
-TypeScript `api` and `mcp` packages.
+[`../conformance`](../conformance/README.md). The libraries are GPL-3.0-or-later; the servers (the TypeScript `api`
+and `mcp` packages, the Go `server` package and `cmd/super-editor-server`, the Python `super_editor.server`
+package) are AGPL-3.0-or-later.
 
 | Folder | Status |
 | --- | --- |
 | `typescript/` | Reference implementation: `api` (HTTP) and `mcp` servers |
-| `go/` | Proof of concept: `guarded` (transactions on flat documents) and `documents` (block text, document diff, revision summaries) |
-| `python/` | Proof of concept: the same, as `super_editor` (src layout, typed) |
+| `go/` | The full core (validation, 14 operations, nesting, rebase-safe, undo/redo), the read side (Markdown/HTML/text export, markdown import, stats, outline, search) and the HTTP server with the same contract as the TypeScript handler |
+| `python/` | The same, as `super_editor` (src layout, typed): `super_editor.server` is a framework-neutral handler with a WSGI adapter and a `python -m super_editor.server` runner |
 
-The proofs of concept cover the guarded-write rules (version and revision guards, atomic apply, retired
-IDs, idempotent retry) for five operation types, plus the pure document functions. They do not validate whole
-documents, support nesting, undo or redo, export markdown/HTML, or serve HTTP/MCP.
+Every behaviour is pinned by generated data: `validation`, `editor`, `document-ops`, `render` and, for the HTTP layer,
+`server.v1.json` (1,450 recorded requests and responses, including every option). MCP is not ported: the HTTP
+`POST /actions/{name}` route exposes the same action table.

@@ -7,7 +7,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { createEditor, diffDocuments, summarizeRevision } from '../packages/core/src/index.js';
+import { createEditor, createReportService, diffDocuments, summarizeRevision } from '../packages/core/src/index.js';
+import { createHttpHandler } from '../backends/typescript/api/src/index.js';
+import { buildServerSpec, SPEC_COPIES } from '../scripts/server-spec.js';
 import { textParts } from '../packages/core/src/text.js';
 import { readActor, safeUrl, timestamp } from '../packages/core/src/validation.js';
 import { validateDocument, validateTransaction } from '../packages/core/src/index.js';
@@ -117,4 +119,47 @@ test('the reference reproduces every render case', () => {
     for (const q of c.queries) assert.deepEqual(findBlocks(doc, q.selector).map((block: { id: string }) => block.id), q.ids, `document ${index} query ${JSON.stringify(q.selector)}`);
   }
   for (const w of renderData.words) assert.deepEqual(countWords(w.text), { latin: w.latin, cjk: w.cjk }, JSON.stringify(w.text));
+});
+
+// ---- the HTTP server ----------------------------------------------------------------------------------------------------
+
+const serverData = JSON.parse(readFileSync(new URL('../conformance/server.v1.json', import.meta.url), 'utf8'));
+
+const RANDOM_ID = /^[a-z_]+-[0-9a-f]{16}$/;
+// Generated transaction ids carry a random suffix; the Go and Python tests blank it the same way.
+function blankRandomIds(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(blankRandomIds);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, key === 'transactionId' && typeof entry === 'string' && RANDOM_ID.test(entry) ? `${entry.slice(0, entry.lastIndexOf('-'))}-RANDOM` : blankRandomIds(entry)]));
+  }
+  return value;
+}
+
+test('the reference reproduces every recorded HTTP exchange', async () => {
+  let steps = 0;
+  for (const scenario of serverData.scenarios) {
+    let clock = '';
+    const editor = createEditor(structuredClone(scenario.document), { now: () => clock });
+    const handler = createHttpHandler(createReportService(editor), { ...scenario.options, now: () => clock });
+    for (const [index, step] of scenario.steps.entries()) {
+      clock = step.now;
+      const headers = new Headers(step.request.headers ?? {});
+      if (step.request.body !== undefined && !headers.has('content-type') && !step.request.headers?.['x-no-content-type']) headers.set('content-type', 'application/json');
+      headers.delete('x-no-content-type');
+      const response = await handler(new Request(`http://localhost${step.request.path}`, { method: step.request.method, headers, ...(step.request.body === undefined ? {} : { body: step.request.body }) }));
+      const label = `${scenario.name} #${index} ${step.request.method} ${step.request.path}`;
+      assert.equal(response.status, step.response.status, label);
+      assert.deepEqual(Object.fromEntries([...response.headers.entries()].sort(([a], [b]) => (a < b ? -1 : 1))), step.response.headers, label);
+      const text = await response.text();
+      if ('json' in step.response) assert.deepEqual(blankRandomIds(JSON.parse(text)), blankRandomIds(step.response.json), label);
+      else assert.equal(text, step.response.text, label);
+      steps++;
+    }
+  }
+  assert.ok(steps > 1000, `only ${steps} steps`);
+});
+
+test('the Go and Python servers embed the spec the reference generates', () => {
+  const expected = `${JSON.stringify(buildServerSpec())}\n`;
+  for (const path of SPEC_COPIES) assert.equal(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'), expected, `${path} is out of date: run scripts/export-server-spec.ts`);
 });

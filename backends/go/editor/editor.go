@@ -682,3 +682,6 @@ func (e *Editor) applyLocked(tx record, fingerprint string) (Result, []Issue) {
 	e.lastApply = &applied{id: tx["id"].(string), fingerprint: fingerprint, document: e.snapshot, revision: revision}
 	return Result{OK: true, Document: e.snapshot, Revision: revision}, nil
 }
+
+// WithHints returns the issues with a remediation hint on every entry, leaving specific hints untouched.
+func WithHints(issues []Issue) []Issue { return withHints(issues) }

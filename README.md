@@ -13,7 +13,7 @@ packages/core, ui, cli      headless model, DOM renderer, command line
 packages/bindings/          one folder per UI framework: react, element (web component)
 packages/integrations/      chat-plugin (super-chat)
 backends/typescript/        api, mcp (AGPL servers)
-backends/go, backends/python  proofs of concept of the guarded write rules and the pure document functions, tested against conformance/
+backends/go, backends/python  the full core, read side and HTTP server in Go and Python, tested against conformance/
 ```
 
 ## Status and licensing
@@ -25,7 +25,7 @@ Super Editor is **dual-licensed** by SUPER SOLUTION LABS INC:
 | Package | License |
 | --- | --- |
 | `@supersolutions/super-editor-core`, `-ui`, `-react`, `-cli`, and everything else in this repository | [GPL-3.0-or-later](LICENSES/GPL-3.0-or-later.txt) |
-| `@supersolutions/super-editor-api`, `@supersolutions/super-editor-mcp` (server components) | [AGPL-3.0-or-later](LICENSES/AGPL-3.0-or-later.txt) |
+| `@supersolutions/super-editor-api`, `@supersolutions/super-editor-mcp`, the Go `server` package and `cmd/super-editor-server`, the Python `super_editor.server` package (server components) | [AGPL-3.0-or-later](LICENSES/AGPL-3.0-or-later.txt) |
 
 You may use, modify and redistribute these packages under those terms, which include sharing your own source code when you distribute a combined work (and, for the AGPL packages, when users interact with a modified version over a network). If you want to use Super Editor in a closed-source product, or otherwise cannot comply with the GPL/AGPL, buy a **commercial license** from SUPER SOLUTION LABS INC: [contact@supersolution.io](mailto:contact@supersolution.io).
 

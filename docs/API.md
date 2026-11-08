@@ -80,6 +80,12 @@ Core extensions that make this possible: `ReportService.revisions?()`, `AGENT_AC
 
 `createHttpHandler(service, options)` returns `(request: Request) => Promise<Response>`. It binds no port and authenticates nobody.
 
+The Go server (`backends/go/server`, an `http.Handler`, plus `cmd/super-editor-server`) and the Python server
+(`super_editor.server`, a framework-neutral handler with a WSGI adapter and `python -m super_editor.server`) serve this
+same contract: the routes, status codes, headers, error bodies and OpenAPI document below, the same options, and the same
+21 actions. `conformance/server.v1.json` pins 1,450 recorded exchanges that all three implementations reproduce. MCP and the
+typed client are TypeScript only.
+
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/health` | `{ ok: true, revision }` |

@@ -14,7 +14,13 @@
   `ReadActor`, `Timestamp`, `SafeURL`) with the reference's first-failure issues, JavaScript string lengths and key order.
   `Decode` reads JSON keeping member order.
 
-The TypeScript package in `packages/core` is the reference; both packages reproduce every case in
+- `server`: the 21 actions (`RunAction`) and the HTTP API (`NewHandler`, a plain `http.Handler`) with the same routes, status
+  codes, headers and OpenAPI document as the TypeScript handler; options for the body limit, read-only mode, a fixed
+  actor, a base path and CORS. It binds no port and authenticates nobody. AGPL-3.0-or-later.
+- `cmd/super-editor-server`: serves one document file (`go run ./cmd/super-editor-server -document report.json -save`).
+  Flags: `-addr`, `-read-only`, `-save`, `-base-path`, `-cors`, `-max-body-bytes`.
+
+The TypeScript package in `packages/core` is the reference; the packages reproduce every case in
 [`../../conformance`](../../conformance/README.md). Standard library only.
 
 ```bash
@@ -23,4 +29,4 @@ go test ./documents -bench . -benchmem     # about 18 µs per document diff of a
 go vet ./... && gofmt -l .
 ```
 
-GPL-3.0-or-later; a commercial licence is available from SUPER SOLUTION LABS INC (contact@supersolution.io).
+GPL-3.0-or-later (the `server` package and `cmd` are AGPL-3.0-or-later); a commercial licence is available from SUPER SOLUTION LABS INC (contact@supersolution.io).
