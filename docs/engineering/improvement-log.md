@@ -63,6 +63,21 @@ package is published). To build here, `npm install --no-package-lock` with the p
   (29 ms) is now the floor for a commit; `undo` and `redo` are still dominated by whole-document comparisons (122 ms for the pair).
 * **Gate.** TypeScript 371 tests pass; Go and Python untouched.
 
+### Round 4: package metadata (consumption)
+
+* **Method.** Loaded every built package in plain Node and in jsdom and compared the globals, the document head and the
+  custom element registry before and after: importing a package does nothing by itself, and server-side import is safe.
+  Then read the eight `package.json` files as a consumer's tools would.
+* **Defects.** (1) No `sideEffects` field, so bundlers had to keep every module of every package. (2) `exports` offered only
+  the `import` condition, so `require("@supersolutions/super-editor-core")` failed with `ERR_PACKAGE_PATH_NOT_EXPORTED`
+  (Node 22 can `require()` an ES module, but only through a `default` or `require` condition), as did any resolver that
+  does not pass the `import` condition. (3) No `main`, which legacy resolvers still read.
+* **Fix.** `sideEffects: false` (the UI package: `["**/*.css"]`, because `styles.css` is imported for its effect), a
+  `default` condition mirroring `import` for every entry, and `main`. The release contract (`releasePackages`) still
+  passes. `tests/package-metadata.test.mjs` pins all three and loads `core` and `api` through both `require()` and `import()`.
+* **Not changed.** The packages stay ESM only; no CommonJS build was added (no new tooling, and Node 22 is the engine floor).
+* **Gate.** TypeScript 373 tests pass.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected
