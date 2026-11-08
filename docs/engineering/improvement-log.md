@@ -47,6 +47,22 @@ package is published). To build here, `npm install --no-package-lock` with the p
   would need a lazy-path rewrite of the validator; not attempted.
 * **Gate.** TypeScript 370 tests pass; Go and Python untouched.
 
+### Round 3: copy-on-write commits (performance, correctness-neutral)
+
+* **Method.** The profile after round 2 showed `clone(snapshot)` (a JSON round trip of the whole document) and a deep
+  `freeze` on every commit, even for a one-block edit.
+* **Change.** `apply` now builds a shallow candidate that shares the frozen blocks of the current snapshot. The first write
+  to a block (`updateBlock`, `moveBlock`, `moveBlocks`, `replaceText`, `removeCitation`) swaps in a private copy;
+  blocks inserted by the same transaction are already private; deletes only record the version a retired ID takes with it.
+  Document-level validation still rebuilds a fresh tree, so nothing is shared with the committed snapshot.
+* **Evidence.** The editor fuzz (round 1) fails immediately if `own` stops copying (a write to a frozen block surfaces as
+  "could not be applied safely", which the fuzz treats as a defect), and passes 8,000 runs with the change. A new test
+  (`a commit leaves earlier snapshots untouched...`) pins that a snapshot taken before an edit, a move, a text replacement
+  and a citation removal is byte-identical afterwards, and that undo restores it.
+* **Result (5,000 blocks).** One `updateBlock` through `apply`: 48 ms to 38 ms (82 ms before round 2). `validateDocument`
+  (29 ms) is now the floor for a commit; `undo` and `redo` are still dominated by whole-document comparisons (122 ms for the pair).
+* **Gate.** TypeScript 371 tests pass; Go and Python untouched.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected
