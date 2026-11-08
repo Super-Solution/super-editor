@@ -119,7 +119,9 @@ export function check(schema: Schema, value: unknown, path: string, root: Schema
     const properties = isRecord(schema.properties) ? schema.properties as Record<string, Schema> : {};
     if (Array.isArray(schema.required)) for (const key of schema.required as string[]) if (!Object.hasOwn(value, key)) fail('Required property is missing.', `${path}.${key}`, `Add "${key}".`);
     for (const [key, entry] of Object.entries(value)) {
-      const property = properties[key];
+      // Own keys only: `properties['constructor']` or `['__proto__']` would otherwise find an Object.prototype member and
+      // let an unknown property of that name through `additionalProperties: false`.
+      const property = Object.hasOwn(properties, key) ? properties[key] : undefined;
       if (property === undefined) {
         if (schema.additionalProperties === false) fail('Unknown property.', `${path}.${key}`, `Remove it. Allowed properties: ${Object.keys(properties).join(', ') || '(none)'}.`);
         continue;

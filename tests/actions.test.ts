@@ -382,3 +382,11 @@ test('every action rejects hostile, oversized or unknown input without running c
   assert.deepEqual(service.read(), before);
   assert.equal(run(service, 'get_outline', undefined).ok, true, 'omitted input means no arguments');
 });
+
+test('a property named like an Object.prototype member is an unknown property, not a known one', () => {
+  const service = seeded();
+  const input = JSON.parse('{"__proto__":{"x":1},"constructor":1,"toString":2,"hasOwnProperty":3}') as unknown;
+  const issue = fails(run(service, 'get_outline', input), 'validation');
+  assert.match(issue.message, /Unknown property/);
+  for (const key of ['constructor', 'toString', 'valueOf']) fails(run(service, 'get_outline', { [key]: 1 }), 'validation');
+});

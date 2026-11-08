@@ -146,3 +146,18 @@ These are the places where the obvious port differs from JavaScript, and what pi
 * Test: `saving an edit keeps the permissions of the document it replaces` (fails without the fix; skipped on
   Windows).
 * Gate: `npx tsc -b` and the TypeScript suite (267 tests) pass; Go and Python are untouched.
+
+### Round 12 (2026-11-08) — three-way differential on hostile requests
+
+* Audit: the same 39 hostile requests (BOMs, UTF-16, `1e400`, 400-digit integers, 50,000-deep JSON, duplicate
+  and `__proto__` keys, malformed percent escapes, odd methods, bad query numbers and Markdown imports)
+  through the TypeScript handler, the Go server and the Python handler, comparing status and first error
+  code. Go and Python agree on every request. Two apparent differences are harness artefacts (Go's `net/http`
+  rejects a malformed percent escape before the handler, as the conformance runner already knows; the Go
+  server stamps real time, which sits before the fixture's future dates).
+* Finding, in the TypeScript reference: the input checker looked a property up with `properties[key]`, so
+  keys named like `Object.prototype` members (`__proto__`, `constructor`, `toString`, ...) found a "schema" and
+  bypassed `additionalProperties: false`; Go and Python rejected them as unknown, TypeScript accepted them.
+* Fix: own-property lookup (`Object.hasOwn`).
+* Test: `tests/actions.test.ts` (fails without the fix).
+* Gate: `npx tsc -b` and the TypeScript suite pass; Go and Python untouched and already correct.
