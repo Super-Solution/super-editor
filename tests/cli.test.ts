@@ -10,7 +10,7 @@ import { parseDocument } from '../packages/core/src/index.js';
 import type { ResearchDocument } from '../packages/core/src/index.js';
 import { CLI_HELP, runCli } from '../packages/cli/src/cli.js';
 import { COMMANDS } from '../packages/cli/src/commands.js';
-import { persistAtomic } from '../packages/cli/src/files.js';
+import { InputError, persistAtomic, readTextFile } from '../packages/cli/src/files.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -443,4 +443,11 @@ test('saving through a symlink updates the document it points at and leaves the 
   } finally {
     await cleanup(directory);
   }
+});
+
+test('a document path that never ends is refused at the size limit instead of being read forever', async (t) => {
+  if (process.platform === 'win32' || !existsSync('/dev/zero')) { t.skip('needs /dev/zero'); return; }
+  await assert.rejects(readTextFile('/dev/zero', 'Document'), (error: unknown) => error instanceof InputError && /larger than the \d+ byte limit/.test(error.message));
+  const { readDocumentText } = await import('../backends/typescript/mcp/src/file-store.js');
+  assert.throws(() => readDocumentText('/dev/zero'), /larger than the \d+ byte limit/);
 });

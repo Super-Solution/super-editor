@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -107,7 +108,7 @@ func main() {
 		flag.Usage()
 		os.Exit(2)
 	}
-	raw, err := os.ReadFile(*file)
+	raw, err := readDocumentFile(*file, server.MaxFileBytes())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -140,4 +141,21 @@ func main() {
 		MaxHeaderBytes: 64 << 10,
 	}
 	log.Fatal(srv.ListenAndServe())
+}
+
+// readDocumentFile reads at most max bytes. A named pipe or a device reports size 0, so the size is enforced while reading.
+func readDocumentFile(path string, max int64) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	raw, err := io.ReadAll(io.LimitReader(f, max+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(raw)) > max {
+		return nil, fmt.Errorf("%s is larger than the %d byte limit", path, max)
+	}
+	return raw, nil
 }

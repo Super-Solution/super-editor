@@ -219,6 +219,22 @@ package is published). To build here, `npm install --no-package-lock` with the p
   the `EPIPE` exit. Existing stdio tests unchanged.
 * **Gate.** `npm run build`, TypeScript 380 tests.
 
+### Round 14: reading the document file
+
+* **Method.** Listed every place a server or the CLI reads the document file and asked what happens when the path is a pipe or
+  a device (`/dev/zero`, `<(command)`), whose `stat` size is 0.
+* **Defect.** The CLI and the MCP file store checked `stat().size` and then called `readFile`, which reads to the end of the
+  input, so an endless source was read until memory ran out and the size limit never applied. The Go and Python servers read
+  the whole file with no limit at all (Python only rejected it after parsing).
+* **Fix.** All four read at most `fileBytes + 1` bytes and refuse a longer input with the documented limit message, so a regular
+  file behaves as before, `<(command)` still works, and an endless device fails fast. Go exposes the spec limit as
+  `server.MaxFileBytes()`.
+* **Tests.** `/dev/zero` against the CLI reader and the MCP reader (TypeScript), `readDocumentFile` (Go) and
+  `_read_document_text` (Python), each also covering the exact-limit case.
+* **Not changed.** The advisory history log (`.history.jsonl`) is read whole by the `history` command; it only grows by explicit
+  opt-in and by this tool, so it stays as is.
+* **Gate.** `npm run build`, TypeScript 381 tests, Go (`gofmt`, `go vet`, `go test`) and Python (`ruff`, `mypy`, 18 tests).
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected

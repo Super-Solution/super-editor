@@ -23,6 +23,7 @@ from ..editor import Editor
 from .actions import current_iso
 from .http import Cors, Options
 from .service import EditorService, Service
+from .spec import limit
 from .wsgi import create_wsgi_app
 
 
@@ -105,6 +106,16 @@ class _Quiet(WSGIRequestHandler):
         pass
 
 
+def _read_document_text(path: str) -> str:
+    """Read the document file, refusing more than the spec's fileBytes (a pipe or device reports size 0)."""
+    maximum = limit("fileBytes")
+    with open(path, "rb") as handle:
+        raw = handle.read(maximum + 1)
+    if len(raw) > maximum:
+        raise SystemExit(f"{path} is larger than the {maximum} byte limit")
+    return raw.decode("utf-8")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m super_editor.server", description=__doc__)
     parser.add_argument("--document", required=True, help="path of the document JSON file")
@@ -117,8 +128,7 @@ def main(argv: list[str] | None = None) -> None:
         "--max-body-bytes", type=int, default=None, help="largest accepted request body (default 1 MiB)"
     )
     args = parser.parse_args(argv)
-    with open(args.document, encoding="utf-8") as handle:
-        document = json.load(handle)
+    document = json.loads(_read_document_text(args.document))
     service: Service = EditorService(Editor(document, now=current_iso))
     if args.save and not args.read_only:
         service = _Saving(service, args.document)

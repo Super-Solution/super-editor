@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { randomUUID } from 'node:crypto';
-import { appendFileSync, closeSync, existsSync, fchmodSync, fsyncSync, linkSync, openSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeSync } from 'node:fs';
+import { appendFileSync, closeSync, existsSync, fchmodSync, fsyncSync, linkSync, openSync, readSync, realpathSync, renameSync, statSync, unlinkSync, writeSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import type { ApplyResult, EditorIssue, ReportService, ResearchDocument } from '@supersolutions/super-editor-core';
 import { TRANSPORT_LIMITS, createEditor, createReportService, formatIssues, parseDocument, serializeDocument, summarizeRevision, withHints } from '@supersolutions/super-editor-core';
@@ -14,11 +14,25 @@ const isFsError = (error: unknown, code: string): boolean => typeof error === 'o
 const sleep = (ms: number): void => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
 
 export function readDocumentText(path: string): string {
-  let size: number;
-  try { size = statSync(path).size; }
+  let descriptor: number;
+  try { descriptor = openSync(path, 'r'); }
   catch (error) { throw new FileProblem(isFsError(error, 'ENOENT') ? `Document file not found: ${path}` : `Cannot read ${path}.`); }
-  if (size > TRANSPORT_LIMITS.fileBytes) throw new FileProblem(`${path} is larger than the ${TRANSPORT_LIMITS.fileBytes} byte limit.`, 2);
-  return readFileSync(path, 'utf8').replace(/^﻿/, '');
+  try {
+    // A named pipe or a device reports size 0, so the limit is enforced while reading, not from stat.
+    const limit = TRANSPORT_LIMITS.fileBytes, chunks: Buffer[] = [];
+    let total = 0;
+    for (;;) {
+      const chunk = Buffer.allocUnsafe(Math.min(1 << 18, limit + 1 - total));
+      const read = readSync(descriptor, chunk, 0, chunk.length, null);
+      if (read === 0) break;
+      total += read; chunks.push(chunk.subarray(0, read));
+      if (total > limit) throw new FileProblem(`${path} is larger than the ${limit} byte limit.`, 2);
+    }
+    return Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/, '');
+  } catch (error) {
+    if (error instanceof FileProblem) throw error;
+    throw new FileProblem(`Cannot read ${path}.`);
+  } finally { closeSync(descriptor); }
 }
 export function parseDocumentText(text: string, path: string): ResearchDocument {
   const parsed = parseDocument(text);

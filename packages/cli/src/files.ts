@@ -15,13 +15,23 @@ export function isFsError(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }
 
-/** Reads a text file, refusing anything above the shared size limit. */
+/** Reads a text file, refusing anything above the shared size limit (enforced while reading: a pipe or device reports size 0). */
 export async function readTextFile(path: string, label = 'File'): Promise<string> {
-  let size: number;
-  try { size = (await stat(path)).size; }
+  let handle;
+  try { handle = await open(path, 'r'); }
   catch (error) { throw isFsError(error, 'ENOENT') ? new InputError(`${label} not found: ${path}`) : error; }
-  if (size > TRANSPORT_LIMITS.fileBytes) throw new InputError(`${label} is larger than the ${TRANSPORT_LIMITS.fileBytes} byte limit: ${path}`);
-  return (await readFile(path, 'utf8')).replace(/^﻿/, '');
+  try {
+    const limit = TRANSPORT_LIMITS.fileBytes, chunks: Buffer[] = [];
+    let total = 0;
+    for (;;) {
+      const chunk = Buffer.allocUnsafe(Math.min(1 << 18, limit + 1 - total));
+      const { bytesRead } = await handle.read(chunk, 0, chunk.length, null);
+      if (bytesRead === 0) break;
+      total += bytesRead; chunks.push(chunk.subarray(0, bytesRead));
+      if (total > limit) throw new InputError(`${label} is larger than the ${limit} byte limit: ${path}`);
+    }
+    return Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/, '');
+  } finally { await handle.close(); }
 }
 
 export async function loadDocument(file: string): Promise<ResearchDocument> {
