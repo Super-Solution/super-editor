@@ -146,6 +146,16 @@ package is published). To build here, `npm install --no-package-lock` with the p
   loading an invalid document keeps the previous one and emits `error`, and importing either package is safe on the server.
 * **Gate.** `npm run build`, TypeScript 376 tests pass.
 
+### Round 9: documentation against the product
+
+* **Method.** Read the README claim by claim against the code and ran `npm run example`.
+* **Defects.** The README said paragraph controls are plain-text editors and that rich text editing is "a future extension",
+  but the default `ReportEditor` has had in-place inline formatting, a `/` menu, drag and drop and history for a while; only
+  `interaction={false}` is plain text. The "Run locally" block gave `npm ci` with no hint that it needs the unpublished
+  protocol package, and `npm run bench` was not mentioned.
+* **Fix.** README corrected on all three. `go test -race ./...` also re-run green.
+* **Gate.** TypeScript 376 tests pass (the docs test still holds).
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected

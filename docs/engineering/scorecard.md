@@ -28,3 +28,4 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | 6 | Saving to disk | Reliability 8 to 9 |
 | 7 | HTTP client | Reliability stays 9 (a documented timeout now holds; abort signal added) |
 | 8 | Undo and redo cost | Performance stays 8 |
+| 9 | Docs against the product | Developer experience stays 7 |
