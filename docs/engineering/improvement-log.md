@@ -204,6 +204,21 @@ package is published). To build here, `npm install --no-package-lock` with the p
   exporter keeps run-leading whitespace verbatim; trimming it would change the document's text, so it stays a recorded choice.
 * **Gate.** `npm run build`, TypeScript 378 tests, Go and Python green, `ruff` clean.
 
+### Round 13: the MCP stdio transport under hostile input
+
+* **Method.** Fed the dispatcher 30 malformed JSON-RPC messages (wrong types for `id`, `method` and `params`, prototype names as
+  tool, prompt and resource names, 5,000-deep nesting) and read the stdio reader as a client that never sends a newline would.
+* **Dispatcher.** No defect: every case answers with a JSON-RPC error and none throws.
+* **Defects (stdio).** (1) After the first oversized line was reported, later chunks of the same line were appended to the buffer
+  again until a newline arrived, so a client streaming an endless line grew the server's memory without bound. (2) A line over the
+  limit that arrived whole with its newline was never checked and went to `JSON.parse`. (3) A client that closed its end of the
+  pipe made the next write raise an unhandled `EPIPE` that crashed the process with a stack trace.
+* **Fix.** The line splitting moved to a small `createLineReader` (limit counted in bytes, one report per oversized line, the
+  rest of a dropped line discarded as it arrives). A stdout `error` now ends the server with exit code 1.
+* **Tests.** A reader test that asserts nothing is buffered while a dropped line streams in, whole-line and multibyte limits, and
+  the `EPIPE` exit. Existing stdio tests unchanged.
+* **Gate.** `npm run build`, TypeScript 380 tests.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected

@@ -120,31 +120,45 @@ Run super-editor-mcp --help.
   };
 
   return new Promise<number>(settle => {
-    let buffer = '';
-    let skipping = false;
+    const oversize = (): void => { queue = queue.then(() => { send({ jsonrpc: '2.0', id: null, error: { code: -32600, message: `Message exceeds ${TRANSPORT_LIMITS.stdioMessageBytes} bytes.` } }); }); };
+    const reader = createLineReader(TRANSPORT_LIMITS.stdioMessageBytes, enqueue, oversize);
     io.stdin.setEncoding('utf8');
-    io.stdin.on('data', (chunk: string) => {
+    io.stdin.on('data', (chunk: string) => reader.push(chunk));
+    io.stdin.on('end', () => { reader.end(); void queue.then(() => settle(0)); });
+    io.stdin.on('error', () => settle(1));
+    // A client that closed its end of the pipe must not crash the server with an unhandled EPIPE.
+    io.stdout.on('error', () => settle(1));
+  });
+}
+
+/**
+ * Splits a stream of text chunks into lines. A line longer than `maxBytes` is dropped and reported once through `onOversize`;
+ * everything up to its newline is discarded as it arrives, so a client that never sends a newline cannot grow the buffer.
+ */
+export function createLineReader(maxBytes: number, onLine: (line: string) => void, onOversize: () => void): { push(chunk: string): void; end(): void; pendingBytes(): number } {
+  let buffer = '', skipping = false;
+  const take = (line: string): void => {
+    if (line.length * 3 > maxBytes && Buffer.byteLength(line) > maxBytes) { onOversize(); return; }
+    if (line.trim()) onLine(line);
+  };
+  return {
+    push(chunk) {
       buffer += chunk;
       for (let newline = buffer.indexOf('\n'); newline !== -1; newline = buffer.indexOf('\n')) {
         const line = buffer.slice(0, newline).replace(/\r$/, '');
         buffer = buffer.slice(newline + 1);
         if (skipping) { skipping = false; continue; }
-        if (line.trim()) enqueue(line);
+        take(line);
       }
-      // A line with no end in sight that is already too long is dropped, and answered once.
-      if (!skipping && Buffer.byteLength(buffer) > TRANSPORT_LIMITS.stdioMessageBytes) {
-        buffer = ''; skipping = true;
-        queue = queue.then(() => { send({ jsonrpc: '2.0', id: null, error: { code: -32600, message: `Message exceeds ${TRANSPORT_LIMITS.stdioMessageBytes} bytes.` } }); });
-      }
-    });
-    const finish = (): void => {
-      if (buffer.trim() && !skipping) enqueue(buffer.replace(/\r$/, ''));
+      if (skipping) { buffer = ''; return; }
+      if (buffer.length * 3 > maxBytes && Buffer.byteLength(buffer) > maxBytes) { buffer = ''; skipping = true; onOversize(); }
+    },
+    end() {
+      if (buffer.trim() && !skipping) take(buffer.replace(/\r$/, ''));
       buffer = '';
-      void queue.then(() => settle(0));
-    };
-    io.stdin.on('end', finish);
-    io.stdin.on('error', () => settle(1));
-  });
+    },
+    pendingBytes: () => Buffer.byteLength(buffer),
+  };
 }
 
 function isMain(): boolean {
