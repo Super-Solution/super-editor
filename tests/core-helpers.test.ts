@@ -399,6 +399,21 @@ test('markdown export round-trips a trailing # and blank lines inside a paragrap
   assert.equal(blocks[2]!.content.type === 'paragraph' ? blocks[2]!.content.runs.map(run => run.text).join('') : '', 'one\ntwo\nthree');
 });
 
+test('markdown export keeps a spaced thematic break and a table delimiter row as text', () => {
+  const current = seed([
+    { id: 'l1', parentId: null, content: { type: 'list', ordered: false, items: ['--- ---', '- - -', '-- --', '- x'] }, citationIds: [] },
+    { id: 'p1', parentId: null, content: { type: 'paragraph', runs: [{ text: '| a | b |\n|---|---|' }] }, citationIds: [] },
+    { id: 'p2', parentId: null, content: { type: 'paragraph', runs: [{ text: 'x\n:--|--:' }] }, citationIds: [] },
+    { id: 'p3', parentId: null, content: { type: 'paragraph', runs: [{ text: '--- ---' }] }, citationIds: [] },
+  ]);
+  const markdown = toMarkdown(current.getSnapshot(), { title: false });
+  const blocks = fromMarkdown(markdown, { idPrefix: 'rt' });
+  assert.deepEqual(blocks.slice(0, 4).map(block => block.content.type), ['list', 'paragraph', 'paragraph', 'paragraph'], markdown);
+  assert.deepEqual((blocks[0]!.content as { items: string[] }).items, ['--- ---', '- - -', '-- --', '- x']);
+  const text = (index: number): string => (blocks[index]!.content as { runs: { text: string }[] }).runs.map(run => run.text).join('');
+  assert.deepEqual([text(1), text(2), text(3)], ['| a | b |\n|---|---|', 'x\n:--|--:', '--- ---']);
+});
+
 test('clipText and the text previews never leave half of a surrogate pair', () => {
   assert.equal(clipText('abc', 5), 'abc');
   assert.equal(clipText('abcdef', 3), 'abc');

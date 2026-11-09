@@ -144,8 +144,15 @@ export function escapeInline(text: string): string {
 export function escapeHeadingText(text: string): string {
   return escapeInline(text).replace(/(^|\s)(#+)$/, (_match, lead: string, hashes: string) => `${lead}${hashes.replace(/#/g, '\\#')}`);
 }
+const HSPACE = '[^\\S\\r\\n\\u2028\\u2029]', TABLE_RULE_LINE = new RegExp(`^(${HSPACE}*)(?=\\|?${HSPACE}*:?-+:?${HSPACE}*(?:\\|${HSPACE}*:?-+:?${HSPACE}*)*\\|?${HSPACE}*$)(?=[^\\r\\n\\u2028\\u2029]*\\|)`, 'gm');
+/**
+ * Escapes constructs that would start a block when they begin a line: headings, quotes, list markers, ordered markers, setext
+ * underlines, thematic breaks written with spaces (`--- ---`) and a table delimiter row (`|---|---|`), which turns the line above it
+ * into a table header.
+ */
 export function escapeLineStarts(text: string): string {
-  return text.replace(/^( {0,3})(#{1,6}(?=\s|$)|>|[-+](?=\s|$))/gm, '$1\\$2').replace(/^( {0,3}\d+)([.)])(?=\s|$)/gm, '$1\\$2').replace(/^( {0,3})([=-])(?=[=-]*\s*$)/gm, '$1\\$2');
+  return text.replace(/^( {0,3})(#{1,6}(?=\s|$)|>|[-+](?=\s|$))/gm, '$1\\$2').replace(/^( {0,3}\d+)([.)])(?=\s|$)/gm, '$1\\$2').replace(/^( {0,3})([=-])(?=[=-]*\s*$)/gm, '$1\\$2')
+    .replace(/^( {0,3})(-)(?=[- \t]*$)/gm, '$1\\$2').replace(TABLE_RULE_LINE, '$1\\');
 }
 function codeSpan(text: string): string {
   const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map(entry => entry.length)), fence = '`'.repeat(longest + 1);

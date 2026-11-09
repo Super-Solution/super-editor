@@ -617,7 +617,81 @@ func EscapeLineStarts(text string) string {
 			at = append(at, p)
 		}
 	}
+	src = []rune(insertBackslashes(src, at))
+	// Pass 4: /^( {0,3})(-)(?=[- \t]*$)/gm  a thematic break written with spaces ("--- ---")
+	at = nil
+	for _, start := range lineStarts(src) {
+		p := start + spacesAt(src, start)
+		if p >= len(src) || src[p] != '-' {
+			continue
+		}
+		k := p + 1
+		for k < len(src) && (src[k] == '-' || src[k] == ' ' || src[k] == '\t') {
+			k++
+		}
+		if atLineEnd(src, k) {
+			at = append(at, p)
+		}
+	}
+	src = []rune(insertBackslashes(src, at))
+	// Pass 5: a table delimiter row ("|---|:--:|"), which turns the line above it into a table header.
+	at = nil
+	for _, start := range lineStarts(src) {
+		p := start
+		for p < len(src) && isJSSpace(src[p]) && !isLineTerminator(src[p]) {
+			p++
+		}
+		if isTableRuleLine(src, p) {
+			at = append(at, p)
+		}
+	}
 	return insertBackslashes(src, at)
+}
+
+func isHSpace(r rune) bool { return isJSSpace(r) && !isLineTerminator(r) }
+
+// isTableRuleLine matches /\|?H*:?-+:?H*(?:\|H*:?-+:?H*)*\|?H*$/ from p and requires a pipe on the line.
+func isTableRuleLine(src []rune, p int) bool {
+	skip := func(i int) int {
+		for i < len(src) && isHSpace(src[i]) {
+			i++
+		}
+		return i
+	}
+	pipes := 0
+	i := p
+	if i < len(src) && src[i] == '|' {
+		pipes++
+		i++
+	}
+	i = skip(i)
+	for {
+		if i < len(src) && src[i] == ':' {
+			i++
+		}
+		dashes := 0
+		for i < len(src) && src[i] == '-' {
+			i++
+			dashes++
+		}
+		if dashes == 0 {
+			return false
+		}
+		if i < len(src) && src[i] == ':' {
+			i++
+		}
+		i = skip(i)
+		if i < len(src) && src[i] == '|' {
+			pipes++
+			i++
+			i = skip(i)
+			if atLineEnd(src, i) {
+				return pipes > 0
+			}
+			continue
+		}
+		return atLineEnd(src, i) && pipes > 0
+	}
 }
 
 func codeSpan(text string) string {

@@ -144,6 +144,10 @@ documents.push(build('markdown-edges', [[
   op.insertBlock(b.heading('e5', 2, 'back\\slash \\#')), op.insertBlock(b.section('e6', 'Section #')), op.insertBlock(b.heading('e7', 1, 'tabbed\t#')),
   op.insertBlock(b.paragraph('e8', [{ text: 'one\n\ntwo' }, { text: '\n', bold: true }, { text: '\n three' }])),
   op.insertBlock(b.paragraph('e9', [{ text: 'a\n \n\t\nb', code: true }])), op.insertBlock(b.quote('e10', [{ text: 'q1\n\nq2' }])),
+  // A thematic break written with spaces and a table delimiter row must stay text when they begin a line of a paragraph, quote or list item.
+  op.insertBlock(b.list('e11', ['--- ---', '- - -', '-- --', '- x', ' ---  - -', '***'])), op.insertBlock(b.paragraph('e12', '--- ---')), op.insertBlock(b.paragraph('e13', '| a | b |\n|---|---|')),
+  op.insertBlock(b.paragraph('e14', 'x\n:--|--:')), op.insertBlock(b.paragraph('e15', 'x\n | :-: | - |  ')), op.insertBlock(b.paragraph('e16', '---|')), op.insertBlock(b.paragraph('e17', '| - |\n| -- | x |')),
+  op.insertBlock(b.quote('e18', '|---|---|\n--- ---')), op.insertBlock(b.callout('e19', 'note', '|--|--|')),
 ]]));
 // Hostile markup in every text field: each renderer must escape it identically (a script element or an event handler anywhere is an XSS).
 const EVIL = ['"><script>alert(1)</script>', "' onmouseover='alert(2)", '</style><script>alert(3)</script>', '<img src=x onerror=alert(4)>', '<svg onload=alert(5)>', '&lt;b&gt; &amp; &#60;', '--></textarea><script>alert(6)</script>'];

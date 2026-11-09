@@ -379,7 +379,69 @@ def escape_line_starts(text: str) -> str:  # noqa: C901
             k += 1
         if _at_line_end(src, k):
             at.append(p)
+    src = _insert_backslashes(src, at)
+    # A thematic break written with spaces ("--- ---").
+    at = []
+    for start in _line_starts(src):
+        p = start + _spaces_at(src, start)
+        if p >= len(src) or src[p] != "-":
+            continue
+        k = p + 1
+        while k < len(src) and src[k] in "- \t":
+            k += 1
+        if _at_line_end(src, k):
+            at.append(p)
+    src = _insert_backslashes(src, at)
+    # A table delimiter row ("|---|:--:|") turns the line above it into a table header.
+    at = []
+    for start in _line_starts(src):
+        p = start
+        while p < len(src) and _is_hspace(src[p]):
+            p += 1
+        if _is_table_rule_line(src, p):
+            at.append(p)
     return _insert_backslashes(src, at)
+
+
+def _is_hspace(ch: str) -> bool:
+    return ch in JS_SPACE and ch not in "\n\r\u2028\u2029"
+
+
+def _is_table_rule_line(src: str, p: int) -> bool:
+    """A table delimiter row from p (dash cells with optional colons, pipes between) with a pipe on the line."""
+    n = len(src)
+
+    def skip(i: int) -> int:
+        while i < n and _is_hspace(src[i]):
+            i += 1
+        return i
+
+    pipes = 0
+    i = p
+    if i < n and src[i] == "|":
+        pipes += 1
+        i += 1
+    i = skip(i)
+    while True:
+        if i < n and src[i] == ":":
+            i += 1
+        dashes = 0
+        while i < n and src[i] == "-":
+            i += 1
+            dashes += 1
+        if dashes == 0:
+            return False
+        if i < n and src[i] == ":":
+            i += 1
+        i = skip(i)
+        if i < n and src[i] == "|":
+            pipes += 1
+            i += 1
+            i = skip(i)
+            if _at_line_end(src, i):
+                return pipes > 0
+            continue
+        return _at_line_end(src, i) and pipes > 0
 
 
 def _code_span(text: str) -> str:

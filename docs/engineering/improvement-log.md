@@ -188,6 +188,22 @@ package is published). To build here, `npm install --no-package-lock` with the p
   unchanged. Before this the ports were only covered by two incidental `script` strings.
 * **Gate.** `npm run build`, TypeScript 377 tests, Go and Python conformance green.
 
+### Round 12: Markdown export that re-imports as something else
+
+* **Method.** Round-tripped awkward text through `toMarkdown` and `fromMarkdown`: dash runs, delimiter rows, fences, setext
+  underlines, leading indentation, HTML.
+* **Defects.** (1) A list item or paragraph of dashes and spaces such as `--- ---` was exported unescaped, so the re-import read
+  a divider and the item vanished. (2) A paragraph whose lines look like a table (`| a | b |` over `|---|---|`) re-imported as a
+  table block. Both are data changes on export, not display quirks.
+* **Fix.** `escapeLineStarts` also escapes a line made only of dashes and spaces, and the first character of a table
+  delimiter row (it needs a pipe, so ordinary dash rules are unaffected). Ported to Go and Python and pinned by new cases in the
+  `markdown-edges` conformance document (lists, paragraphs, quotes and callouts).
+* **Tests.** A round-trip test that fails without the change, plus the regenerated render conformance in all three languages.
+* **Still open.** `fromMarkdown` has no indented code blocks, so our own re-import is fine (a paragraph with 4+ leading
+  spaces comes back with the indentation trimmed), but another CommonMark reader would show such a paragraph as code. The
+  exporter keeps run-leading whitespace verbatim; trimming it would change the document's text, so it stays a recorded choice.
+* **Gate.** `npm run build`, TypeScript 378 tests, Go and Python green, `ruff` clean.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected
