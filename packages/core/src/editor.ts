@@ -7,6 +7,14 @@ import type { Actor, ApplyResult, Block, Editor, EditorIssue, EditorOptions, Ope
 import { timestamp, validateDocument, validateHistoryRequest, validateTransaction } from './validation.js';
 
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T; }
+/** Structural equality of two JSON values (plain data from the validator). */
+function sameJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) return a.length === (b as unknown[]).length && a.every((entry, index) => sameJson(entry, (b as unknown[])[index]));
+  const left = a as Record<string, unknown>, right = b as Record<string, unknown>, keys = Object.keys(left);
+  return keys.length === Object.keys(right).length && keys.every(key => Object.hasOwn(right, key) && sameJson(left[key], right[key]));
+}
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     for (const entry of Object.values(value)) freeze(entry);
@@ -318,7 +326,9 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
     let committed: Extract<ApplyResult, { ok: true }>;
     try {
       const at = clock();
-      const target = clone(kind === 'undo' ? entry.before : entry.after);
+      // Shallow copies are enough: blocks are rewritten below, their frozen content is only ever replaced, and validation rebuilds the tree.
+      const source = kind === 'undo' ? entry.before : entry.after;
+      const target: ResearchDocument = { ...source, blocks: source.blocks.map(block => ({ ...block })), citations: [...source.citations], retiredBlockIds: [...source.retiredBlockIds] };
       const highWater = new Map(versions);
       const currentById = new Map(snapshot.blocks.map(block => [block.id, block]));
       const targetIds = new Set(target.blocks.map(block => block.id));
@@ -333,10 +343,8 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
       // History never copies old versions back: all restored blocks receive their current high-water version.
       for (const block of target.blocks) {
         const current = currentById.get(block.id);
-        const currentContent = current ? JSON.stringify({ parentId: current.parentId, content: current.content, citationIds: current.citationIds }) : undefined;
-        const nextContent = JSON.stringify({ parentId: block.parentId, content: block.content, citationIds: block.citationIds });
         const reordered = current && currentPredecessors.get(block.id) !== targetPredecessors.get(block.id);
-        if (!current || currentContent !== nextContent || reordered) tick(block, highWater, at);
+        if (!current || current.parentId !== block.parentId || !sameJson(current.content, block.content) || !sameJson(current.citationIds, block.citationIds) || reordered) tick(block, highWater, at);
         else { block.version = current.version; block.updatedAt = current.updatedAt; }
       }
       target.retiredBlockIds = [...retired]; target.revision = increment(snapshot.revision, 'Document'); target.updatedAt = at;

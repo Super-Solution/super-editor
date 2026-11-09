@@ -133,6 +133,19 @@ package is published). To build here, `npm install --no-package-lock` with the p
   `tests/http.test.ts`; the stalled-body case fails without the fix.
 * **Gate.** `npm run build` (includes the test type check) and TypeScript 376 tests pass.
 
+### Round 8: undo and redo cost (resumed after an interruption)
+
+* **Method.** `npm run bench` showed `undo` plus `redo` at 122 ms on 5,000 blocks, three times a normal edit. History restore
+  deep-copied the stored document and serialized every block twice (current and target) just to compare them.
+* **Change.** Restore starts from a shallow copy (blocks are rewritten anyway, content is only replaced, validation rebuilds
+  the tree) and compares blocks with a structural `sameJson` instead of `JSON.stringify` twice per block. Version, reserved-ID
+  and ordering rules are untouched.
+* **Evidence.** The editor fuzz (undo restores the exact previous content, full unwind reaches the empty document, no
+  version regresses) passes 4,000 more runs; undo plus redo drops from 122 ms to 74 ms at 5,000 blocks.
+* **Reviewed, no change.** The web component and the React binding: subscriptions are released on disconnect or unmount,
+  loading an invalid document keeps the previous one and emits `error`, and importing either package is safe on the server.
+* **Gate.** `npm run build`, TypeScript 376 tests pass.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected
