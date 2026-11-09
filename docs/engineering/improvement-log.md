@@ -156,6 +156,24 @@ package is published). To build here, `npm install --no-package-lock` with the p
 * **Fix.** README corrected on all three. `go test -race ./...` also re-run green.
 * **Gate.** TypeScript 376 tests pass (the docs test still holds).
 
+### Round 10: the chat plugin (security)
+
+* **Method.** Read `createEditorChatPlugin` as an attacker who controls the content of a chat message would.
+* **Defect (credential leak).** A `super-editor.document` card can name a `service: { baseUrl, documentId }`. The plugin built
+  the URL from the card and attached the host's `headers()` (for example a bearer token) to the request, so any card, written
+  by a model or another participant, could make the user's browser send the host's credentials to an origin of the
+  attacker's choice. A second gap: `response.json()` buffered an unbounded body.
+* **Fix.** Headers go only to a URL the host built (`resolveServiceUrl`) or to an origin in the new `allowedServiceOrigins`
+  (default none; the request is otherwise made anonymously, so a protected service answers 401 and the card shows the error).
+  The body is read through a size-capped reader (`LIMITS.json`), refused early on a large `content-length`, and a non-JSON answer
+  gives a clear message. This is a behaviour change of an unreleased 0.1.0 option, recorded in `CHANGELOG.md`; hosts that
+  relied on the old behaviour add their origin to `allowedServiceOrigins`.
+* **Tests.** An untrusted origin gets no credential, a listed one does, a host-built URL does, an oversized and a non-JSON
+  answer are refused (fails without the change); the existing service test lists its origin.
+* **Not changed.** A card can still make the browser issue an anonymous GET to any http(s) URL, as a markdown image
+  already can; the protocol's `validateEditorCardSpec` (Apache, in super-chat) accepts any http(s) `baseUrl`.
+* **Gate.** `npm run build`, TypeScript 377 tests pass.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected

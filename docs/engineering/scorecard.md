@@ -29,3 +29,4 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | 7 | HTTP client | Reliability stays 9 (a documented timeout now holds; abort signal added) |
 | 8 | Undo and redo cost | Performance stays 8 |
 | 9 | Docs against the product | Developer experience stays 7 |
+| 10 | Chat plugin security | Correctness 9 (credential leak closed, body capped) |

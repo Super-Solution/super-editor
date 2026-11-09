@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
-import { createDocument, createEditor } from '@supersolutions/super-editor-core';
+import { LIMITS, createDocument, createEditor } from '@supersolutions/super-editor-core';
 import { createEditorChatPlugin } from '@supersolutions/super-editor-chat-plugin';
 import { EDITOR_CARD_KIND, validateChatPlugin, type CardMountContext } from '@supersolutions/super-protocol';
 
@@ -84,6 +84,7 @@ test('a service reference is fetched with the host headers, shown read-only, and
   const doc = report('From service');
   const plugin = createEditorChatPlugin({
     headers: () => ({ authorization: 'Bearer t' }),
+    allowedServiceOrigins: ['https://e.example.com'],
     fetch: (async (url: string, init: RequestInit) => {
       calls.push({ url, headers: init.headers as Record<string, string> });
       return url.includes('missing') ? new Response('nope', { status: 404 }) : Response.json(doc);
@@ -101,6 +102,37 @@ test('a service reference is fetched with the host headers, shown read-only, and
   handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://e.example.com', documentId: 'missing' } }, ctx());
   await tick(); await tick();
   assert.match(container.querySelector('[role="alert"]')?.textContent ?? '', /404/);
+  handle.destroy();
+  dom.window.close();
+});
+
+test('host headers never go to an origin the card chose, and an oversized or non-JSON service answer is refused', async () => {
+  const { container, dom } = host();
+  const calls: { url: string; headers: Record<string, string> }[] = [];
+  let answer = (): Response => Response.json(report('Fine'));
+  const record = (url: string, init: RequestInit): Response => { calls.push({ url, headers: init.headers as Record<string, string> }); return answer(); };
+  const guarded = createEditorChatPlugin({ headers: () => ({ authorization: 'Bearer secret' }), allowedServiceOrigins: ['https://trusted.example.com'], fetch: (async (url: string, init: RequestInit) => record(url, init)) as typeof fetch });
+  const handle = mountOf(guarded)(container, { kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://attacker.example.net', documentId: 'd' } }, ctx());
+  await tick(); await tick();
+  assert.equal(calls[0]?.headers.authorization, undefined, 'the credential is not sent to an origin the card named');
+  handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://trusted.example.com', documentId: 'd' } }, ctx());
+  await tick(); await tick();
+  assert.equal(calls[1]?.headers.authorization, 'Bearer secret');
+  // A URL the host builds itself is the host's decision.
+  const own = createEditorChatPlugin({ headers: () => ({ authorization: 'Bearer own' }), resolveServiceUrl: (service) => `https://internal.example.com/${service.documentId}`, fetch: (async (url: string, init: RequestInit) => record(url, init)) as typeof fetch });
+  const second = mountOf(own)(host().container, { kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://attacker.example.net', documentId: 'mine' } }, ctx());
+  await tick(); await tick();
+  assert.equal(calls[2]?.url, 'https://internal.example.com/mine');
+  assert.equal(calls[2]?.headers.authorization, 'Bearer own');
+  second.destroy();
+  answer = () => new Response('x'.repeat(LIMITS.json + 1), { status: 200 });
+  handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://trusted.example.com', documentId: 'big' } }, ctx());
+  await tick(); await tick();
+  assert.match(container.querySelector('[role="alert"]')?.textContent ?? '', /too large/);
+  answer = () => new Response('<html>', { status: 200 });
+  handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://trusted.example.com', documentId: 'html' } }, ctx());
+  await tick(); await tick();
+  assert.match(container.querySelector('[role="alert"]')?.textContent ?? '', /JSON/);
   handle.destroy();
   dom.window.close();
 });
