@@ -30,3 +30,4 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | 8 | Undo and redo cost | Performance stays 8 |
 | 9 | Docs against the product | Developer experience stays 7 |
 | 10 | Chat plugin security | Correctness 9 (credential leak closed, body capped) |
+| 11 | HTML against hostile content | Correctness stays 9 (no defect; cross-language escaping now pinned) |

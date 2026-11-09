@@ -174,6 +174,20 @@ package is published). To build here, `npm install --no-package-lock` with the p
   already can; the protocol's `validateEditorCardSpec` (Apache, in super-chat) accepts any http(s) `baseUrl`.
 * **Gate.** `npm run build`, TypeScript 377 tests pass.
 
+### Round 11: HTML output against hostile content (security)
+
+* **Method.** Wrote a fuzz that puts script tags, attribute breakouts, `</style>` and `</textarea>` closers, `onerror`/`onload`
+  payloads and `javascript:`/`data:` URLs into every text field (title, headings, runs, lists, tables, chart spec, embed, image,
+  citation, metrics, callout) and parsed `toHTML` (normal and standalone) and the DOM renderer under jsdom, counting script
+  elements, `on*` attributes and unsafe URL schemes. A second pass tried hostile URL schemes (case, whitespace, tab, NUL, `//`,
+  `data:`) and hostile chart colours.
+* **Result.** No defect. Text and attributes are escaped, validation rejects every unsafe URL scheme and colour before it can
+  reach a renderer, and the one input that passes (a quote inside an https URL) is escaped in the attribute.
+* **Regression guard.** The hostile corpus is now a `hostile-markup` document (7 payloads times 14 block types) plus a hostile
+  title in `conformance/render.v1.json`, so the Go and Python renderers must escape byte-for-byte like the reference. Both pass
+  unchanged. Before this the ports were only covered by two incidental `script` strings.
+* **Gate.** `npm run build`, TypeScript 377 tests, Go and Python conformance green.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected

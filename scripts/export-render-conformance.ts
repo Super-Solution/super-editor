@@ -145,7 +145,24 @@ documents.push(build('markdown-edges', [[
   op.insertBlock(b.paragraph('e8', [{ text: 'one\n\ntwo' }, { text: '\n', bold: true }, { text: '\n three' }])),
   op.insertBlock(b.paragraph('e9', [{ text: 'a\n \n\t\nb', code: true }])), op.insertBlock(b.quote('e10', [{ text: 'q1\n\nq2' }])),
 ]]));
+// Hostile markup in every text field: each renderer must escape it identically (a script element or an event handler anywhere is an XSS).
+const EVIL = ['"><script>alert(1)</script>', "' onmouseover='alert(2)", '</style><script>alert(3)</script>', '<img src=x onerror=alert(4)>', '<svg onload=alert(5)>', '&lt;b&gt; &amp; &#60;', '--></textarea><script>alert(6)</script>'];
+documents.push(build('hostile-markup', [[
+  cite('c1'),
+  ...EVIL.flatMap((evil, i) => [
+    op.insertBlock(b.section(`xs${i}`, evil)), op.insertBlock(b.heading(`xh${i}`, 2, evil, { parentId: `xs${i}` })),
+    op.insertBlock(b.paragraph(`xp${i}`, [{ text: evil, bold: true }, { text: evil, code: true }, { text: evil, href: `https://example.com/?q=${encodeURIComponent(evil)}&x="y"` }], { parentId: `xs${i}`, citationIds: ['c1'] })),
+    op.insertBlock(b.list(`xl${i}`, [evil, `${evil}\n${evil}`], { parentId: `xs${i}` })),
+    op.insertBlock(b.table(`xt${i}`, [evil, 'B'], [[evil, `${evil}|${evil}`]], { caption: evil, parentId: `xs${i}` })),
+    op.insertBlock(b.quote(`xq${i}`, evil, { attribution: evil, parentId: `xs${i}` })), op.insertBlock(b.callout(`xc${i}`, 'warning', evil, { title: evil, parentId: `xs${i}` })),
+    op.insertBlock(b.code(`xd${i}`, 'ts', evil, { parentId: `xs${i}` })), op.insertBlock(b.image(`xi${i}`, `https://example.com/i.png?x=${encodeURIComponent(evil)}"`, evil, { caption: evil, parentId: `xs${i}` })),
+    op.insertBlock(b.embed(`xe${i}`, `https://example.com/e?x=${encodeURIComponent(evil)}&y="`, evil, { parentId: `xs${i}` })), op.insertBlock(b.timestamp(`xm${i}`, '2026-11-08T10:00:00Z', evil, { parentId: `xs${i}` })),
+    op.insertBlock(b.metrics(`xk${i}`, [{ label: evil, value: evil, hint: evil }], { parentId: `xs${i}` })), op.insertBlock(b.toggle(`xg${i}`, evil, { open: true, parentId: `xs${i}` })),
+    op.insertBlock(b.chart(`xch${i}`, chart.bar({ title: evil, labels: [evil, 'b'], series: [{ name: evil, values: [1, 2] }], unit: evil, source: evil, caption: evil, xLabel: evil, yAxis: { label: evil } }), { parentId: `xs${i}` })),
+  ]),
+]]));
 documents.push(createDocument({ id: 'doc-title-hash', title: 'Title ends with #' }, { now: () => BASE }));
+documents.push(createDocument({ id: 'doc-title-evil', title: EVIL[0]! }, { now: () => BASE }));
 documents.push(build('empty-parts', [[op.insertBlock(b.paragraph('only', [{ text: '' }]))]]));
 documents.push(createDocument({ id: 'doc-blank', title: '' }, { now: () => BASE }));
 documents.push(createDocument({ id: 'doc-title-only', title: 'Just a title' }, { now: () => BASE }));
