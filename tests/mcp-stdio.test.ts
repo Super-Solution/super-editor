@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -9,7 +9,7 @@ import test from 'node:test';
 import { promisify } from 'node:util';
 import { TRANSPORT_LIMITS, createDocument, createEditor, parseDocument, serializeDocument } from '../packages/core/src/index.js';
 import { FileProblem, createFileService } from '../backends/typescript/mcp/src/file-store.js';
-import { STDIO_HELP, runStdioServer } from '../backends/typescript/mcp/src/stdio.js';
+import { STDIO_HELP, createLineReader, runStdioServer } from '../backends/typescript/mcp/src/stdio.js';
 
 const execFileAsync = promisify(execFile);
 const now = () => '2026-10-01T00:00:00.000Z';
@@ -206,6 +206,38 @@ test('an oversized message is rejected once and the server keeps working', async
   } finally { await cleanup(directory); }
 });
 
+test('the line reader splits chunks, drops an oversized line once and never buffers it', () => {
+  const lines: string[] = []; let oversize = 0;
+  const reader = createLineReader(10, line => lines.push(line), () => { oversize++; });
+  reader.push('ab'); reader.push('c\r\nde\n\n  \nf'); reader.push('gh\n');
+  assert.deepEqual(lines, ['abc', 'de', 'fgh']);
+  reader.push('x'.repeat(11));
+  assert.equal(oversize, 1);
+  for (let index = 0; index < 50; index++) { reader.push('y'.repeat(1000)); assert.equal(reader.pendingBytes(), 0, 'the rest of a dropped line is not kept'); }
+  assert.equal(oversize, 1, 'reported once');
+  reader.push('tail\nok\n');
+  assert.deepEqual(lines, ['abc', 'de', 'fgh', 'ok'], 'the line after the dropped one is read normally');
+  reader.push('z'.repeat(12) + '\nnext\n');
+  assert.equal(oversize, 2, 'a long line that arrives whole with its newline is dropped too');
+  assert.deepEqual(lines.slice(-1), ['next']);
+  reader.push('last'); reader.end();
+  assert.deepEqual(lines.slice(-1), ['last'], 'an unterminated final line is delivered at the end of input');
+  const multibyte = createLineReader(10, line => lines.push(line), () => { oversize++; });
+  multibyte.push('日本語日\n');
+  assert.equal(oversize, 3, 'the limit counts bytes (12 for four CJK characters), not characters');
+});
+
+test('a client that closes stdout does not crash the server', async () => {
+  const { directory, file } = await scratch();
+  try {
+    await writeFile(file, serializeDocument(initial()));
+    const client = harness();
+    const exit = runStdioServer([file], client.io);
+    client.io.stdout.emit('error', Object.assign(new Error('write EPIPE'), { code: 'EPIPE' }));
+    assert.equal(await exit, 1);
+  } finally { await cleanup(directory); }
+});
+
 test('the file service coordinates through the lock file, saves atomically and keeps an optional history log', async () => {
   const { directory, file } = await scratch();
   try {
@@ -250,5 +282,27 @@ test('the built server binary also starts when launched through a symlink', asyn
     catch { t.skip('symlinks are not permitted here'); return; }
     const { stdout } = await execFileAsync(process.execPath, [link, '--help']);
     assert.equal(stdout, STDIO_HELP);
+  } finally { await cleanup(directory); }
+});
+
+test('the file service keeps the permissions of the document and edits through a symlink in place', async (t) => {
+  if (process.platform === 'win32') return t.skip('POSIX permission bits and symlinks');
+  const { directory, file } = await scratch();
+  try {
+    await writeFile(file, serializeDocument(initial()));
+    await chmod(file, 0o640);
+    const link = join(directory, 'link.json');
+    await symlink(file, link);
+    const edit = (id: string, baseRevision: number, title: string) => ({ id, actor: { id: 'a', kind: 'agent' }, baseRevision, operations: [{ type: 'setTitle', title }] });
+
+    const direct = createFileService(file);
+    assert.equal(direct.apply(edit('one', 0, 'Direct')).ok, true);
+    assert.equal((await stat(file)).mode & 0o777, 0o640, 'an edit does not narrow a shared document to owner-only');
+
+    const viaLink = createFileService(link);
+    assert.equal(viaLink.apply(edit('two', 1, 'Through the link')).ok, true);
+    assert.equal((await lstat(link)).isSymbolicLink(), true, 'the link is still a link');
+    assert.equal(JSON.parse(await readFile(file, 'utf8')).title, 'Through the link', 'the document the link points at holds the edit');
+    assert.deepEqual((await readdir(directory)).sort(), ['link.json', 'report.json']);
   } finally { await cleanup(directory); }
 });

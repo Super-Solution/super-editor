@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { randomUUID } from 'node:crypto';
-import { appendFile, link, open, readFile, rename, stat, unlink } from 'node:fs/promises';
+import { appendFile, link, open, readFile, realpath, rename, stat, unlink } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { TRANSPORT_LIMITS, formatIssues, parseDocument, summarizeRevision } from '@supersolutions/super-editor-core';
 import type { EditorIssue, ResearchDocument, Revision } from '@supersolutions/super-editor-core';
@@ -15,13 +15,23 @@ export function isFsError(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }
 
-/** Reads a text file, refusing anything above the shared size limit. */
+/** Reads a text file, refusing anything above the shared size limit (enforced while reading: a pipe or device reports size 0). */
 export async function readTextFile(path: string, label = 'File'): Promise<string> {
-  let size: number;
-  try { size = (await stat(path)).size; }
+  let handle;
+  try { handle = await open(path, 'r'); }
   catch (error) { throw isFsError(error, 'ENOENT') ? new InputError(`${label} not found: ${path}`) : error; }
-  if (size > TRANSPORT_LIMITS.fileBytes) throw new InputError(`${label} is larger than the ${TRANSPORT_LIMITS.fileBytes} byte limit: ${path}`);
-  return (await readFile(path, 'utf8')).replace(/^﻿/, '');
+  try {
+    const limit = TRANSPORT_LIMITS.fileBytes, chunks: Buffer[] = [];
+    let total = 0;
+    for (;;) {
+      const chunk = Buffer.allocUnsafe(Math.min(1 << 18, limit + 1 - total));
+      const { bytesRead } = await handle.read(chunk, 0, chunk.length, null);
+      if (bytesRead === 0) break;
+      total += bytesRead; chunks.push(chunk.subarray(0, bytesRead));
+      if (total > limit) throw new InputError(`${label} is larger than the ${limit} byte limit: ${path}`);
+    }
+    return Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/, '');
+  } finally { await handle.close(); }
 }
 
 export async function loadDocument(file: string): Promise<ResearchDocument> {
@@ -34,7 +44,12 @@ export class InvalidDocument extends Error {
   constructor(readonly issues: EditorIssue[]) { super(formatIssues(issues)); }
 }
 
-export async function persistAtomic(file: string, json: string, createOnly = false): Promise<void> {
+export async function persistAtomic(path: string, json: string, createOnly = false): Promise<void> {
+  // Edit through a symlink: the rename must replace the document the link points at, not the link itself.
+  const file = createOnly ? path : await realpath(path).catch((cause: unknown) => {
+    if (isFsError(cause, 'ENOENT')) return path;
+    throw cause;
+  });
   const temporary = resolve(dirname(file), `.${basename(file)}.${randomUUID()}.tmp`);
   let created = false;
   try {

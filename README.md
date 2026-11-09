@@ -38,10 +38,11 @@ Public SuperChat / SuperChart APIs could not be verified. Their integration poin
 Node.js 22+ is required (validated on Node 24).
 
 ```sh
-npm ci --ignore-scripts
+npm ci --ignore-scripts   # needs @supersolutions/super-protocol on npm; until it is published see docs/RELEASING.md
 npm run check
 npm run build:demo
 npm run example
+npm run bench   # timings of the hot paths on large documents
 npm run dev
 ```
 
@@ -66,7 +67,7 @@ See [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), 
 
 Machine-readable discovery schemas are in [schemas/document-v1.schema.json](schemas/document-v1.schema.json) and [schemas/transaction-v1.schema.json](schemas/transaction-v1.schema.json). Core runtime validation additionally enforces semantic guards such as parent/citation references, ordering, versions, timestamps, and numeric budgets. Serialized fixtures live in `examples/fixtures/`.
 
-The default stylesheet uses neutral inherited `--se-*` tokens; see [UI theme customization](packages/ui/README.md). Consumers can replace controls and renderers and override tokens without importing React or coupling their branding to Core. Paragraph controls are plain text editors: changing text replaces that paragraph's inline marks; unchanged text retains them. Rich text editing is a future extension.
+The default stylesheet uses neutral inherited `--se-*` tokens; see [UI theme customization](packages/ui/README.md). Consumers can replace controls and renderers and override tokens without importing React or coupling their branding to Core. The default `ReportEditor` edits in place with inline formatting (bold, italic, code, strike, underline, highlight, links, citation markers), a `/` menu, drag and drop and history. Only the classic mode (`interaction={false}`) uses plain-text drafts, where changing a paragraph's text replaces its inline marks.
 
 ## Drive it from an agent
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ancestorsOf, b, blockText, chart, childrenOf, createBlockId, createDocument, createEditor, defaultHint, descendantsOf, diffDocuments, findBlocks, formatIssues, fromMarkdown, getBlock, getOutline, op,
+  ancestorsOf, b, blockText, chart, childrenOf, clipText, createReportService, runAgentAction, createBlockId, createDocument, createEditor, defaultHint, descendantsOf, diffDocuments, findBlocks, formatIssues, fromMarkdown, getBlock, getOutline, op,
   orderedBlocks, plainRuns, reservedIds, runs, stats, summarizeRevision, toHTML, toMarkdown, toPlainText, transaction, validateDocument, validateTransaction, withHints,
 } from '../packages/core/src/index.js';
 import type { Actor, ApplyResult, BlockInput, Editor, InlineRun, ResearchDocument } from '../packages/core/src/index.js';
@@ -382,4 +382,50 @@ test('every failed apply carries a hint; withHints, defaultHint and formatIssues
   const text = formatIssues([{ code: 'not-found', message: 'Block does not exist.', blockId: 'zzz', path: 'transaction.operations[0]' }]);
   assert.match(text, /^- \[not-found\] transaction\.operations\[0\]: Block does not exist\. \(block zzz\)\n {2}hint: /);
   assert.equal(formatIssues([]), '');
+});
+
+test('markdown export round-trips a trailing # and blank lines inside a paragraph', () => {
+  const current = seed([
+    { id: 'h1', parentId: null, content: { type: 'heading', level: 2, text: 'Learning C #' }, citationIds: [] },
+    { id: 'h2', parentId: null, content: { type: 'heading', level: 2, text: 'C# and F#' }, citationIds: [] },
+    { id: 'p1', parentId: null, content: { type: 'paragraph', runs: [{ text: 'one\n\ntwo' }, { text: '\n', bold: true }, { text: '\n three' }] }, citationIds: [] },
+  ]);
+  const markdown = toMarkdown(current.getSnapshot(), { title: false });
+  const blocks = fromMarkdown(markdown, { idPrefix: 'rt' });
+  assert.deepEqual(blocks.slice(0, 3).map(block => block.content.type), ['heading', 'heading', 'paragraph'], markdown);
+  assert.equal(blocks.length, 4, 'three blocks plus the footnote');
+  assert.deepEqual(blocks.slice(0, 2).map(block => (block.content as { text: string }).text), ['Learning C #', 'C# and F#']);
+  assert.match(markdown, /^## Learning C \\#$/m);
+  assert.equal(blocks[2]!.content.type === 'paragraph' ? blocks[2]!.content.runs.map(run => run.text).join('') : '', 'one\ntwo\nthree');
+});
+
+test('markdown export keeps a spaced thematic break and a table delimiter row as text', () => {
+  const current = seed([
+    { id: 'l1', parentId: null, content: { type: 'list', ordered: false, items: ['--- ---', '- - -', '-- --', '- x'] }, citationIds: [] },
+    { id: 'p1', parentId: null, content: { type: 'paragraph', runs: [{ text: '| a | b |\n|---|---|' }] }, citationIds: [] },
+    { id: 'p2', parentId: null, content: { type: 'paragraph', runs: [{ text: 'x\n:--|--:' }] }, citationIds: [] },
+    { id: 'p3', parentId: null, content: { type: 'paragraph', runs: [{ text: '--- ---' }] }, citationIds: [] },
+  ]);
+  const markdown = toMarkdown(current.getSnapshot(), { title: false });
+  const blocks = fromMarkdown(markdown, { idPrefix: 'rt' });
+  assert.deepEqual(blocks.slice(0, 4).map(block => block.content.type), ['list', 'paragraph', 'paragraph', 'paragraph'], markdown);
+  assert.deepEqual((blocks[0]!.content as { items: string[] }).items, ['--- ---', '- - -', '-- --', '- x']);
+  const text = (index: number): string => (blocks[index]!.content as { runs: { text: string }[] }).runs.map(run => run.text).join('');
+  assert.deepEqual([text(1), text(2), text(3)], ['| a | b |\n|---|---|', 'x\n:--|--:', '--- ---']);
+});
+
+test('clipText and the text previews never leave half of a surrogate pair', () => {
+  assert.equal(clipText('abc', 5), 'abc');
+  assert.equal(clipText('abcdef', 3), 'abc');
+  assert.equal(clipText('a😀b', 2), 'a', 'a cut inside the pair backs off');
+  assert.equal(clipText('a😀b', 3), 'a😀');
+  assert.equal(clipText('😀', 1), '');
+  assert.equal(clipText('abc', 0), '');
+  const lone = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+  const service = createReportService(createEditor(createDocument({ id: 'emoji', title: 'T' })));
+  const inserted = runAgentAction(service, 'insert_blocks', { blocks: [{ id: 'p1', parentId: null, content: { type: 'paragraph', runs: [{ text: '😀'.repeat(200) }] }, citationIds: [] }] }, { actor: agent });
+  assert.equal(inserted.ok, true, JSON.stringify(inserted));
+  const found = runAgentAction(service, 'find_blocks', {}, { actor: agent }) as unknown as { blocks: { text: string }[] };
+  assert.ok(found.blocks[0]!.text.endsWith('…'));
+  assert.equal(lone.test(found.blocks[0]!.text), false, 'the preview is well-formed Unicode');
 });

@@ -22,9 +22,10 @@ function object(value: unknown, path: string, required: string[], optional: stri
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail('Expected a plain object.', path, required.length ? `Provide an object with: ${required.join(', ')}${optional.length ? ` (optional: ${optional.join(', ')})` : ''}.` : undefined);
   const prototype = Object.getPrototypeOf(value);
   if (prototype !== Object.prototype && prototype !== null) fail('Expected a plain object.', path);
+  // Hot path (every object of every document is checked on each commit): no per-key allocation.
   const descriptors = Object.getOwnPropertyDescriptors(value);
   for (const key of Reflect.ownKeys(descriptors)) {
-    if (typeof key !== 'string' || ![...required, ...optional].includes(key)) fail('Unknown property.', `${path}.${String(key)}`, `Remove it. Allowed properties here: ${[...required, ...optional].join(', ')}.`);
+    if (typeof key !== 'string' || !(required.includes(key) || optional.includes(key))) fail('Unknown property.', `${path}.${String(key)}`, `Remove it. Allowed properties here: ${[...required, ...optional].join(', ')}.`);
     if (!('value' in descriptors[key]!)) fail('Accessors are not accepted.', `${path}.${key}`);
   }
   for (const key of required) if (!Object.hasOwn(descriptors, key)) fail('Required property is missing.', `${path}.${key}`, `Add "${key}".`);
@@ -78,13 +79,19 @@ function url(value: unknown, path: string, httpsOnly = false): string {
   if (!result) fail(`Expected an absolute ${httpsOnly ? 'HTTPS' : 'HTTP or HTTPS'} URL without credentials.`, path, `Use a full ${httpsOnly ? 'https://' : 'http(s)://'} URL such as https://example.com/page, with no spaces and no user:password.`);
   return result;
 }
+const TIMESTAMP_FORMAT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
+/** Timestamps already proven valid. A document repeats a handful of them across thousands of blocks, and every commit validates them all again. */
+const validTimestamps = new Set<string>();
 /** UTC ISO timestamps only; calendar rollover (such as February 30) is rejected. */
 export function timestamp(value: unknown, path = 'timestamp'): string {
+  if (typeof value === 'string' && validTimestamps.has(value)) return value;
   const result = string(value, path, 30, false);
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(result)) fail('Expected an ISO UTC timestamp.', path, 'Use a form like 2026-10-05T12:00:00Z (UTC, trailing Z).');
+  if (!TIMESTAMP_FORMAT.test(result)) fail('Expected an ISO UTC timestamp.', path, 'Use a form like 2026-10-05T12:00:00Z (UTC, trailing Z).');
   const date = new Date(result);
   const normalized = result.replace(/(?:\.(\d{1,3}))?Z$/, (_match, fraction: string | undefined) => `.${(fraction ?? '').padEnd(3, '0')}Z`);
   if (!Number.isFinite(date.getTime()) || date.toISOString() !== normalized) fail('Timestamp contains an invalid calendar date or time.', path);
+  if (validTimestamps.size >= 1_024) validTimestamps.clear();
+  validTimestamps.add(result);
   return result;
 }
 function parent(value: unknown, path: string): string | null { return value === null ? null : id(value, path); }
@@ -436,7 +443,8 @@ export function validateDocument(value: unknown): ValidationResult<ResearchDocum
     const result: ResearchDocument = { schemaVersion: 1, id: id(v.id, 'document.id'), title: string(v.title, 'document.title', 1_000), revision: integer(v.revision, 'document.revision'), createdAt: timestamp(v.createdAt, 'document.createdAt'), updatedAt: timestamp(v.updatedAt, 'document.updatedAt'), format: format(v.format, 'document.format'), blocks, citations, retiredBlockIds };
     if (Date.parse(result.createdAt) > Date.parse(result.updatedAt)) fail('Document update timestamp precedes creation.', 'document.updatedAt');
     for (const block of blocks) if (Date.parse(block.createdAt) > Date.parse(block.updatedAt) || Date.parse(block.updatedAt) > Date.parse(result.updatedAt)) fail('Block timestamps must follow creation and not exceed the document update timestamp.', `document.blocks.${block.id}.updatedAt`);
-    if (JSON.stringify(result).length > LIMITS.json) fail('Document exceeds the supported serialized size.', 'document');
+    // The blocks were already measured one by one: add the rest of the document to that running total instead of serializing every block a second time.
+    if (JSON.stringify({ ...result, blocks: [] }).length + size + Math.max(0, blocks.length - 1) > LIMITS.json) fail('Document exceeds the supported serialized size.', 'document');
     return result;
   });
 }

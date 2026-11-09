@@ -140,8 +140,19 @@ export function runs(markdown: string): InlineRun[] {
 export function escapeInline(text: string): string {
   return text.replace(/[\\`*_~[\]<]/g, '\\$&').replace(/&(?=#?\w+;)/g, '\\&');
 }
+/** `escapeInline` for text that follows an ATX marker (`## `): a trailing `#` run after a space would read back as a closing sequence and vanish. */
+export function escapeHeadingText(text: string): string {
+  return escapeInline(text).replace(/(^|\s)(#+)$/, (_match, lead: string, hashes: string) => `${lead}${hashes.replace(/#/g, '\\#')}`);
+}
+const HSPACE = '[^\\S\\r\\n\\u2028\\u2029]', TABLE_RULE_LINE = new RegExp(`^(${HSPACE}*)(?=\\|?${HSPACE}*:?-+:?${HSPACE}*(?:\\|${HSPACE}*:?-+:?${HSPACE}*)*\\|?${HSPACE}*$)(?=[^\\r\\n\\u2028\\u2029]*\\|)`, 'gm');
+/**
+ * Escapes constructs that would start a block when they begin a line: headings, quotes, list markers, ordered markers, setext
+ * underlines, thematic breaks written with spaces (`--- ---`) and a table delimiter row (`|---|---|`), which turns the line above it
+ * into a table header.
+ */
 export function escapeLineStarts(text: string): string {
-  return text.replace(/^( {0,3})(#{1,6}(?=\s|$)|>|[-+](?=\s|$))/gm, '$1\\$2').replace(/^( {0,3}\d+)([.)])(?=\s|$)/gm, '$1\\$2').replace(/^( {0,3})([=-])(?=[=-]*\s*$)/gm, '$1\\$2');
+  return text.replace(/^( {0,3})(#{1,6}(?=\s|$)|>|[-+](?=\s|$))/gm, '$1\\$2').replace(/^( {0,3}\d+)([.)])(?=\s|$)/gm, '$1\\$2').replace(/^( {0,3})([=-])(?=[=-]*\s*$)/gm, '$1\\$2')
+    .replace(/^( {0,3})(-)(?=[- \t]*$)/gm, '$1\\$2').replace(TABLE_RULE_LINE, '$1\\');
 }
 function codeSpan(text: string): string {
   const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map(entry => entry.length)), fence = '`'.repeat(longest + 1);
@@ -164,7 +175,8 @@ export function runsToMarkdown(input: readonly InlineRun[]): string {
     }
     if (run.citationId !== undefined) out += `[^${run.citationId}]`;
   }
-  return out;
+  // A blank line ends a paragraph in Markdown, so consecutive line breaks collapse into one hard break instead of splitting the block on re-import.
+  return out.replace(/\n(?:[ \t]*\n)+/g, '\n');
 }
 
 /** Plain text of a markdown-lite string, for list items and table cells that hold plain strings. Link targets are kept in parentheses. */

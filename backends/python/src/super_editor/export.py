@@ -31,7 +31,7 @@ from ._common import (
     table_rows,
     text_of,
 )
-from .inline import escape_inline, escape_line_starts, js_trim, parens, runs_to_markdown
+from .inline import escape_heading_text, escape_inline, escape_line_starts, js_trim, parens, runs_to_markdown
 from .query import Document, get_outline
 
 _ALERTS = {"info": "NOTE", "success": "TIP", "note": "IMPORTANT", "warning": "WARNING", "danger": "CAUTION"}
@@ -102,17 +102,17 @@ def to_markdown(doc: Document, *, title: bool = True, chart_rows_limit: int | No
     rows_cap = chart_rows(chart_rows_limit, 100)
     parts: list[str] = []
     if title and text_of(doc, "title"):
-        parts.append("# " + escape_inline(line(doc["title"])))
+        parts.append("# " + escape_heading_text(line(doc["title"])))
 
     def render(block: dict[str, Any], depth: int) -> None:
         c = block["content"]
         kind = c["type"]
         if kind == "section":
-            parts.append("#" * min(6, 2 + depth) + " " + escape_inline(line(text_of(c, "title"))))
+            parts.append("#" * min(6, 2 + depth) + " " + escape_heading_text(line(text_of(c, "title"))))
         elif kind == "toggle":
             parts.append("**" + escape_inline(line(text_of(c, "title"))) + "**")
         elif kind == "heading":
-            parts.append("#" * min(6, int(c["level"]) + depth) + " " + escape_inline(line(text_of(c, "text"))))
+            parts.append("#" * min(6, int(c["level"]) + depth) + " " + escape_heading_text(line(text_of(c, "text"))))
         elif kind == "paragraph":
             text = escape_line_starts(runs_to_markdown(c["runs"]))
             if js_trim(text) != "":

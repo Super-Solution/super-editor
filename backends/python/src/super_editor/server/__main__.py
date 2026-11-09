@@ -8,9 +8,13 @@ The handler does not authenticate; run it on a private network or behind your ow
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
+import re
+import stat
 import sys
+import tempfile
 import threading
 from socketserver import ThreadingMixIn
 from typing import Any
@@ -20,7 +24,50 @@ from ..editor import Editor
 from .actions import current_iso
 from .http import Cors, Options
 from .service import EditorService, Service
+from .spec import limit
 from .wsgi import create_wsgi_app
+
+_LONE_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
+def _dump_document(document: dict[str, Any]) -> str:
+    """JSON text of the document.
+
+    Text may hold a lone surrogate (JSON allows ``\\ud800``). UTF-8 cannot encode it, so it is written back as the
+    escape, which is what the TypeScript reference does.
+    """
+    return _LONE_SURROGATE.sub(
+        lambda match: f"\\u{ord(match.group()):04x}", json.dumps(document, ensure_ascii=False, indent=2)
+    )
+
+
+def _write_atomic(path: str, document: dict[str, Any]) -> None:
+    """Replace ``path`` with a fully written temporary file.
+
+    A symlink is followed (the link stays a link), the permission bits of the existing file are kept, and the
+    temporary name is unique and created exclusively, so nothing can be pre-planted at it.
+    """
+    target = os.path.realpath(path)
+    try:
+        mode: int | None = stat.S_IMODE(os.stat(target).st_mode)
+    except FileNotFoundError:
+        mode = None
+    descriptor, temporary = tempfile.mkstemp(
+        dir=os.path.dirname(target), prefix=f".{os.path.basename(target)}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            if mode is not None and hasattr(os, "fchmod"):
+                os.fchmod(handle.fileno(), mode)
+            handle.write(_dump_document(document))
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, target)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
+        raise
 
 
 class _Saving:
@@ -41,11 +88,7 @@ class _Saving:
     def _save(self, result: dict[str, Any]) -> dict[str, Any]:
         if result.get("ok") and not result.get("duplicate"):
             try:
-                temporary = self._path + ".tmp"
-                with open(temporary, "w", encoding="utf-8") as handle:
-                    json.dump(self._inner.read(), handle, ensure_ascii=False, indent=2)
-                    handle.write("\n")
-                os.replace(temporary, self._path)
+                _write_atomic(self._path, self._inner.read())
             except OSError as error:
                 print(f"saving {self._path}: {error}", file=sys.stderr)
         return result
@@ -77,6 +120,16 @@ class _Quiet(WSGIRequestHandler):
         pass
 
 
+def _read_document_text(path: str) -> str:
+    """Read the document file, refusing more than the spec's fileBytes (a pipe or device reports size 0)."""
+    maximum = limit("fileBytes")
+    with open(path, "rb") as handle:
+        raw = handle.read(maximum + 1)
+    if len(raw) > maximum:
+        raise SystemExit(f"{path} is larger than the {maximum} byte limit")
+    return raw.decode("utf-8")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m super_editor.server", description=__doc__)
     parser.add_argument("--document", required=True, help="path of the document JSON file")
@@ -89,8 +142,7 @@ def main(argv: list[str] | None = None) -> None:
         "--max-body-bytes", type=int, default=None, help="largest accepted request body (default 1 MiB)"
     )
     args = parser.parse_args(argv)
-    with open(args.document, encoding="utf-8") as handle:
-        document = json.load(handle)
+    document = json.loads(_read_document_text(args.document))
     service: Service = EditorService(Editor(document, now=current_iso))
     if args.save and not args.read_only:
         service = _Saving(service, args.document)

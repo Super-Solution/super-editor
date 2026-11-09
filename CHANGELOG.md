@@ -9,6 +9,7 @@ First release of the reset line. The packages move from the `@super-solution` np
 - The repository history and version numbers were reset on 2026-11-07. Earlier prerelease versions published under `@super-solution/editor-*` (`0.1.0-next.0` to `0.3.0-next.2`) were Apache-2.0 licensed for everyone who received them, but are superseded by this line.
 - **License change.** `super-editor-core`, `-ui`, `-react`, `-element`, `-chat-plugin` and `-cli` are GPL-3.0-or-later; `super-editor-api` and `super-editor-mcp` are AGPL-3.0-or-later. A commercial license for closed-source use is available from SUPER SOLUTION LABS INC (contact@supersolution.io). Every source file carries an SPDX header, and each package ships the license text that applies to it.
 - Install snippets no longer use the `@next` tag; this line publishes to `latest`.
+- **Chat plugin credentials.** `createEditorChatPlugin({ headers })` no longer sends the headers to whatever `baseUrl` a card names: list trusted origins in `allowedServiceOrigins`, or build the URL yourself with `resolveServiceUrl`.
 
 ### Go and Python servers
 
