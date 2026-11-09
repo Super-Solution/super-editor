@@ -11,6 +11,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import stat
 import sys
 import tempfile
@@ -25,6 +26,19 @@ from .http import Cors, Options
 from .service import EditorService, Service
 from .spec import limit
 from .wsgi import create_wsgi_app
+
+_LONE_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
+def _dump_document(document: dict[str, Any]) -> str:
+    """JSON text of the document.
+
+    Text may hold a lone surrogate (JSON allows ``\\ud800``). UTF-8 cannot encode it, so it is written back as the
+    escape, which is what the TypeScript reference does.
+    """
+    return _LONE_SURROGATE.sub(
+        lambda match: f"\\u{ord(match.group()):04x}", json.dumps(document, ensure_ascii=False, indent=2)
+    )
 
 
 def _write_atomic(path: str, document: dict[str, Any]) -> None:
@@ -45,7 +59,7 @@ def _write_atomic(path: str, document: dict[str, Any]) -> None:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             if mode is not None and hasattr(os, "fchmod"):
                 os.fchmod(handle.fileno(), mode)
-            json.dump(document, handle, ensure_ascii=False, indent=2)
+            handle.write(_dump_document(document))
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())

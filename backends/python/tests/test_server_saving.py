@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from super_editor.server.__main__ import _read_document_text, _write_atomic
+from super_editor.server.__main__ import _dump_document, _read_document_text, _write_atomic
 
 
 @unittest.skipIf(sys.platform == "win32", "POSIX permission bits and symlinks")
@@ -29,6 +29,16 @@ class WriteAtomicTest(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(os.stat(target).st_mode), 0o600)
             self.assertEqual(json.loads(target.read_text(encoding="utf-8")), {"title": "saved \u2713"})
             self.assertEqual(sorted(entry.name for entry in root.iterdir()), ["link.json", "real.json"])
+
+
+class LoneSurrogateTest(unittest.TestCase):
+    def test_saves_a_lone_surrogate_as_an_escape(self) -> None:
+        document = {"title": "a\ud800b \u2713 \U0001f600"}
+        self.assertEqual(_dump_document(document), '{\n  "title": "a\\ud800b \u2713 \U0001f600"\n}')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "doc.json"
+            _write_atomic(str(path), document)
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), document)
 
 
 class ReadDocumentTextTest(unittest.TestCase):

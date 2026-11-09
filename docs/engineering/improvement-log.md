@@ -235,6 +235,20 @@ package is published). To build here, `npm install --no-package-lock` with the p
   opt-in and by this tool, so it stays as is.
 * **Gate.** `npm run build`, TypeScript 381 tests, Go (`gofmt`, `go vet`, `go test`) and Python (`ruff`, `mypy`, 18 tests).
 
+### Round 15: lone surrogates across the three implementations, and the final gate
+
+* **Method.** Settled the open question about a lone surrogate (`"a\ud800b"`, valid JSON, not valid Unicode text) by sending
+  it through each implementation's apply and save paths.
+* **Findings.** TypeScript accepts it and saves it as the escape `\ud800` (`JSON.stringify` is well formed). Python accepted it
+  too, but `--save` raised `UnicodeEncodeError` after the edit had been applied in memory. The HTTP response path already fell
+  back to ASCII escapes. Go's decoder turns the escape into U+FFFD, so the text silently changes there.
+* **Fix.** Python writes the document through `_dump_document`, which writes only lone surrogates as escapes and leaves every
+  other character as UTF-8, matching the reference byte for byte. A test covers the helper and a save round trip.
+* **Decision recorded, not changed.** Rejecting lone surrogates in validation would make all three agree, but it narrows what
+  the reference accepts today and Go would need a pre-scan of the raw bytes. The Go replacement stays a documented deviation
+  (a lone surrogate is not valid text to begin with); decide before 0.1.0 whether validation should refuse them.
+* **Final gate.** `npm run build`, TypeScript 381 tests, `go vet`, `go test -race`, `ruff`, `mypy` and 19 Python tests.
+
 ## Iteration 1 (2026-11-08): audit and server scoping
 
 ### Inspected

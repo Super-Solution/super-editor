@@ -34,3 +34,4 @@ without a reason in the "Evidence" column is a guess and should be lowered. Newe
 | 12 | Markdown round trip | Correctness stays 9 (two lossy exports closed) |
 | 13 | MCP stdio transport | Reliability stays 9 (unbounded buffering and an EPIPE crash closed) |
 | 14 | Reading the document file | Reliability stays 9 (the size limit now holds for pipes and devices in all four readers) |
+| 15 | Lone surrogates, final gate | Reliability stays 9 (a save crash in the Python server closed; one deviation recorded) |
