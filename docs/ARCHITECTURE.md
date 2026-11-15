@@ -21,6 +21,8 @@ The editor validates unknown JSON at every write boundary. It first checks docum
 
 Default revision policy rejects stale requests. `rebase-safe` permits only the content operations `updateBlock` and `replaceText`, and every targeted block must still have the expected version. Metadata and structural operations always need the exact document revision. This is conservative optimistic concurrency for a single host editor; it is not distributed conflict resolution. In a persistent host, enforce a compare-and-swap on stored document revision and authenticate/authorize the actor independently of the supplied JSON actor ID.
 
+Hosts whose documents live in a database implement `DocumentStore` (see [PERSISTENCE.md](PERSISTENCE.md)): `createStoreService` loads, applies one guarded transaction and saves with a compare-and-swap on the revision, so the transports below run unchanged over a store.
+
 Undo/redo create new revisions, do not decrease block versions, and require the exact current revision. The bounded session history is separate from document serialization. Production hosts can persist immutable revisions and transaction idempotency records, but must define retention, access controls, durable recovery, and concurrent writers.
 
 Format fields intentionally cover only screen/A4/letter presentation, generic font family, font size, and line height. Browser print styling is a preview. There is no promise of Word layout, DOCX fidelity, or a full Notion feature set.

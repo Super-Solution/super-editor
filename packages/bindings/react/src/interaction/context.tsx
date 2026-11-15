@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { createContext, useContext, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import type { Box, Interaction, InteractionState, SurfaceBinding } from '@supersolutions/super-editor-ui';

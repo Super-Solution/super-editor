@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
+'use client';
+import { useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LIMITS, stats } from '@supersolutions/super-editor-core';
 import type { Actor, ApplyResult, Editor, ResearchDocument } from '@supersolutions/super-editor-core';
@@ -35,7 +36,14 @@ const defaultActor: Actor = { id: 'local-human', kind: 'human' };
 export function DocumentHeader({ document, editor, actor = defaultActor, onTitleChange, onResult, editable, meta, actions, now: fixedNow, locale, labels: override, className }: DocumentHeaderProps): ReactNode {
   const labels = useLabels(override), inputId = useId();
   const canEdit = editable ?? (editor !== undefined || onTitleChange !== undefined);
-  const [draft, setDraft] = useState(document.title), focused = useRef(false), cancelled = useRef(false);
+  const [draft, setDraft] = useState(document.title), focused = useRef(false), cancelled = useRef(false), field = useRef<HTMLTextAreaElement>(null);
+  // The title wraps instead of clipping: the field grows with its text (CSS `field-sizing` where supported, measured height elsewhere).
+  useLayoutEffect(() => {
+    const node = field.current;
+    if (!node || (typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content'))) return;
+    node.style.height = 'auto';
+    node.style.height = `${node.scrollHeight}px`;
+  }, [draft, canEdit]);
   // Follow the document unless the reader is typing.
   useEffect(() => { if (!focused.current) setDraft(document.title); }, [document.title]);
   const ticking = useNow(fixedNow === undefined, 60_000), now = fixedNow ?? ticking;
@@ -59,9 +67,9 @@ export function DocumentHeader({ document, editor, actor = defaultActor, onTitle
   return <header className={`se-doc-header${className ? ` ${className}` : ''}`}>
     <div className="se-doc-header-main">
       {canEdit
-        ? <h1 className="se-doc-title"><input id={inputId} className="se-doc-title-input" value={draft} maxLength={LIMITS.title} placeholder={labels.header.titlePlaceholder} aria-label={labels.header.titleLabel} spellCheck
-          onFocus={() => { focused.current = true; }} onChange={(event) => setDraft(event.target.value)} onBlur={commit}
-          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); (event.target as HTMLInputElement).blur(); } else if (event.key === 'Escape') { cancelled.current = true; setDraft(document.title); (event.target as HTMLInputElement).blur(); cancelled.current = false; } }} /></h1>
+        ? <h1 className="se-doc-title"><textarea ref={field} id={inputId} className="se-doc-title-input" rows={1} value={draft} maxLength={LIMITS.title} placeholder={labels.header.titlePlaceholder} aria-label={labels.header.titleLabel} spellCheck
+          onFocus={() => { focused.current = true; }} onChange={(event) => setDraft(event.target.value.replace(/\s*[\r\n]+\s*/g, ' '))} onBlur={commit}
+          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); (event.target as HTMLTextAreaElement).blur(); } else if (event.key === 'Escape') { cancelled.current = true; setDraft(document.title); (event.target as HTMLTextAreaElement).blur(); cancelled.current = false; } }} /></h1>
         : <h1 className="se-doc-title">{document.title || labels.header.titlePlaceholder}</h1>}
       <p className="se-doc-meta">
         <span>{template(labels.header.revision, { revision: document.revision })}</span>

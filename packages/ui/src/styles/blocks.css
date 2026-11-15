@@ -1,11 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
    Copyright 2026 SUPER SOLUTION LABS INC */
 /* Document and block styles. Class names: `super-editor-*` are the stable structural hooks, `se-*` are component parts. */
-.super-editor { color: var(--se-text); background: var(--se-bg); padding: 1rem; }
+.super-editor { color: var(--se-text); background: var(--se-bg); padding: clamp(.4rem, 2%, 1rem); }
+.super-editor:not(.se-portal) { container: se-editor / inline-size; }
 /* The wrapper OverlayPortal puts around layers it renders under <body>: it carries the theme, never a box of its own. */
 .se-portal { display: contents; }
 .super-editor-document {
-  box-sizing: border-box; max-width: var(--se-document-width); margin: 0 auto; padding: var(--se-pad-y) var(--se-pad-x);
+  box-sizing: border-box; width: 100%; max-width: var(--se-document-width); margin: 0 auto;
+  /* Side padding gives way as the column narrows: never more than --se-pad-x, never less than 1rem unless the host set it smaller. */
+  padding: var(--se-pad-y) min(var(--se-pad-x), max(1rem, 7%));
+  container: se-document / inline-size;
   background: var(--se-surface); color: var(--se-text); overflow-wrap: anywhere; line-height: var(--se-leading);
 }
 .super-editor-document[data-font="sans"] { font-family: var(--se-font-sans); }
@@ -151,7 +155,7 @@
 .se-image[data-width="full"] { max-width: none; margin-left: calc(var(--se-pad-x) * -.6); margin-right: calc(var(--se-pad-x) * -.6); }
 .se-image figcaption, .se-chart-caption { color: var(--se-muted); font-size: var(--se-small-size); margin-top: .45rem; text-align: center; }
 .se-image-broken { padding: 1.2rem; border: 1px dashed var(--se-border-strong); border-radius: var(--se-radius); color: var(--se-muted); font-size: var(--se-small-size); }
-@media (max-width: 640px) { .se-image[data-width="narrow"], .se-image[data-width="normal"] { max-width: 100%; } }
+@container se-document (max-width: 640px) { .se-image[data-width="narrow"], .se-image[data-width="normal"] { max-width: 100%; } }
 .se-embed { margin: 1.5rem 0; }
 .se-embed-card { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; padding: .7rem .9rem; border: 1px solid var(--se-border); border-radius: var(--se-radius); background: var(--se-subtle); }
 .se-embed-provider { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--se-muted); }
@@ -211,4 +215,4 @@
 
 .super-editor .se-todo-box, .se-todo-box { padding: 0; border: revert; background: revert; }
 
-@media (max-width: 640px) { .super-editor { padding: .4rem; } .super-editor-document h1, .super-editor-document .super-editor-block h1 { font-size: 1.75em; } .se-metrics { grid-template-columns: 1fr 1fr; } }
+@container se-document (max-width: 640px) { .super-editor-document h1, .super-editor-document .super-editor-block h1 { font-size: 1.75em; } .se-metrics { grid-template-columns: 1fr 1fr; } }

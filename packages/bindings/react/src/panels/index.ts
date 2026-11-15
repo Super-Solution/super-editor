@@ -11,3 +11,4 @@ export { Skeleton, DocumentSkeleton, type SkeletonProps } from './Skeleton.js';
 export { DocumentHeader, type DocumentHeaderProps } from './DocumentHeader.js';
 export { CitationHoverCard, type CitationHoverCardProps } from './CitationHoverCard.js';
 export { useEditorDocument, useNow, relativeTime, absoluteTime } from './hooks.js';
+export { ProposalReview, useProposalReview, type ProposalReviewProps } from './ProposalReview.js';

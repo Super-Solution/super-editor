@@ -4,4 +4,4 @@ export { createHttpHandler, type CorsOptions, type HttpHandlerOptions } from './
 export { HTTP_LIMITS, ROUTES, type QueryParam, type RouteDefinition } from './routes.js';
 export { createOpenApiDocument, type OpenApiOptions } from './openapi.js';
 export { createHttpClient, HttpClientError, type HttpClient, type HttpClientOptions } from './client.js';
-export { createReportService, type ReportService } from '@supersolutions/super-editor-core';
+export { createReportService, createStoreService, createMemoryStore, type ReportService, type AsyncReportService, type DocumentStore } from '@supersolutions/super-editor-core';

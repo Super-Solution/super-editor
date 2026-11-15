@@ -8,5 +8,5 @@ export type { Alignment, EmbedPolicy, ImageModel, ListItemNode, ListModel, Metri
 export { defaultLabels, plural, resolveLabels, template, type DeepPartial, type Labels, type PartialLabels } from './labels.js';
 export { countMatches, findMatches, replaceOperations, splitMatches, type BlockMatch, type FindOptions, type FindResult } from './find.js';
 export { outlineEntries, type OutlineEntry } from './helpers.js';
-export { element, hostOf, revealBlock, safeLink, timeElement } from './dom.js';
+export { element, formatInstant, hostOf, revealBlock, safeLink, timeElement } from './dom.js';
 export type { BlockRenderer, ChartRenderer, Density, DiffMarks, FindHighlight, RenderContext, RenderOptions, SharedRenderOptions, ThemeName } from './types.js';

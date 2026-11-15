@@ -10,6 +10,7 @@ import { fromMarkdown, toHTML, toMarkdown, toPlainText } from './markdown.js';
 import { ancestorsOf, blockText, childrenOf, descendantsOf, findBlocks, getBlock, getOutline, type BlockSelector, type OutlineItem } from './query.js';
 import { transactionSchema } from './schemas.js';
 import { createReportService, type ReportService } from './service.js';
+import { isPromiseLike, openSnapshot, type AsyncReportService } from './store.js';
 import { stats, type DocumentStats } from './stats.js';
 import { TEMPLATE_KINDS, createTemplate, listTemplates, templateTitle, type TemplateInfo, type TemplateKind } from './templates.js';
 import type { Actor, Block, BlockContent, BlockInput, BlockType, ChartSpec, EditorIssue, Operation, ResearchDocument, Transaction } from './types.js';
@@ -657,4 +658,19 @@ export function runAgentAction(service: ReportService, name: string, input: unkn
   const action = byName.get(name);
   if (!action) return failure(service, [{ code: 'not-found', message: `Unknown action "${name}".`, hint: `Available actions: ${AGENT_ACTIONS.map(entry => entry.name).join(', ')}.` }]);
   return action.run(service, input, context);
+}
+
+/**
+ * `runAgentAction` for a service that may be asynchronous (see `createStoreService`). A synchronous service behaves exactly as with
+ * `runAgentAction`. An asynchronous one is read once, the action runs on that copy, and the transaction it made is applied through
+ * the real service (so its compare-and-swap decides), with the failure returned when it loses.
+ */
+export async function runAgentActionAsync(service: ReportService | AsyncReportService, name: string, input: unknown, context: AgentActionContext = {}): Promise<AgentActionResult> {
+  const first = service.read();
+  if (!isPromiseLike(first)) return runAgentAction(service as ReportService, name, input, context);
+  const wantsRevisions = name === 'list_revisions';
+  const snapshot = await openSnapshot(service as AsyncReportService, { document: await first as ResearchDocument, revisions: wantsRevisions });
+  const result = runAgentAction(snapshot.service, name, input, context);
+  if (!result.ok || result.dryRun) return result;
+  return await snapshot.flush() ?? result;
 }

@@ -1,6 +1,6 @@
 # Controlled npm releases
 
-The reset release line starts at stable **0.1.0** on the npm dist-tag **latest**, for all eight packages. `@supersolutions/super-editor-chat-plugin` also depends on the Apache-2.0 `@supersolutions/super-protocol` (published from the super-chat repository): publish that first, then regenerate `package-lock.json` with `npm install --package-lock-only --ignore-scripts` before the release check. Later prereleases (`X.Y.Z-next.N`) use the `next` tag. This does not assert that any npm package has already been published.
+The reset release line started at stable **0.1.0** on the npm dist-tag **latest**, for all eight packages; **0.2.0** is the next release on the same channel. `@supersolutions/super-editor-chat-plugin` also depends on the Apache-2.0 `@supersolutions/super-protocol` (published from the super-chat repository): publish that first, then regenerate `package-lock.json` with `npm install --package-lock-only --ignore-scripts` before the release check. Later prereleases (`X.Y.Z-next.N`) use the `next` tag. This does not assert that any npm package has already been published.
 
 Licenses: `core`, `ui`, `react`, `element`, `chat-plugin` and `cli` are GPL-3.0-or-later; `api` and `mcp` are AGPL-3.0-or-later. The texts live in `LICENSES/`; `scripts/release-contract.mjs` maps packages to licenses and `scripts/package-build.mjs` copies the matching text into each package. `release:check` fails if a tarball carries the wrong text.
 
@@ -51,7 +51,7 @@ The check installs all eight tarballs into a separate consumer project, checks E
 All eight packages move together, so a version change touches the root workspace, eight manifests, every internal exact dependency and the `publishConfig.tag`. `scripts/bump-version.mjs` does exactly that and nothing else:
 
 ```sh
-node scripts/bump-version.mjs 0.3.0-next.0
+node scripts/bump-version.mjs 0.2.0
 npm install --package-lock-only --ignore-scripts   # refresh the lockfile
 npm run check && npm run release:check
 ```
@@ -77,7 +77,7 @@ npm install @supersolutions/super-editor-core @supersolutions/super-editor-react
 npm install @supersolutions/super-editor-api @supersolutions/super-editor-mcp
 ```
 
-Import `createReportService`, `documentSchema`, `transactionSchema`, `createTemplate` and `AGENT_ACTIONS` from super-editor-core, `createHttpHandler` and `createHttpClient` from super-editor-api, `createMcpDispatcher` from super-editor-mcp, and `runCli` from super-editor-cli. The `super-editor` (super-editor-cli) and `super-editor-mcp` (super-editor-mcp, from 0.3.0-next.0) binaries run through `npx -p <package>@next <binary>`; `release:check` installs the packed tarballs and starts both. UI CSS is `@supersolutions/super-editor-ui/styles.css`. Report schema v1 and guarded operations remain unchanged. SuperChat/SuperChart official contracts, complete MCP server initialization, Word compatibility and real-time collaboration remain outside this release.
+Import `createReportService`, `documentSchema`, `transactionSchema`, `createTemplate` and `AGENT_ACTIONS` from super-editor-core, `createHttpHandler` and `createHttpClient` from super-editor-api, `createMcpDispatcher` from super-editor-mcp, and `runCli` from super-editor-cli. The `super-editor` (super-editor-cli) and `super-editor-mcp` (super-editor-mcp) binaries run through `npx -p <package>@next <binary>`; `release:check` installs the packed tarballs and starts both. UI CSS is `@supersolutions/super-editor-ui/styles.css`. Report schema v1 and guarded operations remain unchanged. SuperChat/SuperChart official contracts, complete MCP server initialization, Word compatibility and real-time collaboration remain outside this release.
 ## Tag maintenance
 
 Publication checks now also verify the candidate channel and preserve the latest baseline without automatically changing tags. While that repair is deferred, a `next` publication over a prerelease `latest` (today `0.1.0-next.0`) is allowed with a warning: it records that `latest` as the baseline and fails if the publication moves it, so `latest` stays exactly where it was. npm answers a publish before its metadata shows the new tag, so the post-publish check retries a channel that has not caught up yet (up to 20 reads, 30 s apart); a moved `latest` fails at once.

@@ -51,7 +51,7 @@ export function renderDocument(report: ResearchDocument, options: RenderOptions 
     const header = element(document, 'header', undefined, 'se-header');
     const title = element(document, 'h1', report.title || labels.document.untitled); title.id = titleId;
     const metadata = element(document, 'p', undefined, 'super-editor-metadata');
-    metadata.append(document.createTextNode(`${template(labels.document.revision, { revision: report.revision })} · `), timeElement(document, report.updatedAt, labels.document.updated));
+    metadata.append(document.createTextNode(`${template(labels.document.revision, { revision: report.revision })} · `), timeElement(document, report.updatedAt, labels.document.updated, options.locale, options.timeZone));
     header.append(title, metadata); article.append(header);
   }
   const context: RenderContext = { document, report, options, labels, renderDefaultBlock: (block) => renderDefaultBlock(block, context) };

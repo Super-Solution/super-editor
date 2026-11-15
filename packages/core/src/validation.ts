@@ -23,8 +23,9 @@ function object(value: unknown, path: string, required: string[], optional: stri
   const prototype = Object.getPrototypeOf(value);
   if (prototype !== Object.prototype && prototype !== null) fail('Expected a plain object.', path);
   const descriptors = Object.getOwnPropertyDescriptors(value);
+  const allowed = optional.length ? [...required, ...optional] : required;
   for (const key of Reflect.ownKeys(descriptors)) {
-    if (typeof key !== 'string' || ![...required, ...optional].includes(key)) fail('Unknown property.', `${path}.${String(key)}`, `Remove it. Allowed properties here: ${[...required, ...optional].join(', ')}.`);
+    if (typeof key !== 'string' || !allowed.includes(key)) fail('Unknown property.', `${path}.${String(key)}`, `Remove it. Allowed properties here: ${allowed.join(', ')}.`);
     if (!('value' in descriptors[key]!)) fail('Accessors are not accepted.', `${path}.${key}`);
   }
   for (const key of required) if (!Object.hasOwn(descriptors, key)) fail('Required property is missing.', `${path}.${key}`, `Add "${key}".`);
@@ -80,13 +81,18 @@ function url(value: unknown, path: string, httpsOnly = false): string {
   if (!result) fail(`Expected an absolute ${httpsOnly ? 'HTTPS' : 'HTTP or HTTPS'} URL without credentials.`, path, `Use a full ${httpsOnly ? 'https://' : 'http(s)://'} URL such as https://example.com/page, with no spaces and no user:password.`);
   return result;
 }
+/** Timestamps that already passed the check below: a document's blocks mostly share a handful of them. */
+const knownTimestamps = new Set<string>();
 /** UTC ISO timestamps only; calendar rollover (such as February 30) is rejected. */
 export function timestamp(value: unknown, path = 'timestamp'): string {
   const result = string(value, path, 30, false);
+  if (knownTimestamps.has(result)) return result;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(result)) fail('Expected an ISO UTC timestamp.', path, 'Use a form like 2026-10-05T12:00:00Z (UTC, trailing Z).');
   const date = new Date(result);
   const normalized = result.replace(/(?:\.(\d{1,3}))?Z$/, (_match, fraction: string | undefined) => `.${(fraction ?? '').padEnd(3, '0')}Z`);
   if (!Number.isFinite(date.getTime()) || date.toISOString() !== normalized) fail('Timestamp contains an invalid calendar date or time.', path);
+  if (knownTimestamps.size >= 4_096) knownTimestamps.clear();
+  knownTimestamps.add(result);
   return result;
 }
 function parent(value: unknown, path: string): string | null { return value === null ? null : id(value, path); }
@@ -288,11 +294,26 @@ function content(value: unknown, path: string): BlockContent {
     default: return fail('Unsupported block content type. Raw HTML is not supported.', `${path}.type`, `Use one of: ${BLOCK_TYPES.join(', ')}.`);
   }
 }
+/**
+ * Blocks and block contents the editor itself has validated and deeply frozen, with their serialized length. A frozen object can no
+ * longer change, so seeing the same object again lets validation skip re-reading it: a one-block edit then costs one block, not the
+ * whole document. Only `rememberVerified` fills these, and only from the editor, so caller-supplied objects are never trusted.
+ */
+const verifiedContent = new WeakMap<object, number>();
+const verifiedBlocks = new WeakMap<object, number>();
+/** Internal: records a deeply frozen, already validated document. Not part of the public API. */
+export function rememberVerified(document: ResearchDocument): void {
+  for (const block of document.blocks) {
+    if (!verifiedContent.has(block.content)) verifiedContent.set(block.content, JSON.stringify(block.content).length);
+    if (!verifiedBlocks.has(block)) verifiedBlocks.set(block, JSON.stringify(block).length);
+  }
+}
 function blockInput(value: unknown, path: string, persisted = false): BlockInput | Block {
   const v = object(value, path, ['id', 'parentId', 'content', 'citationIds', ...(persisted ? ['version', 'createdAt', 'updatedAt'] : [])]);
   const citationIds = array(v.citationIds, `${path}.citationIds`, LIMITS.citations, id);
   unique(citationIds, `${path}.citationIds`);
-  const input: BlockInput = { id: id(v.id, `${path}.id`), parentId: parent(v.parentId, `${path}.parentId`), content: content(v.content, `${path}.content`), citationIds };
+  const known = typeof v.content === 'object' && v.content !== null && Object.isFrozen(v.content) && verifiedContent.has(v.content);
+  const input: BlockInput = { id: id(v.id, `${path}.id`), parentId: parent(v.parentId, `${path}.parentId`), content: known ? v.content as BlockContent : content(v.content, `${path}.content`), citationIds };
   return persisted ? { ...input, version: integer(v.version, `${path}.version`, 1), createdAt: timestamp(v.createdAt, `${path}.createdAt`), updatedAt: timestamp(v.updatedAt, `${path}.updatedAt`) } : input;
 }
 function citation(value: unknown, path: string): Citation {
@@ -402,7 +423,12 @@ export function validateDocument(value: unknown): ValidationResult<ResearchDocum
     integer(v.schemaVersion, 'document.schemaVersion', 1, 1);
     let size = 0;
     const blocks = array(v.blocks, 'document.blocks', LIMITS.blocks, (entry, path) => {
-      const parsed = blockInput(entry, path, true) as Block; size += JSON.stringify(parsed).length;
+      const whole = typeof entry === 'object' && entry !== null && Object.isFrozen(entry) ? verifiedBlocks.get(entry) : undefined;
+      if (whole !== undefined) { size += whole; return entry as Block; }
+      const parsed = blockInput(entry, path, true) as Block;
+      const cached = verifiedContent.get(parsed.content);
+      // Same length as JSON.stringify(parsed): the placeholder `0` stands for the content's cached serialization.
+      size += cached === undefined ? JSON.stringify(parsed).length : JSON.stringify({ ...parsed, content: 0 }).length - 1 + cached;
       if (size > LIMITS.json) fail('Document exceeds the supported serialized size.', 'document');
       return parsed;
     });
@@ -438,7 +464,8 @@ export function validateDocument(value: unknown): ValidationResult<ResearchDocum
     const result: ResearchDocument = { schemaVersion: 1, id: id(v.id, 'document.id'), title: string(v.title, 'document.title', 1_000), revision: integer(v.revision, 'document.revision'), createdAt: timestamp(v.createdAt, 'document.createdAt'), updatedAt: timestamp(v.updatedAt, 'document.updatedAt'), format: format(v.format, 'document.format'), blocks, citations, retiredBlockIds };
     if (Date.parse(result.createdAt) > Date.parse(result.updatedAt)) fail('Document update timestamp precedes creation.', 'document.updatedAt');
     for (const block of blocks) if (Date.parse(block.createdAt) > Date.parse(block.updatedAt) || Date.parse(block.updatedAt) > Date.parse(result.updatedAt)) fail('Block timestamps must follow creation and not exceed the document update timestamp.', `document.blocks.${block.id}.updatedAt`);
-    if (JSON.stringify(result).length > LIMITS.json) fail('Document exceeds the supported serialized size.', 'document');
+    // `size` already holds every block's length, so only the rest of the document is serialized here.
+    if (JSON.stringify({ ...result, blocks: [] }).length + size + Math.max(0, blocks.length - 1) > LIMITS.json) fail('Document exceeds the supported serialized size.', 'document');
     return result;
   });
 }

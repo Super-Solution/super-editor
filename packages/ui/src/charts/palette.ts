@@ -12,7 +12,7 @@ export type TokenColors = Partial<Record<TokenName, string>>;
 
 export const SERIES_COUNT = 10;
 const series: Record<ChartTheme, readonly string[]> = {
-  light: ['#2563eb', '#f97316', '#16a34a', '#9333ea', '#db2777', '#0891b2', '#ca8a04', '#64748b', '#dc2626', '#4d7c0f'],
+  light: ['#2563eb', '#ea580c', '#16a34a', '#9333ea', '#db2777', '#0891b2', '#a16207', '#64748b', '#dc2626', '#4d7c0f'],
   dark: ['#60a5fa', '#fb923c', '#4ade80', '#c084fc', '#f472b6', '#22d3ee', '#facc15', '#94a3b8', '#f87171', '#a3e635'],
 };
 const tokens: Record<TokenName, { css: string; light: string; dark: string }> = {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { createElement, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Block, BlockContent } from '@supersolutions/super-editor-core';

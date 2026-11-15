@@ -50,6 +50,8 @@
     "backends/**/*.ts",
     "examples/**/*.ts",
     "examples/**/*.tsx",
+    "benchmarks/**/*.ts",
+    "e2e/**/*.ts",
     "tests/**/*.ts",
     "tests/**/*.tsx"
   ]

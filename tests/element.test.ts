@@ -84,3 +84,39 @@ test('theme attribute reaches the rendered document', () => {
   assert.ok(el.querySelector('[data-se-theme="dark"]'));
   close();
 });
+
+test('src loads a document, readonly forces view, and locale, time-zone, density, actor and labels reach the renderer', async () => {
+  const { window, close } = page();
+  const original = globalThis.fetch;
+  const body = report('From src');
+  const requested: string[] = [];
+  globalThis.fetch = (async (url: string) => { requested.push(String(url)); return new Response(JSON.stringify(body), { status: 200 }); }) as typeof fetch;
+  try {
+    const el = window.document.createElement('super-editor') as unknown as SuperEditorElement;
+    el.setAttribute('mode', 'edit');
+    el.setAttribute('density', 'compact');
+    el.setAttribute('locale', 'en-US');
+    el.setAttribute('time-zone', 'UTC');
+    el.setAttribute('actor', 'ana');
+    el.setAttribute('src', 'https://docs.example.com/d.json');
+    el.labels = { classic: { addBlock: 'Add a block' } } as never;
+    const loaded = new Promise((resolve) => el.addEventListener('load', resolve));
+    window.document.body.append(el);
+    await loaded;
+    assert.deepEqual(requested, ['https://docs.example.com/d.json']);
+    assert.match(el.textContent ?? '', /From src/);
+    assert.match(el.textContent ?? '', /Updated: Oct 5, 2026/);
+    assert.ok([...el.querySelectorAll('button')].some((button) => button.textContent === 'Add a block'));
+    assert.ok(el.querySelector('[data-se-density="compact"]'));
+    el.setAttribute('readonly', '');
+    assert.equal(el.mode, 'view');
+    assert.equal(el.querySelector('button'), null);
+
+    globalThis.fetch = (async () => new Response('nope', { status: 500 })) as typeof fetch;
+    const failures: string[] = [];
+    el.addEventListener('error', (event) => failures.push((event as unknown as CustomEvent<{ message: string }>).detail.message));
+    assert.equal(await el.reload(), false);
+    assert.match(failures[0] ?? '', /500/);
+    assert.match(el.textContent ?? '', /From src/, 'the previous document stays');
+  } finally { globalThis.fetch = original; close(); }
+});

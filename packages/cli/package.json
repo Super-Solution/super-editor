@@ -1,6 +1,6 @@
 {
   "name": "@supersolutions/super-editor-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local JSON research report CLI",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -38,7 +38,7 @@
     "tag": "latest"
   },
   "dependencies": {
-    "@supersolutions/super-editor-core": "0.1.0"
+    "@supersolutions/super-editor-core": "0.2.0"
   },
   "bin": {
     "super-editor": "./dist/cli.js"

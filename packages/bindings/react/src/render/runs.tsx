@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { Block, InlineRun, ResearchDocument } from '@supersolutions/super-editor-core';

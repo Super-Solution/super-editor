@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { Actor, Block, BlockContent, Editor, ResearchDocument } from '@supersolutions/super-editor-core';
@@ -31,6 +32,11 @@ export type InteractionProps = InteractionParts & {
   shortcuts?: InteractionOptions['shortcuts'];
   slashItems?: InteractionOptions['slashItems'];
   slashLabels?: InteractionOptions['slashLabels'];
+  /** Translations of the interaction layer's own strings (notices, menus, shortcut help), keyed by the English text. */
+  messages?: InteractionOptions['messages'];
+  /** Stores a pasted or dropped image and returns its https address; without it image files are refused with a notice. */
+  uploadImage?: InteractionOptions['uploadImage'];
+  maxImageBytes?: InteractionOptions['maxImageBytes'];
   commitDelayMs?: number;
   linkSchemes?: InteractionOptions['linkSchemes'];
   /** Called when an edit lost a race with another writer (an agent, another tab). */
@@ -86,7 +92,7 @@ export type InteractiveReportEditorProps = Omit<ReportViewProps, 'document' | 'r
 /** The interaction-enabled editor: a `ReportView` inside an `InteractiveSurface`, with in-place editing of text, lists, tables and toggles. */
 export function InteractiveReportEditor(props: InteractiveReportEditorProps): ReactNode {
   const {
-    editor, actor, renderControls, interaction: _enabled, readOnly, interactionLabels, shortcuts, slashItems, slashLabels, commitDelayMs, linkSchemes, onConflict, onFeedback, onReload, surface, portalContainer,
+    editor, actor, renderControls, interaction: _enabled, readOnly, interactionLabels, shortcuts, slashItems, slashLabels, messages, uploadImage, maxImageBytes, commitDelayMs, linkSchemes, onConflict, onFeedback, onReload, surface, portalContainer,
     gutter, hoverOutline, selectionOverlay, dropIndicator, slashMenu, formattingToolbar, selectionToolbar, blockMenu, linkEditor, shortcutHelp, chartEditor, conflictNotice, feedback,
     ...viewProps
   } = props;
@@ -94,7 +100,7 @@ export function InteractiveReportEditor(props: InteractiveReportEditorProps): Re
   const human = useMemo(() => ({ id: actor?.id ?? 'local-human', kind: 'human' as const }), [actor?.id]);
   const instance = useCreateInteraction(editor, {
     actor: human, readOnly: !!readOnly,
-    ...(shortcuts === undefined ? {} : { shortcuts }), ...(slashItems ? { slashItems } : {}), ...(slashLabels ? { slashLabels } : {}), ...(commitDelayMs === undefined ? {} : { commitDelayMs }),
+    ...(shortcuts === undefined ? {} : { shortcuts }), ...(slashItems ? { slashItems } : {}), ...(slashLabels ? { slashLabels } : {}), ...(messages ? { messages } : {}), ...(uploadImage ? { uploadImage } : {}), ...(maxImageBytes === undefined ? {} : { maxImageBytes }), ...(commitDelayMs === undefined ? {} : { commitDelayMs }),
     ...(linkSchemes ? { linkSchemes } : {}), ...(onConflict ? { onConflict } : {}), ...(onFeedback ? { onFeedback } : {}),
   });
   // The document view memoizes every block by id and version, but re-renders all of them when these props change identity.
