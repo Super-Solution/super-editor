@@ -19,7 +19,7 @@ export async function readRegistry(name) {
 /**
  * The `latest` tag a `next` publication must leave untouched (checkPublishedTags
  * verifies it afterwards). A prerelease `latest` is the known legacy state from
- * 0.1.0-next.0; its repair (npm-tag-repair.md) is deferred by the owner, so it
+ * 0.1.0-next.0; its repair is deferred by the owner, so it
  * is reported, not fatal: publishing to `next` neither moves nor worsens it.
  */
 export function checkPrereleaseBaseline(name, document, warn = message => console.warn(message)) {
