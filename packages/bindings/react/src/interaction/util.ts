@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 

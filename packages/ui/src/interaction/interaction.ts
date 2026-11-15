@@ -6,8 +6,10 @@ import type { SlashItem, SlashLabels } from './catalog.js';
 import { createSlashCatalog } from './catalog.js';
 import { compatibleChartKinds, patchChartSpec } from './chart-edit.js';
 import type { ChartPatch } from './chart-edit.js';
+import { htmlToBlocks } from './html-paste.js';
 import { CLIPBOARD_MIME, parseBlocksPayload, planPaste, serializeBlocks } from './clipboard.js';
 import type { ClipboardPayload } from './clipboard.js';
+import { translator, type InteractionMessages, type Translate } from './messages.js';
 import { TURN_INTO_TARGETS, canTurnInto, targetOf } from './convert.js';
 import type { TurnIntoTarget } from './convert.js';
 import { createDrafts } from './drafts.js';
@@ -52,10 +54,16 @@ export type InteractionOptions = {
   shortcuts?: Readonly<Record<string, readonly string[] | null>> | false;
   slashItems?: (defaults: SlashItem[]) => SlashItem[];
   slashLabels?: SlashLabels;
+  /** Translations of the interaction layer's own strings, keyed by the English text (see `InteractionMessages`). */
+  messages?: InteractionMessages;
   /** Links created in the editor must be https unless the host allows http as well. */
   linkSchemes?: 'https' | 'http-https';
   /** Writes text to the system clipboard. Default: `navigator.clipboard.writeText`. */
   copyText?: (text: string) => void | Promise<void>;
+  /** Stores a pasted or dropped image file and returns its https address. Without it, image files are refused with a notice. */
+  uploadImage?: (file: File) => Promise<UploadedImage>;
+  /** Largest image accepted for upload, in bytes. Default 20 MB. */
+  maxImageBytes?: number;
   /** Base URL for "copy link to block". Default: the current page without its hash. */
   linkBase?: () => string;
   /** Subscribe to the editor immediately. Default true. UI frameworks pass false and call `activate()` from an effect. */
@@ -71,10 +79,14 @@ export type EditableHandle = {
 };
 export type MenuAction = { id: string; label: string; icon?: string; shortcut?: string; danger?: boolean; disabled?: boolean; current?: boolean; children?: MenuAction[] };
 export type ShortcutContext = { interaction: Interaction; state: InteractionState };
-export type DataTransferLike = { getData(type: string): string; setData(type: string, value: string): void };
+export type DataTransferLike = { getData(type: string): string; setData(type: string, value: string): void; /** Files on the clipboard or drag, when the platform offers them. */ files?: ArrayLike<File> };
+/** What an image upload returns: the public https address of the stored image. */
+export type UploadedImage = { url: string; alt?: string; caption?: string };
 type Selection = { start: number; end: number };
 
 export interface Interaction {
+  /** Translates one of the interaction layer's own strings with the `messages` option; unknown text comes back unchanged. */
+  readonly t: Translate;
   readonly editor: Editor;
   readonly actor: InteractionActor;
   readonly platform: Platform;
@@ -182,6 +194,8 @@ export interface Interaction {
     copy(data: DataTransferLike): boolean;
     cut(data: DataTransferLike): boolean;
     paste(data: DataTransferLike): boolean;
+    /** Uploads image files (paste or drop) with `uploadImage` and inserts them as image blocks. False when there is no image to handle. */
+    pasteFiles(files: ArrayLike<File>): boolean;
     copyToSystem(ids?: readonly string[]): Promise<boolean>;
   };
   readonly shortcuts: ShortcutRegistry<ShortcutContext> & { handleKeyDown(event: KeyEventLike): boolean };
@@ -216,7 +230,9 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
   };
 
   // ---- feedback and applying -------------------------------------------------------------------------------------
-  const notify = (event: FeedbackEvent): void => {
+  const t = translator(options.messages);
+  const notify = (raw: FeedbackEvent): void => {
+    const event: FeedbackEvent = { ...raw, message: t(raw.message), ...('action' in raw && raw.action ? { action: { ...raw.action, label: t(raw.action.label) } } : {}) };
     try { options.onFeedback?.(event); } catch { /* Host callbacks must not break editing. */ }
     for (const listener of [...feedbackListeners]) { try { listener(event); } catch { /* ignore */ } }
   };
@@ -874,16 +890,16 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
       const turn = TURN_INTO_TARGETS.map((entry) => ({ entry, usable: blocks.every((block) => targetOf(block.content) === entry.id || canTurnInto(block.content, entry.id, hasChildren(d, block.id))) && blocks.some((block) => targetOf(block.content) !== entry.id) }));
       const current = blocks.length ? targetOf(blocks[0]!.content) : null;
       const actions: MenuAction[] = [];
-      if (single?.content.type === 'chart') actions.push({ id: 'edit-chart', label: 'Edit chart', icon: '◧', disabled: readOnly });
-      const turnChildren = turn.filter((entry) => entry.usable || entry.entry.id === current).map(({ entry }) => ({ id: `turn:${entry.id}`, label: entry.label, icon: entry.icon, current: entry.id === current, disabled: readOnly || entry.id === current }));
-      if (turnChildren.some((child) => !child.disabled)) actions.push({ id: 'turn-into', label: 'Turn into', icon: '↻', children: turnChildren, disabled: readOnly });
+      if (single?.content.type === 'chart') actions.push({ id: 'edit-chart', label: t('Edit chart'), icon: '◧', disabled: readOnly });
+      const turnChildren = turn.filter((entry) => entry.usable || entry.entry.id === current).map(({ entry }) => ({ id: `turn:${entry.id}`, label: t(entry.label), icon: entry.icon, current: entry.id === current, disabled: readOnly || entry.id === current }));
+      if (turnChildren.some((child) => !child.disabled)) actions.push({ id: 'turn-into', label: t('Turn into'), icon: '↻', children: turnChildren, disabled: readOnly });
       const duplicateShortcut = shortcutLabel('block.duplicate'), upShortcut = shortcutLabel('block.moveUp'), downShortcut = shortcutLabel('block.moveDown');
-      actions.push({ id: 'duplicate', label: 'Duplicate', icon: '⧉', disabled: readOnly, ...(duplicateShortcut ? { shortcut: duplicateShortcut } : {}) });
-      if (single) actions.push({ id: 'copy-id', label: 'Copy block ID', icon: '#' }, { id: 'copy-link', label: 'Copy link to block', icon: '⚓' });
-      actions.push({ id: 'copy', label: blocks.length > 1 ? 'Copy as markdown' : 'Copy as markdown', icon: '⎘' });
-      actions.push({ id: 'move-up', label: 'Move up', icon: '↑', disabled: readOnly, ...(upShortcut ? { shortcut: upShortcut } : {}) }, { id: 'move-down', label: 'Move down', icon: '↓', disabled: readOnly, ...(downShortcut ? { shortcut: downShortcut } : {}) });
-      if (blocks.every((block) => block.parentId !== null) && blocks.every((block) => block.parentId === blocks[0]!.parentId)) actions.push({ id: 'move-out', label: 'Move out of section', icon: '⇤', disabled: readOnly });
-      actions.push({ id: 'delete', label: 'Delete', icon: '✕', danger: true, disabled: readOnly });
+      actions.push({ id: 'duplicate', label: t('Duplicate'), icon: '⧉', disabled: readOnly, ...(duplicateShortcut ? { shortcut: duplicateShortcut } : {}) });
+      if (single) actions.push({ id: 'copy-id', label: t('Copy block ID'), icon: '#' }, { id: 'copy-link', label: 'Copy link to block', icon: '⚓' });
+      actions.push({ id: 'copy', label: t('Copy as markdown'), icon: '⎘' });
+      actions.push({ id: 'move-up', label: t('Move up'), icon: '↑', disabled: readOnly, ...(upShortcut ? { shortcut: upShortcut } : {}) }, { id: 'move-down', label: t('Move down'), icon: '↓', disabled: readOnly, ...(downShortcut ? { shortcut: downShortcut } : {}) });
+      if (blocks.every((block) => block.parentId !== null) && blocks.every((block) => block.parentId === blocks[0]!.parentId)) actions.push({ id: 'move-out', label: t('Move out of section'), icon: '⇤', disabled: readOnly });
+      actions.push({ id: 'delete', label: t('Delete'), icon: '✕', danger: true, disabled: readOnly });
       return actions;
     },
     run(actionId) {
@@ -962,9 +978,11 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     },
     paste(data) {
       if (!writable()) return false;
-      const ids = makeIds(), json = data.getData(CLIPBOARD_MIME), text = data.getData('text/plain');
+      const ids = makeIds(), json = data.getData(CLIPBOARD_MIME), text = data.getData('text/plain'), html = data.getData('text/html');
       const blocks = parseBlocksPayload(json, doc(), ids);
       if (blocks) return pasteBlocks(blocks);
+      // A screenshot or copied picture arrives as a file with no text at all.
+      if (!text && !html && data.files?.length && clipboard.pasteFiles(data.files)) return true;
       const caret = store.get().editing ? readCaret() : null, content = caret ? drafts.contentOf(caret.blockId) : undefined;
       if (caret && content) {
         const rich = hasRichField(content, caret.field);
@@ -982,6 +1000,13 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
           return lines.length ? edit.insertText(lines.join(' ')) : true;
         }
       }
+      // Rich text (a web page, Word, Docs): keep headings, lists, tables, links and marks. A single paragraph pastes inline.
+      const rich = htmlToBlocks(html, ids, options.linkSchemes ? { linkSchemes: options.linkSchemes } : {});
+      if (rich) {
+        const only = rich.length === 1 ? rich[0]!.content : undefined;
+        if (only?.type === 'paragraph') return caret ? edit.insertRuns(only.runs) : pasteBlocks(rich);
+        return pasteBlocks(rich);
+      }
       const plan = planPaste(text, { hasSelection: !!caret && caret.start !== caret.end, inRichField: !!(caret && content && hasRichField(content, caret.field)), ...(options.linkSchemes ? { linkSchemes: options.linkSchemes } : {}) }, ids);
       if (!plan) return false;
       if (plan.kind === 'link') { const range = formatRange(); if (!range) return false; const next = setLink(range.runs, range.start, range.end, plan.href); drafts.edit(range.blockId, (c) => withFieldRuns(c, range.field, next)); requestSync(range.blockId, range.field, range.caretStart, range.caretEnd); return true; }
@@ -990,6 +1015,29 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
         return pasteBlocks([blockInput(ids('block'), null, { type: 'paragraph', runs: plan.runs })]);
       }
       return pasteBlocks(plan.blocks);
+    },
+    pasteFiles(files) {
+      const images = Array.from(files).filter((file) => /^image\/(png|jpe?g|gif|webp|avif)$/i.test(file.type));
+      if (!images.length || !writable()) return false;
+      const upload = options.uploadImage;
+      if (!upload) { notify({ kind: 'error', message: 'Images cannot be added here: this editor has no image upload.' }); return true; }
+      const limit = options.maxImageBytes ?? 20 * 1024 * 1024, chosen = images.slice(0, 10);
+      const tooBig = chosen.find((file) => file.size > limit);
+      if (tooBig) { notify({ kind: 'error', message: `The image is larger than ${Math.round(limit / 1024 / 1024)} MB.` }); return true; }
+      notify({ kind: 'info', message: chosen.length === 1 ? 'Uploading the image…' : `Uploading ${chosen.length} images…` });
+      const ids = makeIds();
+      void (async () => {
+        const made: ReturnType<typeof blockInput>[] = [];
+        try {
+          for (const file of chosen) {
+            const uploaded = await upload(file), url = safeUrl(uploaded?.url, { httpsOnly: true });
+            if (!url) throw new TypeError('The upload did not return an https address.');
+            made.push(blockInput(ids('block'), null, { type: 'image', url, alt: (uploaded.alt ?? file.name.replace(/\.[a-z0-9]+$/i, '')).slice(0, 2_000) || 'Image', ...(uploaded.caption ? { caption: uploaded.caption.slice(0, 2_000) } : {}) }));
+          }
+        } catch { notify({ kind: 'error', message: 'Could not upload the image.' }); return; }
+        pasteBlocks(made);
+      })();
+      return true;
     },
     async copyToSystem(ids) {
       const payload = serializeBlocks(doc(), targetIds(ids));
@@ -1003,6 +1051,7 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
   // ---- shortcuts / misc --------------------------------------------------------------------------------------------
   const registry = createShortcutRegistry<ShortcutContext>({ platform });
   const api: Interaction = {
+    t,
     editor, actor: actor as InteractionActor, platform, id: instanceId,
     getState: store.get, subscribe: store.subscribe,
     activate, deactivate,

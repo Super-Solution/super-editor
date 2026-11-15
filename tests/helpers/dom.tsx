@@ -58,7 +58,7 @@ export function manyParagraphs(count: number): Editor {
 }
 
 const KEYS = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'Element', 'requestAnimationFrame', 'cancelAnimationFrame', 'IS_REACT_ACT_ENVIRONMENT'] as const;
-export type DomHarness = { dom: JSDOM; document: Document; container: HTMLElement; root: Root; render(node: ReactNode): Promise<void>; flush(): Promise<void>; type(input: HTMLInputElement, value: string): Promise<void> };
+export type DomHarness = { dom: JSDOM; document: Document; container: HTMLElement; root: Root; render(node: ReactNode): Promise<void>; flush(): Promise<void>; type(input: HTMLInputElement | HTMLTextAreaElement, value: string): Promise<void> };
 
 /** Runs `run` with a jsdom window installed as the global DOM, a mounted React root, and everything restored after. */
 export async function withDom<T>(run: (harness: DomHarness) => Promise<T>, url = 'https://app.example.com'): Promise<T> {
@@ -70,13 +70,14 @@ export async function withDom<T>(run: (harness: DomHarness) => Promise<T>, url =
     const { createRoot } = await import('react-dom/client');
     const container = dom.window.document.getElementById('app')!, root = createRoot(container);
     mounted = root;
-    const setter = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!;
+    const inputSetter = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!;
+    const areaSetter = Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype, 'value')!.set!;
     const harness: DomHarness = {
       dom, document: dom.window.document, container, root,
       render: (node) => act(async () => root.render(node)),
       flush: () => act(async () => { await Promise.resolve(); }),
       // Uses the native setter so React sees the same change a browser user would make.
-      type: (input, value) => act(async () => { setter.call(input, value); input.dispatchEvent(new dom.window.Event('input', { bubbles: true })); }),
+      type: (input, value) => act(async () => { (input.tagName === 'TEXTAREA' ? areaSetter : inputSetter).call(input, value); input.dispatchEvent(new dom.window.Event('input', { bubbles: true })); }),
     };
     return await run(harness);
   } finally {

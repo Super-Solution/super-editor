@@ -266,7 +266,7 @@ export function renderDefaultBlock(block: Block, context: RenderContext): HTMLEl
       return renderer?.(content.spec, context) ?? renderChart(content.spec, context);
     }
     case 'embed': return renderEmbed(document, content, context);
-    case 'timestamp': { const stamp = timeElement(document, content.at, content.label); stamp.className = 'se-timestamp'; return stamp; }
+    case 'timestamp': { const stamp = timeElement(document, content.at, content.label, context.options.locale, context.options.timeZone); stamp.className = 'se-timestamp'; return stamp; }
     case 'quote': {
       const quote = element(document, 'blockquote', undefined, 'se-quote');
       const text = element(document, 'p'); text.append(...renderRuns(document, report, content.runs, context, block)); quote.append(text);

@@ -9,8 +9,10 @@ export { b, chart, op, runs, plainRuns, createBlockId, reservedIds, transaction,
 export { toMarkdown, fromMarkdown, toHTML, toPlainText, escapeHtml, type MarkdownOptions, type FromMarkdownOptions, type HtmlOptions, type PlainTextOptions } from './markdown.js';
 export { stats, countWords, type DocumentStats } from './stats.js';
 export { diffDocuments, summarizeRevision, type DocumentDiff } from './diff.js';
+export { reviewProposal, type ProposalChange, type ProposalReview, type ProposalStatus } from './proposal.js';
 export { defaultHint, withHints, formatIssues } from './issues.js';
 export { createReportService, validationFailure, type ReportService } from './service.js';
 export { documentSchema, transactionSchema, emptyInputSchema, historyInputSchema, transactionInputSchema } from './schemas.js';
 export { TEMPLATES, TEMPLATE_KINDS, arbitrageTemplate, blankTemplate, comparisonTemplate, createTemplate, equityTemplate, isTemplateKind, listTemplates, macroTemplate, portfolioTemplate, strategyTemplate, templateTitle, type TemplateFunction, type TemplateInfo, type TemplateKind, type TemplateOptions } from './templates.js';
-export { AGENT_ACTIONS, TRANSPORT_LIMITS, getAgentAction, runAgentAction, type AgentAction, type AgentActionContext, type AgentActionInputs, type AgentActionName, type AgentActionOutputs, type WriteControls, type AgentActionResult, type AgentFailure, type AgentWriteSuccess, type BlockBrief, type TouchedBlock } from './actions.js';
+export { AGENT_ACTIONS, TRANSPORT_LIMITS, getAgentAction, runAgentAction, runAgentActionAsync, type AgentAction, type AgentActionContext, type AgentActionInputs, type AgentActionName, type AgentActionOutputs, type WriteControls, type AgentActionResult, type AgentFailure, type AgentWriteSuccess, type BlockBrief, type TouchedBlock } from './actions.js';
+export { applyToDocument, createMemoryStore, createStoreService, isPromiseLike, openSnapshot, type AsyncReportService, type DocumentStore, type SaveResult, type ServiceSnapshot, type StoreServiceOptions } from './store.js';

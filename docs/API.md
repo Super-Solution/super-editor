@@ -78,7 +78,7 @@ Core extensions that make this possible: `ReportService.revisions?()`, `AGENT_AC
 
 ## HTTP
 
-`createHttpHandler(service, options)` returns `(request: Request) => Promise<Response>`. It binds no port and authenticates nobody.
+`createHttpHandler(service, options)` returns `(request: Request) => Promise<Response>`. It binds no port and authenticates nobody. `service` is a `ReportService` or an `AsyncReportService` (`createStoreService(store)`, see [PERSISTENCE.md](PERSISTENCE.md)); over a store a lost compare-and-swap answers `409` `conflict` and writes nothing.
 
 The Go server (`backends/go/server`, an `http.Handler`, plus `cmd/super-editor-server`) and the Python server
 (`super_editor.server`, a framework-neutral handler with a WSGI adapter and `python -m super_editor.server`) serve this

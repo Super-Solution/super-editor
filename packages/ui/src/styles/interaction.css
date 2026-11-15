@@ -157,7 +157,7 @@
   .se-surface .se-menu-item, .se-surface .se-slash-item { min-height: 44px; }
   .se-surface .se-toggle-handle { width: 2.25rem; height: 2.25rem; }
 }
-@media (max-width: 640px) {
+@container se-editor (max-width: 640px) {
   .se-surface .super-editor-document { padding-left: 2.6rem; }
   .se-surface .se-slash-description { display: none; }
   /* The two gutter buttons stack so they fit the strip left of the text. */

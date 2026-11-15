@@ -123,3 +123,39 @@ test('a superseded or destroyed service load never touches the DOM', async () =>
   assert.equal(container.childElementCount, 0);
   dom.window.close();
 });
+
+test('feeding the saved document back does not remount the editor; a newer document does', () => {
+  const { container, dom } = host();
+  const saved: ReturnType<typeof report>[] = [];
+  const plugin = createEditorChatPlugin({ onChange: (doc) => saved.push(doc) });
+  const initial = report('Echo');
+  const handle = mountOf(plugin)(container, { kind: EDITOR_CARD_KIND, mode: 'edit', document: initial }, ctx());
+  const before = container.firstElementChild;
+  (([...container.querySelectorAll('button')].find((b) => b.textContent === 'Add block')) as HTMLButtonElement).click();
+  assert.equal(saved.length, 1);
+  handle.update({ kind: EDITOR_CARD_KIND, mode: 'edit', document: saved[0] }, ctx());
+  assert.equal(container.firstElementChild, before, 'the echo keeps the same editor');
+  handle.update({ kind: EDITOR_CARD_KIND, mode: 'edit', document: { ...saved[0]!, revision: 99, title: 'Changed elsewhere' } }, ctx());
+  assert.notEqual(container.firstElementChild, before, 'a newer revision replaces it');
+  handle.destroy();
+  dom.window.close();
+});
+
+test('debounceMs delays onChange and a pending call is flushed on destroy; actor and messages are configurable', async () => {
+  const { container, dom } = host();
+  const seen: number[] = [];
+  const plugin = createEditorChatPlugin({ onChange: (doc) => seen.push(doc.revision), debounceMs: 20, actor: { id: 'ana' }, messages: { writing: 'Escribiendo…' } });
+  const partial = mountOf(plugin)(container, { kind: EDITOR_CARD_KIND, document: report('x') }, ctx({ partial: true }));
+  assert.equal(container.textContent, 'Escribiendo…');
+  partial.destroy();
+  const handle = mountOf(plugin)(container, { kind: EDITOR_CARD_KIND, mode: 'edit', document: report('Slow') }, ctx());
+  const add = () => (([...container.querySelectorAll('button')].find((b) => b.textContent === 'Add block')) as HTMLButtonElement).click();
+  add(); add();
+  assert.deepEqual(seen, []);
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  assert.deepEqual(seen, [3]);
+  add();
+  handle.destroy();
+  assert.deepEqual(seen, [3, 4]);
+  dom.window.close();
+});

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import type { EditorIssue, ReportService } from '@supersolutions/super-editor-core';
+import type { EditorIssue } from '@supersolutions/super-editor-core';
 import { withHints } from '@supersolutions/super-editor-core';
 
 const BASE_HEADERS = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } as const;
@@ -13,7 +13,7 @@ export function textResponse(text: string, mediaType: string, headers?: HeadersI
 }
 
 /** Every failure, from any route, has this shape: `{ ok: false, issues: [{ code, message, path?, blockId?, hint }], currentRevision }`. */
-export function failureResponse(service: ReportService, issues: EditorIssue[], status: number, headers?: HeadersInit): Response {
+export function failureResponse(service: { read(): { revision: number } }, issues: EditorIssue[], status: number, headers?: HeadersInit): Response {
   return jsonResponse({ ok: false, issues: withHints(issues), currentRevision: service.read().revision }, status, headers);
 }
 

@@ -1,12 +1,10 @@
 {
   "name": "@supersolutions/super-editor-react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Composable React research report components",
   "license": "GPL-3.0-or-later",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Super-Solution/super-editor.git",
@@ -34,8 +32,8 @@
     "tag": "latest"
   },
   "dependencies": {
-    "@supersolutions/super-editor-core": "0.1.0",
-    "@supersolutions/super-editor-ui": "0.1.0"
+    "@supersolutions/super-editor-core": "0.2.0",
+    "@supersolutions/super-editor-ui": "0.2.0"
   },
   "peerDependencies": {
     "react": ">=18 <20",

@@ -3,10 +3,17 @@
 import { isContainerType } from './constants.js';
 import { withHints } from './issues.js';
 import { replaceInContent, runsOf } from './text.js';
-import type { Actor, ApplyResult, Block, Editor, EditorIssue, EditorOptions, Operation, ResearchDocument, Revision, Transaction } from './types.js';
-import { timestamp, validateDocument, validateHistoryRequest, validateTransaction } from './validation.js';
+import type { Actor, ApplyResult, Block, BlockContent, Editor, EditorIssue, EditorOptions, Operation, ResearchDocument, Revision, Transaction } from './types.js';
+import { rememberVerified, timestamp, validateDocument, validateHistoryRequest, validateTransaction } from './validation.js';
 
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T; }
+/**
+ * A working copy of a frozen snapshot. Blocks are copied one level (their own fields can be edited), while their contents stay
+ * the shared frozen objects: an operation that changes a block's content replaces it, never edits it in place.
+ */
+function workingCopy(document: ResearchDocument): ResearchDocument {
+  return { ...document, format: { ...document.format }, blocks: document.blocks.map(block => ({ ...block })), citations: [...document.citations], retiredBlockIds: [...document.retiredBlockIds] };
+}
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     for (const entry of Object.values(value)) freeze(entry);
@@ -46,6 +53,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
   if (!validated.ok) throw new TypeError(validated.issues[0]?.message ?? 'Invalid document.');
   const { now, historyLimit } = optionsReader(options);
   let snapshot = freeze(validated.value);
+  rememberVerified(snapshot);
   let versions = new Map(snapshot.blocks.map(block => [block.id, block.version]));
   const reserved = new Set([...snapshot.retiredBlockIds, ...snapshot.blocks.map(block => block.id)]);
   // Only the last successful apply retains its exact payload. Earlier IDs stay consumed for this session.
@@ -71,6 +79,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
   }
   function commit(next: ResearchDocument, revision: Revision, nextVersions: Map<string, number>): Extract<ApplyResult, { ok: true }> {
     snapshot = freeze(next);
+    rememberVerified(snapshot);
     versions = nextVersions;
     for (const block of next.blocks) reserved.add(block.id);
     for (const blockId of next.retiredBlockIds) reserved.add(blockId);
@@ -241,9 +250,9 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
           if (block.citationIds.includes(operation.citationId)) { block.citationIds = block.citationIds.filter(entry => entry !== operation.citationId); changed = true; }
           const runs = runsOf(block.content);
           if (runs?.some(run => run.citationId === operation.citationId)) {
-            const kept = runs.filter(run => run.citationId !== operation.citationId || run.text !== '');
-            for (const run of kept) if (run.citationId === operation.citationId) delete run.citationId;
-            runs.splice(0, runs.length, ...kept); changed = true;
+            // Contents are shared and frozen: build the stripped runs and replace the content.
+            const kept = runs.filter(run => run.citationId !== operation.citationId || run.text !== '').map(run => { if (run.citationId !== operation.citationId) return run; const { citationId: _removed, ...rest } = run; return rest; });
+            block.content = { ...block.content, runs: kept } as BlockContent; changed = true;
           }
           if (changed) tick(block, highWater, at);
         }
@@ -269,17 +278,20 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
       if (stale && (transaction.baseRevision > snapshot.revision || transaction.conflictPolicy !== 'rebase-safe' || !transaction.operations.every(operation => operation.type === 'updateBlock' || operation.type === 'replaceText'))) reject('conflict', 'Document changed; re-read before proposing another edit.', undefined, transaction.baseRevision > snapshot.revision ? `baseRevision ${transaction.baseRevision} is ahead of the document (revision ${snapshot.revision}).` : `The document is at revision ${snapshot.revision} (you sent ${transaction.baseRevision}). Re-read it and retry with baseRevision ${snapshot.revision}. conflictPolicy "rebase-safe" only carries version-guarded updateBlock and replaceText operations over a stale revision.`);
       if (stale) for (const operation of transaction.operations) if (operation.type === 'updateBlock' && snapshot.blocks.find(block => block.id === operation.blockId)?.content.type !== operation.content.type) reject('conflict', 'Rebased updates must preserve the block content type.', operation.blockId, 'Re-read the block and propose the change against the current document revision.');
       const at = clock();
-      const next = clone(snapshot);
+      const next = workingCopy(snapshot);
       const highWater = new Map(versions);
       const pendingReserved = new Set(reserved);
       for (const operation of transaction.operations) applyOperation(next, operation, highWater, at, pendingReserved);
       next.revision = increment(snapshot.revision, 'Document'); next.updatedAt = at;
+      // Every change to a block bumps its version, so a block still at its old version is the old (frozen, validated) block.
+      const before = new Map(snapshot.blocks.map(block => [block.id, block]));
+      next.blocks = next.blocks.map(block => { const original = before.get(block.id); return original && original.version === block.version ? original : block; });
       const final = validateDocument(next);
       if (!final.ok) return failure(final.issues);
       const revision: Revision = { number: next.revision, transactionId: transaction.id, actor: clone(transaction.actor), at, kind: 'apply', operations: clone(transaction.operations), ...(stale ? { rebasedFrom: transaction.baseRevision } : {}) };
-      const before = snapshot;
+      const previous = snapshot;
       committed = commit(final.value, revision, highWater);
-      if (historyLimit > 0) undoStack = [...undoStack, { before, after: snapshot, transaction: freeze(clone(transaction)) }].slice(-historyLimit);
+      if (historyLimit > 0) undoStack = [...undoStack, { before: previous, after: snapshot, transaction: freeze(clone(transaction)) }].slice(-historyLimit);
       redoStack = [];
       seen.add(transaction.id);
       lastApply = { id: transaction.id, fingerprint, result: committed };
@@ -300,7 +312,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
     let committed: Extract<ApplyResult, { ok: true }>;
     try {
       const at = clock();
-      const target = clone(kind === 'undo' ? entry.before : entry.after);
+      const target = workingCopy(kind === 'undo' ? entry.before : entry.after);
       const highWater = new Map(versions);
       const currentById = new Map(snapshot.blocks.map(block => [block.id, block]));
       const targetIds = new Set(target.blocks.map(block => block.id));

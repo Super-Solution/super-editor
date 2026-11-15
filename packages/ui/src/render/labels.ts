@@ -46,6 +46,20 @@ export type Labels = {
   header: { titleLabel: string; titlePlaceholder: string; edit: string; revision: string; updated: string; by: string };
   skeleton: { loading: string };
   citation: { open: string; accessed: string; published: string; source: string };
+  /** The agent proposal review panel. */
+  proposal: {
+    title: string; proposedBy: string; basedOn: string; accept: string; reject: string; acceptHint: string;
+    ready: string; stale: string; staleBody: string; invalid: string; noChanges: string; titleChange: string; formatChange: string; citationsChange: string;
+    added: string; changed: string; removed: string; moved: string; before: string; after: string; unchangedText: string; empty: string; showPreview: string; hidePreview: string;
+  };
+  /** The classic editor (`interaction={false}`) and its default controls. */
+  classic: {
+    controls: string; undo: string; redo: string; newBlockType: string; newBlockSection: string; documentRoot: string; addBlock: string;
+    paragraph: string; heading2: string; heading3: string; section: string; font: string; page: string;
+    newParagraph: string; newHeading: string; newSection: string;
+    editBlock: string; editBlockLabel: string; plainTextNote: string; staleDraft: string; saveBlock: string; discardDraft: string;
+    deletedDraft: string; deletedDraftLabel: string;
+  };
 };
 
 export const defaultLabels: Labels = {
@@ -92,6 +106,20 @@ export const defaultLabels: Labels = {
   header: { titleLabel: 'Document title', titlePlaceholder: 'Untitled document', edit: 'Rename document', revision: 'Revision {revision}', updated: 'Updated {time}', by: 'by {actor}' },
   skeleton: { loading: 'Loading…' },
   citation: { open: 'Open source', accessed: 'Accessed', published: 'Published', source: 'Source' },
+  proposal: {
+    title: 'Proposed change', proposedBy: 'Proposed by {actor}', basedOn: 'Based on revision {revision}', accept: 'Accept', reject: 'Reject', acceptHint: 'Applies this change to the document.',
+    ready: 'Ready to apply', stale: 'Out of date', staleBody: 'The document is now at revision {current}; this proposal was made against revision {base}. Ask for a new proposal.',
+    invalid: 'Cannot be applied', noChanges: 'This proposal changes nothing.', titleChange: 'Title', formatChange: 'Page format or font changes', citationsChange: 'Sources: {added} added, {changed} updated, {removed} removed',
+    added: 'Added', changed: 'Changed', removed: 'Removed', moved: 'Moved', before: 'Before', after: 'After', unchangedText: '(no text)', empty: 'No proposal to review.', showPreview: 'Show in document', hidePreview: 'Hide preview',
+  },
+  classic: {
+    controls: 'Document controls', undo: 'Undo', redo: 'Redo', newBlockType: 'New block type', newBlockSection: 'New block section', documentRoot: 'Document', addBlock: 'Add block',
+    paragraph: 'Paragraph', heading2: 'Heading 2', heading3: 'Heading 3', section: 'Section', font: 'Document font', page: 'Page format',
+    newParagraph: 'New paragraph', newHeading: 'New heading', newSection: 'New section',
+    editBlock: 'Edit {type}', editBlockLabel: 'Edit block {id}', plainTextNote: 'Plain text editing replaces inline formatting when text changes.',
+    staleDraft: 'Document changed since this draft began (revision {revision}). Read current content and discard or reconcile your draft before saving.',
+    saveBlock: 'Save block', discardDraft: 'Discard draft', deletedDraft: 'Block {id} was deleted. Your unsaved draft is preserved.', deletedDraftLabel: 'Deleted block draft {id}',
+  },
 };
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends Record<string, unknown> ? DeepPartial<T[K]> : T[K] };

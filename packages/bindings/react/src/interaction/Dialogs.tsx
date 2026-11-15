@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { INPUT_RULE_DOCS, compatibleChartKinds } from '@supersolutions/super-editor-ui';
@@ -48,10 +49,10 @@ export function ShortcutHelp({ interaction: explicit }: { interaction?: Interact
       <header className="se-dialog-header"><h2 id={titleId}>{labels.shortcutHelp}</h2>
         <button ref={close} type="button" className="se-button" onClick={() => interaction.closeHelp()} aria-label={labels.shortcutHelpClose}><span aria-hidden="true">{'×'}</span></button></header>
       <div className="se-dialog-body">
-        {groupShortcuts(interaction.shortcuts.list()).map((group) => <section key={group.group} className="se-shortcut-group"><h3>{group.group}</h3>
-          <dl>{group.items.map((entry) => <div key={entry.id} className="se-shortcut-row"><dt>{entry.description}</dt><dd>{entry.display.map((keys, index) => <kbd key={index}>{keys}</kbd>)}</dd></div>)}</dl></section>)}
+        {groupShortcuts(interaction.shortcuts.list()).map((group) => <section key={group.group} className="se-shortcut-group"><h3>{interaction.t(group.group)}</h3>
+          <dl>{group.items.map((entry) => <div key={entry.id} className="se-shortcut-row"><dt>{interaction.t(entry.description)}</dt><dd>{entry.display.map((keys, index) => <kbd key={index}>{keys}</kbd>)}</dd></div>)}</dl></section>)}
         <section className="se-shortcut-group"><h3>{labels.markdownShortcuts}</h3>
-          <dl>{INPUT_RULE_DOCS.map((rule) => <div key={rule.rule} className="se-shortcut-row"><dt>{rule.result}</dt><dd><kbd>{rule.example}</kbd></dd></div>)}</dl></section>
+          <dl>{INPUT_RULE_DOCS.map((rule) => <div key={rule.rule} className="se-shortcut-row"><dt>{interaction.t(rule.result)}</dt><dd><kbd>{rule.example}</kbd></dd></div>)}</dl></section>
       </div>
       <footer className="se-dialog-footer">{labels.shortcutHelpHint}</footer>
     </div>

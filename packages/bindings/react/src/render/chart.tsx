@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react';
 import type { ChartSpec } from '@supersolutions/super-editor-core';

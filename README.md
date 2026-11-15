@@ -18,7 +18,7 @@ backends/go, backends/python  the full core, read side and HTTP server in Go and
 
 ## Status and licensing
 
-Version `0.1.0`. The repository history and version numbers were reset on 2026-11-07; earlier prerelease versions on npm are superseded.
+Version `0.2.0`. The repository history and version numbers were reset on 2026-11-07; earlier prerelease versions on npm are superseded.
 
 Super Editor is **dual-licensed** by SUPER SOLUTION LABS INC:
 
@@ -31,7 +31,7 @@ You may use, modify and redistribute these packages under those terms, which inc
 
 Each source file carries an `SPDX-License-Identifier` header, and each published package includes the license text that applies to it. The root `LICENSE` is the GPL-3.0 text. The root workspace stays private. See [controlled npm releases](docs/RELEASING.md).
 
-Public SuperChat / SuperChart APIs could not be verified. Their integration points are custom host adapter contracts, not claims of working official SDK integration.
+The chat plugin is built on the published `@supersolutions/super-protocol` contract. The SuperChart embed is a provider slot: the host supplies the renderer.
 
 ## Run locally
 
@@ -62,7 +62,7 @@ Open the localhost URL printed by Vite. The React demo is a small workspace buil
 
 Core imports no DOM, React, HTTP, or filesystem APIs. UI and React submit the same validated transactions as API, MCP and CLI. Build emits ESM and declarations into each package's `dist/`; public exports use built files, with TypeScript source paths only in the workspace compiler. `npm run release:check` packs and inspects all eight artifacts and tests them in a separate consumer installation. No credentials are needed for this verification.
 
-See [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), [security and host responsibilities](docs/SECURITY.md), and [provider verification](docs/PROVIDER-VERIFICATION.md). A working report fixture is in [examples/report.ts](examples/report.ts); [examples/headless.ts](examples/headless.ts) demonstrates a rejected stale agent edit.
+See [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), [persistence (database-backed documents)](docs/PERSISTENCE.md), [integration (Next.js, theming, i18n, pasting, proposal review, web component)](docs/INTEGRATION.md), [security and host responsibilities](docs/SECURITY.md), and [provider verification](docs/PROVIDER-VERIFICATION.md). A working report fixture is in [examples/report.ts](examples/report.ts); [examples/headless.ts](examples/headless.ts) demonstrates a rejected stale agent edit.
 
 Machine-readable discovery schemas are in [schemas/document-v1.schema.json](schemas/document-v1.schema.json) and [schemas/transaction-v1.schema.json](schemas/transaction-v1.schema.json). Core runtime validation additionally enforces semantic guards such as parent/citation references, ordering, versions, timestamps, and numeric budgets. Serialized fixtures live in `examples/fixtures/`.
 

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { useRef, useState } from 'react';
 import type { FormEvent, ReactNode, RefObject } from 'react';
 import { TURN_INTO_TARGETS, blockRoots, canTurnInto, formatShortcut, selectionClientRect } from '@supersolutions/super-editor-ui';
@@ -134,7 +135,7 @@ export function SelectionToolbar({ interaction: explicit }: { interaction?: Inte
   return <div ref={ref} className="se-popup se-toolbar se-selection-toolbar" data-se-popup role="toolbar" aria-label={labels.selectionToolbar} style={{ left: rect.left, top }}>
     <span className="se-toolbar-count" role="status">{labels.blocksSelected(roots.length)}</span>
     {targets.length ? <select className="se-turn-into" aria-label={labels.turnInto} value="" onChange={(event) => { if (event.target.value) interaction.commands.turnInto(event.target.value as TurnIntoTarget, roots); }}>
-      <option value="">{labels.turnInto}</option>{targets.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
+      <option value="">{labels.turnInto}</option>{targets.map((entry) => <option key={entry.id} value={entry.id}>{interaction.t(entry.label)}</option>)}
     </select> : null}
     {action(labels.moveUp, '↑', () => interaction.commands.moveStep('up', roots))}
     {action(labels.moveDown, '↓', () => interaction.commands.moveStep('down', roots))}

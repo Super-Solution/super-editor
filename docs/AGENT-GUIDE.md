@@ -36,7 +36,7 @@ claude mcp add super-editor-review -- npx -y -p @supersolutions/super-editor-mcp
 }
 ```
 
-`--actor <id[:kind]>` is recorded as the author of every edit. `--create` makes the file when it does not exist (with `--id`, optional `--title`, `--template`, `--subject`). The stdio server ships from `0.3.0-next.0`; the dispatcher it is built on (`createMcpDispatcher`) has been available since `0.1.0-next.0`.
+`--actor <id[:kind]>` is recorded as the author of every edit. `--create` makes the file when it does not exist (with `--id`, optional `--title`, `--template`, `--subject`). The stdio server and the dispatcher it is built on (`createMcpDispatcher`) ship in `super-editor-mcp`.
 
 The server offers 25 tools, 8 resources, 2 resource templates and 4 prompts (see [API.md](API.md#mcp)). A client that only reads `tools/list` already sees descriptions and JSON Schemas, plus `readOnlyHint` / `destructiveHint` annotations so it can ask a person before a destructive call.
 

@@ -283,6 +283,14 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
     if (event.clipboardData && interaction.clipboard.paste(event.clipboardData)) event.preventDefault();
   });
 
+  // Image files dropped on the document are uploaded through the host's `uploadImage` and inserted as image blocks.
+  const hasFiles = (event: DragEvent): boolean => Array.from(event.dataTransfer?.types ?? []).includes('Files');
+  listen(root, 'dragover', (event: DragEvent) => { if (hasFiles(event) && !(event.target as Element | null)?.closest?.(POPUP)) event.preventDefault(); });
+  listen(root, 'drop', (event: DragEvent) => {
+    const files = event.dataTransfer?.files;
+    if (files?.length && !(event.target as Element | null)?.closest?.(POPUP) && interaction.clipboard.pasteFiles(files)) event.preventDefault();
+  });
+
   // ---- leaving the document -------------------------------------------------------------------------------------
   // A layer this editor renders under <body> (the shortcut dialog) carries data-se-owner; focus in it is still focus in the editor.
   const inOwnLayer = (node: Node | null): boolean => (node as Element | null)?.closest?.('[data-se-owner]')?.getAttribute('data-se-owner') === interaction.id;

@@ -1,9 +1,10 @@
 {
   "name": "@supersolutions/super-editor-api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "HTTP adapter for guarded research report operations",
   "license": "AGPL-3.0-or-later",
   "type": "module",
+  "sideEffects": false,
   "engines": {
     "node": ">=22"
   },
@@ -34,7 +35,7 @@
     "tag": "latest"
   },
   "dependencies": {
-    "@supersolutions/super-editor-core": "0.1.0"
+    "@supersolutions/super-editor-core": "0.2.0"
   },
   "author": "SUPER SOLUTION LABS INC"
 }
