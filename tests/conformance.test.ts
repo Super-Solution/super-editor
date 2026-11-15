@@ -70,6 +70,11 @@ test('the reference reproduces every validation case', () => {
   }
 });
 
+test('safeUrl serializes "^" the same on every runtime and keeps an explicit %5E', () => {
+  assert.equal(safeUrl('https://example.com/a^b'), 'https://example.com/a^b');
+  assert.equal(safeUrl('https://example.com/a%5Eb'), 'https://example.com/a%5Eb');
+});
+
 const editorData = JSON.parse(readFileSync(new URL('../conformance/editor.v1.json', import.meta.url), 'utf8'));
 
 test('the reference reproduces every editor scenario', () => {
