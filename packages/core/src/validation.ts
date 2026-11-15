@@ -70,9 +70,7 @@ export function safeUrl(value: unknown, options: { httpsOnly?: boolean } = {}): 
   try {
     const parsed = new URL(value);
     if (!(options.httpsOnly ? parsed.protocol === 'https:' : ['http:', 'https:'].includes(parsed.protocol)) || parsed.username || parsed.password || !parsed.hostname) return null;
-    // Newer WHATWG URL implementations (Node 24.x) percent-encode "^" in paths, older ones keep it. The
-    // conformance data fixes the unencoded form, so undo the encoding unless the input itself had %5E.
-    return /%5e/iu.test(value) ? parsed.href : parsed.href.replace(/%5E/gu, '^');
+    return parsed.href;
   } catch { return null; }
 }
 function url(value: unknown, path: string, httpsOnly = false): string {
