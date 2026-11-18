@@ -2,7 +2,8 @@
    Copyright 2026 SUPER SOLUTION LABS INC */
 /*
  * Design tokens. Everything the renderers and panels draw comes from `--se-*` variables, so a host re-themes the
- * editor by setting variables on any ancestor (or on :root). Defaults are neutral: black, grey and white.
+ * editor by setting variables on any ancestor (or on :root). Defaults are the Super Solution palette: neutral chrome,
+ * one violet accent for the agent and the primary action, and amber only when a person's decision is awaited.
  *
  * Theme:   data-se-theme="light" | "dark" | "auto" | "host" on any element. Unset means light, so adopting the stylesheet never
  *          flips an existing page to dark by surprise; "auto" follows prefers-color-scheme; "host" follows the page's own switch
@@ -12,136 +13,162 @@
  * Layout:  the document and the editor are size containers (`container-type: inline-size`), so narrow-width rules follow the
  *          width the editor is given (a side panel, a card), not the viewport. Set `container-type: normal` to opt out.
  * Density: data-se-density="compact" | "comfortable" | "spacious" on .super-editor-document or an ancestor.
+ * Shape:   radii nest: a 16px menu with 8px padding holds 8px rows. Inner radius = outer radius minus padding.
  */
 :where(:root, [data-se-theme="light"]) {
-  --se-bg: #f6f7f9;
+  --se-bg: #fafafa;
   --se-surface: #ffffff;
-  --se-subtle: #f3f4f6;
-  --se-hover: #eceef1;
-  --se-text: #1f2328;
-  --se-muted: #6b7280;
-  --se-border: #e5e7eb;
-  --se-border-strong: #d1d5db;
-  --se-accent: #2b2f36;
+  --se-subtle: #f2f2f4;
+  --se-hover: #ececef;
+  --se-text: #111113;
+  --se-muted: #5f5f68;
+  --se-border: #e4e4e7;
+  --se-border-strong: #8a8a94;
+  --se-accent: #6c4af2;
   --se-accent-contrast: #ffffff;
-  --se-link: #1d4ed8;
-  --se-focus: #2563eb;
-  --se-overlay: rgba(17, 24, 39, .45);
-  --se-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 8px 24px rgba(16, 24, 40, .10);
-  --se-code-bg: #f6f8fa;
+  --se-link: #5a38e0;
+  --se-focus: #5a38e0;
+  --se-overlay: rgba(17, 17, 19, .45);
+  --se-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+  --se-code-bg: #f2f2f4;
 
-  --se-error: #b42318; --se-error-bg: #fef3f2; --se-error-border: #fda29b;
-  --se-tone-info: #1d4ed8; --se-tone-info-bg: #eff6ff;
-  --se-tone-success: #15803d; --se-tone-success-bg: #f0fdf4;
-  --se-tone-warning: #b45309; --se-tone-warning-bg: #fffbeb;
-  --se-tone-danger: #b91c1c; --se-tone-danger-bg: #fef2f2;
-  --se-tone-note: #475569; --se-tone-note-bg: #f8fafc;
+  /* Waiting for a person: an agent's proposal that needs a decision. Used for nothing else. */
+  --se-turn: #f5b301; --se-turn-strong: #7a4f00; --se-turn-tint: #fff3d1; --se-turn-line: #b57a00; --se-on-turn: #111113;
 
-  --se-mark-yellow: #fef08a; --se-mark-green: #bbf7d0; --se-mark-blue: #bfdbfe; --se-mark-pink: #fbcfe8; --se-mark-gray: #e5e7eb;
-  --se-find: #fde68a; --se-find-active: #fb923c;
-  --se-diff-added: #16a34a; --se-diff-changed: #d97706; --se-diff-moved: #2563eb;
+  --se-error: #c2362b; --se-error-bg: #fdf0ee; --se-error-border: #f0b8b2;
+  --se-tone-info: #2b6cb0; --se-tone-info-bg: #edf4fb;
+  --se-tone-success: #12805c; --se-tone-success-bg: #e9f6f1;
+  --se-tone-warning: #9a6400; --se-tone-warning-bg: #fdf4e3;
+  --se-tone-danger: #c2362b; --se-tone-danger-bg: #fdf0ee;
+  --se-tone-note: #5f5f68; --se-tone-note-bg: #f2f2f4;
 
-  --se-up: #16a34a; --se-down: #dc2626;
-  --se-chart-axis: #9ca3af; --se-chart-grid: #e5e7eb; --se-chart-neutral: #64748b; --se-chart-band: rgba(100, 116, 139, .10);
-  --se-heat-high: #2563eb; --se-heat-low: #ea580c; --se-heat-mid: #f8fafc;
+  --se-mark-yellow: #fef08a; --se-mark-green: #bbf7d0; --se-mark-blue: #bfdbfe; --se-mark-pink: #fbcfe8; --se-mark-gray: #e4e4e7;
+  --se-find: #fde68a; --se-find-active: #c8590c;
+  --se-diff-added: #12805c; --se-diff-changed: #9a6400; --se-diff-moved: #2b6cb0;
+
+  --se-up: #12805c; --se-down: #c2362b;
+  --se-chart-axis: #8a8a94; --se-chart-grid: #e4e4e7; --se-chart-neutral: #5f5f68; --se-chart-band: rgba(95, 95, 104, .10);
+  --se-heat-high: #6c4af2; --se-heat-low: #c8590c; --se-heat-mid: #f2f2f4;
   /* Label ink on data-driven fills (heat-map cells): the chart picks whichever of the two reads better on each cell (WCAG contrast). */
   --se-chart-ink-dark: #000000; --se-chart-ink-light: #ffffff;
-  --se-series-1: #2563eb; --se-series-2: #ea580c; --se-series-3: #16a34a; --se-series-4: #9333ea; --se-series-5: #db2777;
-  --se-series-6: #0891b2; --se-series-7: #a16207; --se-series-8: #64748b; --se-series-9: #dc2626; --se-series-10: #4d7c0f;
+  --se-series-1: #6c4af2; --se-series-2: #008f7c; --se-series-3: #c8590c; --se-series-4: #2a78d6; --se-series-5: #b02a7f;
+  --se-series-6: #0a7c98; --se-series-7: #8a6a00; --se-series-8: #5f5f68; --se-series-9: #c2362b; --se-series-10: #4d7c0f;
 
-  /* Type */
-  --se-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", "Noto Sans SC", sans-serif;
+  /* Type. Inter leads when the host has it; no webfont is fetched. Explicit Latin faces come before CJK faces, and system-ui comes last,
+     because system-ui resolves per OS locale and would pull Latin text into a CJK face. */
+  --se-font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, Roboto, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Noto Sans SC", system-ui, sans-serif;
   --se-font-serif: "Iowan Old Style", "Palatino Linotype", Georgia, "Noto Serif TC", "Noto Serif SC", serif;
-  --se-font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --se-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
   --se-leading: 1.65;
-  --se-h1-size: 2.1em; --se-h2-size: 1.45em; --se-h3-size: 1.15em; --se-heading-weight: 700;
+  --se-h1-size: 2.1em; --se-h2-size: 1.45em; --se-h3-size: 1.15em; --se-heading-weight: 600;
   --se-small-size: .8em;
 
-  /* Spacing and shape (density tokens override these) */
+  /* Spacing and shape (density tokens override the spacing) */
   --se-document-width: 900px;
   --se-block-gap: .8rem;
   --se-pad-x: 3.5rem; --se-pad-y: 3rem;
-  --se-radius: 6px; --se-radius-sm: 4px;
+  --se-radius-xs: 4px; --se-radius-sm: 8px; --se-radius: 12px; --se-radius-lg: 16px; --se-radius-pill: 999px;
   --se-gap-1: .25rem; --se-gap-2: .5rem; --se-gap-3: .75rem; --se-gap-4: 1rem;
-  --se-ease: 140ms cubic-bezier(.2, .8, .2, 1);
+
+  /* Motion: hover and press, then menus and toasts, then panels. */
+  --se-dur-1: 120ms; --se-dur-2: 160ms; --se-dur-3: 320ms;
+  --se-ease-out: cubic-bezier(.2, 0, 0, 1); --se-ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --se-ease: var(--se-dur-1) var(--se-ease-out);
 
   /* Stacking of the layers that sit on the page itself (the shortcut dialog and the toast stack render under <body>). */
   --se-z-dialog: 60; --se-z-toast: 1000;
 }
 
 :where([data-se-theme="dark"], .se-theme-dark, :is(.dark, [data-theme="dark"], [data-color-mode="dark"], [data-bs-theme="dark"]) [data-se-theme="host"]) {
-  --se-bg: #0d0f12;
-  --se-surface: #15181d;
-  --se-subtle: #1c2026;
-  --se-hover: #242a31;
-  --se-text: #e6e8eb;
-  --se-muted: #9aa3af;
-  --se-border: #2a2f36;
-  --se-border-strong: #3a414a;
-  --se-accent: #e6e8eb;
-  --se-accent-contrast: #111418;
-  --se-link: #7aa7ff;
-  --se-focus: #60a5fa;
+  color-scheme: dark;
+  --se-bg: #0e0e10;
+  --se-surface: #17171a;
+  --se-subtle: #1d1d21;
+  --se-hover: #26262b;
+  --se-text: #f4f4f5;
+  --se-muted: #a1a1aa;
+  --se-border: #2a2a30;
+  --se-border-strong: #6b6b75;
+  --se-accent: #a28cff;
+  --se-accent-contrast: #111113;
+  --se-link: #b9a8ff;
+  --se-focus: #b9a8ff;
   --se-overlay: rgba(0, 0, 0, .6);
-  --se-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .45);
-  --se-code-bg: #1a1e24;
+  --se-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  --se-code-bg: #1d1d21;
 
-  --se-error: #fda29b; --se-error-bg: #2a1513; --se-error-border: #7a271a;
-  --se-tone-info: #93c5fd; --se-tone-info-bg: #12203a;
-  --se-tone-success: #86efac; --se-tone-success-bg: #11261a;
-  --se-tone-warning: #fcd34d; --se-tone-warning-bg: #2a2110;
-  --se-tone-danger: #fca5a5; --se-tone-danger-bg: #2c1515;
-  --se-tone-note: #cbd5e1; --se-tone-note-bg: #1c2128;
+  --se-turn: #ffc94d; --se-turn-strong: #ffd57a; --se-turn-tint: #3a2a05; --se-turn-line: #ffc94d; --se-on-turn: #111113;
+
+  --se-error: #ff7b72; --se-error-bg: #2c1614; --se-error-border: #6b2a25;
+  --se-tone-info: #6b9bff; --se-tone-info-bg: #13203a;
+  --se-tone-success: #4fd1a1; --se-tone-success-bg: #10261f;
+  --se-tone-warning: #e0a53a; --se-tone-warning-bg: #2a2110;
+  --se-tone-danger: #ff7b72; --se-tone-danger-bg: #2c1614;
+  --se-tone-note: #a1a1aa; --se-tone-note-bg: #1d1d21;
 
   --se-mark-yellow: rgba(250, 204, 21, .32); --se-mark-green: rgba(74, 222, 128, .28); --se-mark-blue: rgba(96, 165, 250, .32);
-  --se-mark-pink: rgba(244, 114, 182, .32); --se-mark-gray: rgba(148, 163, 184, .30);
-  --se-find: rgba(250, 204, 21, .38); --se-find-active: #ea580c;
-  --se-diff-added: #4ade80; --se-diff-changed: #fbbf24; --se-diff-moved: #60a5fa;
+  --se-mark-pink: rgba(244, 114, 182, .32); --se-mark-gray: rgba(161, 161, 170, .30);
+  --se-find: rgba(250, 204, 21, .38); --se-find-active: #c8590c;
+  --se-diff-added: #4fd1a1; --se-diff-changed: #e0a53a; --se-diff-moved: #6b9bff;
 
-  --se-up: #34d399; --se-down: #f87171;
-  --se-chart-axis: #6b7280; --se-chart-grid: #2a2f36; --se-chart-neutral: #94a3b8; --se-chart-band: rgba(148, 163, 184, .14);
-  --se-heat-high: #60a5fa; --se-heat-low: #fb923c; --se-heat-mid: #1c2026;
-  --se-series-1: #60a5fa; --se-series-2: #fb923c; --se-series-3: #4ade80; --se-series-4: #c084fc; --se-series-5: #f472b6;
-  --se-series-6: #22d3ee; --se-series-7: #facc15; --se-series-8: #94a3b8; --se-series-9: #f87171; --se-series-10: #a3e635;
+  --se-up: #4fd1a1; --se-down: #ff7b72;
+  --se-chart-axis: #6b6b75; --se-chart-grid: #2a2a30; --se-chart-neutral: #a1a1aa; --se-chart-band: rgba(161, 161, 170, .14);
+  --se-heat-high: #a28cff; --se-heat-low: #e0702c; --se-heat-mid: #1d1d21;
+  --se-series-1: #9379ff; --se-series-2: #0f9f8b; --se-series-3: #e0702c; --se-series-4: #4f92e6; --se-series-5: #d65fa5;
+  --se-series-6: #3cc4de; --se-series-7: #e0a53a; --se-series-8: #a1a1aa; --se-series-9: #ff7b72; --se-series-10: #a3e635;
 }
+
+/* Derived on the element that carries the accent, so a host that sets only --se-accent gets matching selection and text colors. */
+:where(:root, [data-se-theme]) {
+  --se-accent-strong: color-mix(in srgb, var(--se-accent) 85%, var(--se-text));
+  --se-accent-tint: color-mix(in srgb, var(--se-accent) 16%, var(--se-surface));
+}
+
+/* Native controls and scrollbars follow the chosen theme. Never set on a bare :root: an unset theme must not touch the host page. */
+:where([data-se-theme="light"]) { color-scheme: light; }
+:where([data-se-theme="auto"]) { color-scheme: light dark; }
 
 /* Opt in to following the OS with data-se-theme="auto". */
 @media (prefers-color-scheme: dark) {
   :where([data-se-theme="auto"]) {
-    --se-bg: #0d0f12; --se-surface: #15181d; --se-subtle: #1c2026; --se-hover: #242a31;
-    --se-text: #e6e8eb; --se-muted: #9aa3af; --se-border: #2a2f36; --se-border-strong: #3a414a;
-    --se-accent: #e6e8eb; --se-accent-contrast: #111418; --se-link: #7aa7ff; --se-focus: #60a5fa;
-    --se-overlay: rgba(0, 0, 0, .6); --se-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .45); --se-code-bg: #1a1e24;
-    --se-error: #fda29b; --se-error-bg: #2a1513; --se-error-border: #7a271a;
-    --se-tone-info: #93c5fd; --se-tone-info-bg: #12203a; --se-tone-success: #86efac; --se-tone-success-bg: #11261a;
-    --se-tone-warning: #fcd34d; --se-tone-warning-bg: #2a2110; --se-tone-danger: #fca5a5; --se-tone-danger-bg: #2c1515;
-    --se-tone-note: #cbd5e1; --se-tone-note-bg: #1c2128;
+    --se-bg: #0e0e10; --se-surface: #17171a; --se-subtle: #1d1d21; --se-hover: #26262b;
+    --se-text: #f4f4f5; --se-muted: #a1a1aa; --se-border: #2a2a30; --se-border-strong: #6b6b75;
+    --se-accent: #a28cff; --se-accent-contrast: #111113; --se-link: #b9a8ff; --se-focus: #b9a8ff;
+    --se-overlay: rgba(0, 0, 0, .6); --se-shadow: 0 8px 24px rgba(0, 0, 0, .5); --se-code-bg: #1d1d21;
+    --se-turn: #ffc94d; --se-turn-strong: #ffd57a; --se-turn-tint: #3a2a05; --se-turn-line: #ffc94d; --se-on-turn: #111113;
+    --se-error: #ff7b72; --se-error-bg: #2c1614; --se-error-border: #6b2a25;
+    --se-tone-info: #6b9bff; --se-tone-info-bg: #13203a; --se-tone-success: #4fd1a1; --se-tone-success-bg: #10261f;
+    --se-tone-warning: #e0a53a; --se-tone-warning-bg: #2a2110; --se-tone-danger: #ff7b72; --se-tone-danger-bg: #2c1614;
+    --se-tone-note: #a1a1aa; --se-tone-note-bg: #1d1d21;
     --se-mark-yellow: rgba(250, 204, 21, .32); --se-mark-green: rgba(74, 222, 128, .28); --se-mark-blue: rgba(96, 165, 250, .32);
-    --se-mark-pink: rgba(244, 114, 182, .32); --se-mark-gray: rgba(148, 163, 184, .30);
-    --se-find: rgba(250, 204, 21, .38); --se-find-active: #ea580c;
-    --se-diff-added: #4ade80; --se-diff-changed: #fbbf24; --se-diff-moved: #60a5fa;
-    --se-up: #34d399; --se-down: #f87171;
-    --se-chart-axis: #6b7280; --se-chart-grid: #2a2f36; --se-chart-neutral: #94a3b8; --se-chart-band: rgba(148, 163, 184, .14);
-    --se-heat-high: #60a5fa; --se-heat-low: #fb923c; --se-heat-mid: #1c2026;
-    --se-series-1: #60a5fa; --se-series-2: #fb923c; --se-series-3: #4ade80; --se-series-4: #c084fc; --se-series-5: #f472b6;
-    --se-series-6: #22d3ee; --se-series-7: #facc15; --se-series-8: #94a3b8; --se-series-9: #f87171; --se-series-10: #a3e635;
+    --se-mark-pink: rgba(244, 114, 182, .32); --se-mark-gray: rgba(161, 161, 170, .30);
+    --se-find: rgba(250, 204, 21, .38); --se-find-active: #c8590c;
+    --se-diff-added: #4fd1a1; --se-diff-changed: #e0a53a; --se-diff-moved: #6b9bff;
+    --se-up: #4fd1a1; --se-down: #ff7b72;
+    --se-chart-axis: #6b6b75; --se-chart-grid: #2a2a30; --se-chart-neutral: #a1a1aa; --se-chart-band: rgba(161, 161, 170, .14);
+    --se-heat-high: #a28cff; --se-heat-low: #e0702c; --se-heat-mid: #1d1d21;
+    --se-series-1: #9379ff; --se-series-2: #0f9f8b; --se-series-3: #e0702c; --se-series-4: #4f92e6; --se-series-5: #d65fa5;
+    --se-series-6: #3cc4de; --se-series-7: #e0a53a; --se-series-8: #a1a1aa; --se-series-9: #ff7b72; --se-series-10: #a3e635;
   }
 }
 
 /* Density: spacing only, never font size (that is the document's own `format.fontSize`). */
-:where([data-se-density="compact"]) { --se-block-gap: .45rem; --se-pad-x: 2rem; --se-pad-y: 1.75rem; --se-leading: 1.5; --se-radius: 4px; }
+:where([data-se-density="compact"]) { --se-block-gap: .45rem; --se-pad-x: 2rem; --se-pad-y: 1.75rem; --se-leading: 1.5; }
 :where([data-se-density="comfortable"]) { --se-block-gap: .8rem; --se-pad-x: 3.5rem; --se-pad-y: 3rem; --se-leading: 1.65; }
-:where([data-se-density="spacious"]) { --se-block-gap: 1.2rem; --se-pad-x: 4.5rem; --se-pad-y: 3.75rem; --se-leading: 1.8; --se-radius: 8px; }
+:where([data-se-density="spacious"]) { --se-block-gap: 1.2rem; --se-pad-x: 4.5rem; --se-pad-y: 3.75rem; --se-leading: 1.8; }
 
 
-/* Screen-reader-only text and a shared focus ring. */
+/* Screen-reader-only text, a shared focus ring and the browser surfaces the editor does not draw itself. */
 .se-sr {
   position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 .super-editor :focus-visible, .super-editor-document :focus-visible, .se-panel :focus-visible {
-  outline: 2px solid var(--se-focus); outline-offset: 2px; border-radius: 3px;
+  outline: 2px solid var(--se-focus); outline-offset: 2px;
 }
+.super-editor, .super-editor-document, .se-panel { accent-color: var(--se-accent); }
+.super-editor ::selection, .super-editor-document ::selection, .se-panel ::selection { background: var(--se-accent-tint); color: var(--se-text); }
+/* Movement and loops are opted into where they are declared (prefers-reduced-motion: no-preference), so the still frame is the default. */
 @media (prefers-reduced-motion: reduce) {
-  .super-editor *, .super-editor-document *, .se-panel *, .se-toasts * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  .super-editor *, .super-editor-document *, .se-panel *, .se-toasts * { scroll-behavior: auto !important; }
 }

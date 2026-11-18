@@ -12,23 +12,23 @@ export type TokenColors = Partial<Record<TokenName, string>>;
 
 export const SERIES_COUNT = 10;
 const series: Record<ChartTheme, readonly string[]> = {
-  light: ['#2563eb', '#ea580c', '#16a34a', '#9333ea', '#db2777', '#0891b2', '#a16207', '#64748b', '#dc2626', '#4d7c0f'],
-  dark: ['#60a5fa', '#fb923c', '#4ade80', '#c084fc', '#f472b6', '#22d3ee', '#facc15', '#94a3b8', '#f87171', '#a3e635'],
+  light: ['#6c4af2', '#008f7c', '#c8590c', '#2a78d6', '#b02a7f', '#0a7c98', '#8a6a00', '#5f5f68', '#c2362b', '#4d7c0f'],
+  dark: ['#9379ff', '#0f9f8b', '#e0702c', '#4f92e6', '#d65fa5', '#3cc4de', '#e0a53a', '#a1a1aa', '#ff7b72', '#a3e635'],
 };
 const tokens: Record<TokenName, { css: string; light: string; dark: string }> = {
-  text: { css: '--se-text', light: '#1f2328', dark: '#e6e8eb' },
-  muted: { css: '--se-muted', light: '#6b7280', dark: '#9aa3af' },
-  axis: { css: '--se-chart-axis', light: '#9ca3af', dark: '#6b7280' },
-  grid: { css: '--se-chart-grid', light: '#e5e7eb', dark: '#2a2f36' },
-  surface: { css: '--se-surface', light: '#ffffff', dark: '#15181d' },
-  up: { css: '--se-up', light: '#16a34a', dark: '#34d399' },
-  down: { css: '--se-down', light: '#dc2626', dark: '#f87171' },
-  neutral: { css: '--se-chart-neutral', light: '#64748b', dark: '#94a3b8' },
-  heatPos: { css: '--se-heat-high', light: '#2563eb', dark: '#60a5fa' },
-  heatNeg: { css: '--se-heat-low', light: '#ea580c', dark: '#fb923c' },
-  heatMid: { css: '--se-heat-mid', light: '#f8fafc', dark: '#1c2026' },
-  focus: { css: '--se-focus', light: '#2563eb', dark: '#60a5fa' },
-  band: { css: '--se-chart-band', light: 'rgba(100,116,139,.10)', dark: 'rgba(148,163,184,.14)' },
+  text: { css: '--se-text', light: '#111113', dark: '#f4f4f5' },
+  muted: { css: '--se-muted', light: '#5f5f68', dark: '#a1a1aa' },
+  axis: { css: '--se-chart-axis', light: '#8a8a94', dark: '#6b6b75' },
+  grid: { css: '--se-chart-grid', light: '#e4e4e7', dark: '#2a2a30' },
+  surface: { css: '--se-surface', light: '#ffffff', dark: '#17171a' },
+  up: { css: '--se-up', light: '#12805c', dark: '#4fd1a1' },
+  down: { css: '--se-down', light: '#c2362b', dark: '#ff7b72' },
+  neutral: { css: '--se-chart-neutral', light: '#5f5f68', dark: '#a1a1aa' },
+  heatPos: { css: '--se-heat-high', light: '#6c4af2', dark: '#a28cff' },
+  heatNeg: { css: '--se-heat-low', light: '#c8590c', dark: '#e0702c' },
+  heatMid: { css: '--se-heat-mid', light: '#f2f2f4', dark: '#1d1d21' },
+  focus: { css: '--se-focus', light: '#5a38e0', dark: '#b9a8ff' },
+  band: { css: '--se-chart-band', light: 'rgba(95,95,104,.10)', dark: 'rgba(161,161,170,.14)' },
   // Label ink for text drawn on a data-driven fill (heat-map cells): one dark and one light, and the engine picks per fill.
   // Pure black and white by default, because together they reach WCAG 4.5:1 on every possible fill.
   inkDark: { css: '--se-chart-ink-dark', light: '#000000', dark: '#000000' },
