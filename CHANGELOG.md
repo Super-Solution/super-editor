@@ -9,7 +9,7 @@ All notable changes to the eight `@supersolutions/super-editor-*` packages (rele
 - **Agent tools**: `createEditorChatPlugin` now exposes the agent actions as `editor_*` tools, plus `editor_list_documents`, `editor_read_document`, `editor_apply_transaction`, `editor_undo` and `editor_redo`. Every write goes through the guarded transaction path, so a stale edit is refused. Each tool declares its authority (`read`, `draft` or `act`); a destructive tool refuses to run until the host reports that the user confirmed it.
 - **`resolveDocument` and `agentActor`** options: reach documents that are not on screen and name the actor recorded on the agent's revisions.
 - **Host theme**: a card follows the colours and fonts the host passes as `hostTheme`, without remounting.
-- **Fix**: switching between light and dark no longer discards edits made in an editable card.
+- **Fix**: edits made in an editable card survive a theme switch and a remount by the host.
 
 ## 0.2.0
 

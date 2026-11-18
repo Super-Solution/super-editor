@@ -47,6 +47,8 @@ function note(container: HTMLElement, text: string, role?: string): void {
   container.replaceChildren(p);
 }
 
+const MAX_KEPT_EDITORS = 64;
+
 const THEME_VARIABLES: Readonly<Record<string, ThemeToken>> = {
   '--se-bg': 'background', '--se-surface': 'surface', '--se-subtle': 'surface-raised', '--se-hover': 'surface-raised', '--se-code-bg': 'surface-raised',
   '--se-text': 'text', '--se-muted': 'text-muted', '--se-border': 'border', '--se-border-strong': 'border',
@@ -70,13 +72,24 @@ function applyHostTheme(container: HTMLElement, theme: HostTheme): () => void {
 export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): ChatPlugin {
   const onScreen = new Map<string, EditorToolTarget>();
   const release = (id: string, target: EditorToolTarget): void => { if (onScreen.get(id) === target) onScreen.delete(id); };
+  // A chat host may remount a card at any time (a finished turn does). The editor outlives the mount, so what the user and the
+  // agent wrote is still there when the same card comes back. A card with a different document starts fresh.
+  const kept = new Map<string, { source: string; editor: ReturnType<typeof createEditor> }>();
+  const editorFor = (document: ResearchDocument): ReturnType<typeof createEditor> => {
+    const source = JSON.stringify(document);
+    const existing = kept.get(document.id);
+    const editor = existing?.source === source ? existing.editor : createEditor(document);
+    kept.delete(document.id);
+    kept.set(document.id, { source, editor });
+    if (kept.size > MAX_KEPT_EDITORS) kept.delete(kept.keys().next().value as string);
+    return editor;
+  };
 
   const mount: CardMount = (container, initialSpec, initialContext) => {
     let destroyed = false;
     let shownTarget: { id: string; target: EditorToolTarget } | null = null;
     let removeTheme: (() => void) | null = null;
     let themeKey = '';
-    let shownContent = '';
     let inner: { destroy(): void } | null = null;
     let controller: AbortController | null = null;
     let shown = '';
@@ -117,7 +130,7 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
         shownTarget = { id: checked.value.id, target };
       };
       if (editable) {
-        const editor = createEditor(checked.value);
+        const editor = editorFor(checked.value);
         expose(createReportService(editor));
         local = { id: checked.value.id, editor };
         const unsubscribe = editor.subscribe(() => {
@@ -154,10 +167,6 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
         }
       }
       shown = signature;
-      // Switching between light and dark remounts the editor: keep what the user and the agent wrote since the card arrived.
-      const content = JSON.stringify([rawSpec, context.locale ?? null, context.partial === true]);
-      const live = local && content === shownContent ? local.editor.getSnapshot() : null;
-      shownContent = content;
       const nextRest = JSON.stringify([{ ...(rawSpec && typeof rawSpec === 'object' ? rawSpec as object : {}), document: null }, themeInSignature, context.locale ?? null, false]);
       clear();
       echoKey = nextRest;
@@ -165,7 +174,7 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
       const valid = validateEditorCardSpec(rawSpec);
       if (!valid.ok) return note(container, options.messages?.invalid ?? valid.error, 'alert');
       const spec = rawSpec as EditorCardSpec;
-      if (spec.document) return showDocument(spec, live ?? spec.document, spec.mode === 'edit', context);
+      if (spec.document) return showDocument(spec, spec.document, spec.mode === 'edit', context);
 
       // A service reference is read-only: super-protocol rejects `mode: "edit"` with a service, and the plugin never writes to it.
       const service = spec.service!;

@@ -324,3 +324,33 @@ test('switching light and dark without a host theme keeps the agent\'s edits', a
   handle.destroy();
   dom.window.close();
 });
+
+test('a card the host remounts keeps what the agent wrote', async () => {
+  const { container, dom } = host();
+  const plugin = createEditorChatPlugin();
+  const mount = plugin.mounts![EDITOR_CARD_KIND]!;
+  const spec = { kind: EDITOR_CARD_KIND, mode: 'edit', document: report('Keep') };
+  const first = mount(container, spec, ctx());
+  await toolsOf(plugin).get('editor_insert_blocks')!.run({ markdown: 'Agent line' }, {});
+  first.destroy();
+  const second = mount(container, JSON.parse(JSON.stringify(spec)), ctx());
+  assert.match(container.textContent ?? '', /Agent line/);
+  const outline = await toolsOf(plugin).get('editor_get_outline')!.run({}, {}) as any;
+  assert.equal(outline.revision, 2);
+  second.destroy();
+  dom.window.close();
+});
+
+test('a card with a different document does not inherit earlier edits', async () => {
+  const { container, dom } = host();
+  const plugin = createEditorChatPlugin();
+  const mount = plugin.mounts![EDITOR_CARD_KIND]!;
+  const first = mount(container, { kind: EDITOR_CARD_KIND, mode: 'edit', document: report('One') }, ctx());
+  await toolsOf(plugin).get('editor_insert_blocks')!.run({ markdown: 'Agent line' }, {});
+  first.destroy();
+  const second = mount(container, { kind: EDITOR_CARD_KIND, mode: 'edit', document: report('Two') }, ctx());
+  assert.doesNotMatch(container.textContent ?? '', /Agent line/);
+  assert.match(container.textContent ?? '', /Two/);
+  second.destroy();
+  dom.window.close();
+});
