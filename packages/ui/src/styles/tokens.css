@@ -25,8 +25,6 @@
   --se-border: #e4e4e7;
   --se-border-strong: #8a8a94;
   --se-accent: #6c4af2;
-  --se-accent-strong: #5a38e0;
-  --se-accent-tint: #eeeaff;
   --se-accent-contrast: #ffffff;
   --se-link: #5a38e0;
   --se-focus: #5a38e0;
@@ -92,8 +90,6 @@
   --se-border: #2a2a30;
   --se-border-strong: #6b6b75;
   --se-accent: #a28cff;
-  --se-accent-strong: #b9a8ff;
-  --se-accent-tint: #2a2150;
   --se-accent-contrast: #111113;
   --se-link: #b9a8ff;
   --se-focus: #b9a8ff;
@@ -122,6 +118,12 @@
   --se-series-6: #3cc4de; --se-series-7: #e0a53a; --se-series-8: #a1a1aa; --se-series-9: #ff7b72; --se-series-10: #a3e635;
 }
 
+/* Derived on the element that carries the accent, so a host that sets only --se-accent gets matching selection and text colors. */
+:where(:root, [data-se-theme]) {
+  --se-accent-strong: color-mix(in srgb, var(--se-accent) 85%, var(--se-text));
+  --se-accent-tint: color-mix(in srgb, var(--se-accent) 16%, var(--se-surface));
+}
+
 /* Native controls and scrollbars follow the chosen theme. Never set on a bare :root: an unset theme must not touch the host page. */
 :where([data-se-theme="light"]) { color-scheme: light; }
 :where([data-se-theme="auto"]) { color-scheme: light dark; }
@@ -131,7 +133,7 @@
   :where([data-se-theme="auto"]) {
     --se-bg: #0e0e10; --se-surface: #17171a; --se-subtle: #1d1d21; --se-hover: #26262b;
     --se-text: #f4f4f5; --se-muted: #a1a1aa; --se-border: #2a2a30; --se-border-strong: #6b6b75;
-    --se-accent: #a28cff; --se-accent-strong: #b9a8ff; --se-accent-tint: #2a2150; --se-accent-contrast: #111113; --se-link: #b9a8ff; --se-focus: #b9a8ff;
+    --se-accent: #a28cff; --se-accent-contrast: #111113; --se-link: #b9a8ff; --se-focus: #b9a8ff;
     --se-overlay: rgba(0, 0, 0, .6); --se-shadow: 0 8px 24px rgba(0, 0, 0, .5); --se-code-bg: #1d1d21;
     --se-turn: #ffc94d; --se-turn-strong: #ffd57a; --se-turn-tint: #3a2a05; --se-turn-line: #ffc94d; --se-on-turn: #111113;
     --se-error: #ff7b72; --se-error-bg: #2c1614; --se-error-border: #6b2a25;

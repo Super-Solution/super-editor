@@ -7,11 +7,18 @@ All notable changes to the eight `@supersolutions/super-editor-*` packages (rele
 ### Visual refresh
 
 - **Default theme** now follows the Super Solution family: neutral `#fafafa` and `#0e0e10` grounds, one violet accent (`--se-accent`), and softer nested corners (`--se-radius-xs` 4px, `--se-radius-sm` 8px, `--se-radius` 12px, `--se-radius-lg` 16px). Hosts that set their own `--se-*` tokens keep them; hosts relying on the old defaults will see the new colors.
-- **New tokens**: `--se-accent-strong`, `--se-accent-tint`, `--se-turn` and its variants, `--se-radius-xs`, `--se-radius-lg`, `--se-radius-pill`, `--se-dur-1` to `--se-dur-3`, `--se-ease-out`, `--se-ease-in-out`.
+- **New tokens**: `--se-accent-strong` and `--se-accent-tint` (derived from `--se-accent`, so a host that sets only the accent gets matching selection colors), `--se-turn` and its variants, `--se-radius-xs`, `--se-radius-lg`, `--se-radius-pill`, `--se-dur-1` to `--se-dur-3`, `--se-ease-out`, `--se-ease-in-out`.
 - **Chart palette**: the ten default series and the heat-map ends changed to the family palette; every series still reaches 3:1 on the surface in both themes.
 - **Agent review**: a ready `<ProposalReview>` carries the amber waiting state; the agent badge is violet with a diamond, so it differs from a person's by shape as well as color.
 - **No colored side stripes** on callouts, toasts, conflicts, diffs and proposal changes: tinted fills and full hairlines replace them, and moved blocks are dashed.
 - **Accessibility**: 44px touch targets and 16px fields under `pointer: coarse`, `color-scheme` follows the chosen theme, and movement is opted into with `prefers-reduced-motion: no-preference`.
+
+### Chat plugin
+
+- **Agent tools**: `createEditorChatPlugin` now exposes the agent actions as `editor_*` tools, plus `editor_list_documents`, `editor_read_document`, `editor_apply_transaction`, `editor_undo` and `editor_redo`. Every write goes through the guarded transaction path, so a stale edit is refused. Each tool declares its authority (`read`, `draft` or `act`); a destructive tool refuses to run until the host reports that the user confirmed it.
+- **`resolveDocument` and `agentActor`** options: reach documents that are not on screen and name the actor recorded on the agent's revisions.
+- **Host theme**: a card follows the colours and fonts the host passes as `hostTheme`, without remounting.
+- **Fix**: edits made in an editable card survive a theme switch and a remount by the host.
 
 ## 0.2.0
 
