@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
-import { createDocument, createEditor } from '@supersolutions/super-editor-core';
+import { AGENT_ACTIONS, createDocument, createEditor, createReportService } from '@supersolutions/super-editor-core';
 import { createEditorChatPlugin } from '@supersolutions/super-editor-chat-plugin';
 import { EDITOR_CARD_KIND, validateChatPlugin, type CardMountContext } from '@supersolutions/super-protocol';
 
@@ -157,5 +157,170 @@ test('debounceMs delays onChange and a pending call is flushed on destroy; actor
   add();
   handle.destroy();
   assert.deepEqual(seen, [3, 4]);
+  dom.window.close();
+});
+
+// ---- agent tools ---------------------------------------------------------------------------------------------
+type Tool = NonNullable<ReturnType<typeof createEditorChatPlugin>['tools']>[number] & { authority?: string; confirm?: boolean };
+const toolsOf = (plugin: ReturnType<typeof createEditorChatPlugin>) => new Map((plugin.tools as Tool[]).map((t) => [t.name, t]));
+function open(mode: 'edit' | 'view' = 'edit', options: Parameters<typeof createEditorChatPlugin>[0] = {}) {
+  const { container, dom } = host();
+  const plugin = createEditorChatPlugin(options);
+  const handle = plugin.mounts![EDITOR_CARD_KIND]!(container, { kind: EDITOR_CARD_KIND, mode, document: report('Original') }, ctx());
+  const call = (name: string, input: unknown = {}, context: { confirmed?: boolean; signal?: AbortSignal } = {}) => toolsOf(plugin).get(name)!.run(input, context) as Promise<any>;
+  return { container, dom, plugin, handle, call, close() { handle.destroy(); dom.window.close(); } };
+}
+
+test('every tool declares its authority, and every destructive action asks first', () => {
+  const plugin = createEditorChatPlugin();
+  assert.deepEqual(validateChatPlugin(plugin), []);
+  const tools = toolsOf(plugin);
+  for (const tool of tools.values()) assert.ok(['read', 'draft', 'act'].includes(tool.authority ?? ''), tool.name);
+  for (const action of AGENT_ACTIONS) {
+    const tool = tools.get(`editor_${action.name}`);
+    assert.ok(tool, action.name);
+    assert.equal(tool.authority, action.access === 'read' ? 'read' : action.destructive ? 'act' : 'draft', action.name);
+    assert.equal(tool.confirm === true, action.destructive && action.access === 'write', action.name);
+  }
+  for (const name of ['editor_apply_transaction', 'editor_undo', 'editor_redo']) {
+    assert.equal(tools.get(name)?.authority, 'act');
+    assert.equal(tools.get(name)?.confirm, true);
+  }
+  assert.equal(tools.get('editor_read_document')?.authority, 'read');
+});
+
+test('the agent reads a card, and its addition shows in the card with agent provenance', async () => {
+  const c = open();
+  const listed = await c.call('editor_list_documents');
+  assert.deepEqual(listed.documents, [{ documentId: 'doc', title: 'Doc', revision: 1, writable: true }]);
+  const added = await c.call('editor_insert_blocks', { markdown: 'Added by the agent', expectedRevision: 1 });
+  assert.equal(added.ok, true);
+  assert.match(c.container.textContent ?? '', /Added by the agent/);
+  const revisions = await c.call('editor_list_revisions');
+  assert.equal(revisions.revisions.at(-1).actor.id, 'chat-agent');
+  assert.equal(revisions.revisions.at(-1).actor.kind, 'agent');
+  c.close();
+});
+
+test('a stale edit is refused and changes nothing', async () => {
+  const c = open();
+  const block = (await c.call('editor_get_block', { blockId: 'p1' })).block;
+  const first = await c.call('editor_update_block_text', { blockId: 'p1', expectedVersion: block.version, text: 'New' }, { confirmed: true });
+  assert.equal(first.ok, true);
+  const stale = await c.call('editor_update_block_text', { blockId: 'p1', expectedVersion: block.version, text: 'Overwrite' }, { confirmed: true });
+  assert.equal(stale.ok, false);
+  assert.equal(stale.issues[0].code, 'conflict');
+  assert.match(c.container.textContent ?? '', /New/);
+  assert.doesNotMatch(c.container.textContent ?? '', /Overwrite/);
+  c.close();
+});
+
+test('a destructive tool refuses to run unless the host confirmed it', async () => {
+  const c = open();
+  const block = (await c.call('editor_get_block', { blockId: 'p1' })).block;
+  const input = { blocks: [{ blockId: 'p1', expectedVersion: block.version }] };
+  for (const context of [{}, { confirmed: false }]) {
+    const refused = await c.call('editor_delete_blocks', input, context);
+    assert.equal(refused.ok, false);
+    assert.equal(refused.confirmationRequired, true);
+  }
+  assert.match(c.container.textContent ?? '', /Original/);
+  assert.equal((await c.call('editor_delete_blocks', input, { confirmed: true })).ok, true);
+  assert.doesNotMatch(c.container.textContent ?? '', /Original/);
+  c.close();
+});
+
+test('apply_transaction records the host actor, not the one the model names', async () => {
+  const c = open();
+  const result = await c.call('editor_apply_transaction', { transaction: { id: 't1', actor: { id: 'the-owner', kind: 'human' }, baseRevision: 1, operations: [{ type: 'setTitle', title: 'Renamed' }] } }, { confirmed: true });
+  assert.equal(result.ok, true);
+  const last = (await c.call('editor_list_revisions')).revisions.at(-1);
+  assert.deepEqual(last.actor, { id: 'chat-agent', kind: 'agent' });
+  c.close();
+});
+
+test('a view card can be read but not changed', async () => {
+  const c = open('view');
+  assert.equal((await c.call('editor_get_outline')).ok, true);
+  const refused = await c.call('editor_insert_blocks', { markdown: 'No' });
+  assert.equal(refused.ok, false);
+  assert.match(refused.issues[0].message, /read-only/);
+  c.close();
+});
+
+test('tools fail with a usable message when there is no such document', async () => {
+  const plugin = createEditorChatPlugin();
+  const tools = toolsOf(plugin);
+  const none = await tools.get('editor_get_outline')!.run({}, {}) as any;
+  assert.equal(none.ok, false);
+  assert.match(none.issues[0].message, /No document is on screen/);
+  const unknown = await tools.get('editor_get_outline')!.run({ documentId: 'nope' }, {}) as any;
+  assert.match(unknown.issues[0].message, /Unknown document "nope"/);
+  const bad = await tools.get('editor_get_outline')!.run({ documentId: 7 }, {}) as any;
+  assert.equal(bad.ok, false);
+  const notObject = await tools.get('editor_get_outline')!.run('x', {}) as any;
+  assert.equal(notObject.ok, false);
+});
+
+test('a removed card is no longer a tool target, and an aborted call does not run', async () => {
+  const c = open();
+  const abort = new AbortController();
+  abort.abort();
+  await assert.rejects(() => c.call('editor_get_outline', {}, { signal: abort.signal }));
+  const tools = toolsOf(c.plugin);
+  c.close();
+  const gone = await tools.get('editor_get_outline')!.run({}, {}) as any;
+  assert.equal(gone.ok, false);
+});
+
+test('resolveDocument reaches a document that is not on screen', async () => {
+  const editor = createEditor(report('Stored'));
+  const plugin = createEditorChatPlugin({ resolveDocument: (id) => id === 'stored' ? createReportService(editor) : undefined });
+  const outline = await toolsOf(plugin).get('editor_get_outline')!.run({ documentId: 'stored' }, {}) as any;
+  assert.equal(outline.ok, true);
+});
+
+// ---- host theme ----------------------------------------------------------------------------------------------
+const hostTheme = { mode: 'dark', tokens: { background: '#101010', text: '#eeeeee', accent: '#3366ff', border: 'red; position: fixed' } };
+
+test('a host theme reaches the document through the card container', () => {
+  const { container, dom } = host();
+  const handle = mountOf()(container, { kind: EDITOR_CARD_KIND, document: report('Themed') }, { ...ctx({ theme: 'dark' }), hostTheme } as CardMountContext);
+  assert.equal(container.dataset.seTheme, 'dark');
+  assert.equal(container.style.getPropertyValue('--se-bg'), '#101010');
+  assert.equal(container.style.getPropertyValue('--se-link'), '#3366ff');
+  assert.equal(container.style.getPropertyValue('--se-border'), '', 'an unsafe value is dropped');
+  assert.equal(container.querySelector('[data-se-theme]'), null, 'nothing inside overrides what the container sets');
+  handle.destroy();
+  assert.equal(container.style.getPropertyValue('--se-bg'), '');
+  assert.equal(container.dataset.seTheme, undefined);
+  dom.window.close();
+});
+
+test('changing the host theme keeps the document and the agent\'s edits', async () => {
+  const { container, dom } = host();
+  const plugin = createEditorChatPlugin();
+  const spec = { kind: EDITOR_CARD_KIND, mode: 'edit', document: report('Keep') };
+  const handle = plugin.mounts![EDITOR_CARD_KIND]!(container, spec, { ...ctx({ theme: 'dark' }), hostTheme } as CardMountContext);
+  await toolsOf(plugin).get('editor_insert_blocks')!.run({ markdown: 'Agent line' }, {});
+  const before = container.firstElementChild;
+  handle.update(spec, { ...ctx({ theme: 'light' }), hostTheme: { mode: 'light', tokens: { background: '#ffffff' } } } as CardMountContext);
+  assert.equal(container.firstElementChild, before);
+  assert.equal(container.style.getPropertyValue('--se-bg'), '#ffffff');
+  assert.match(container.textContent ?? '', /Agent line/);
+  handle.destroy();
+  dom.window.close();
+});
+
+test('switching light and dark without a host theme keeps the agent\'s edits', async () => {
+  const { container, dom } = host();
+  const plugin = createEditorChatPlugin();
+  const spec = { kind: EDITOR_CARD_KIND, mode: 'edit', document: report('Keep') };
+  const handle = plugin.mounts![EDITOR_CARD_KIND]!(container, spec, ctx());
+  await toolsOf(plugin).get('editor_insert_blocks')!.run({ markdown: 'Agent line' }, {});
+  handle.update(spec, ctx({ theme: 'dark' }));
+  assert.ok(container.querySelector('[data-se-theme="dark"]'));
+  assert.match(container.textContent ?? '', /Agent line/);
+  handle.destroy();
   dom.window.close();
 });
