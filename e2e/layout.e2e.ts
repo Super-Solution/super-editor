@@ -45,8 +45,8 @@ test('data-se-theme="host" follows an ancestor .dark class or data-theme, and ho
   const override = await page({ width: 900, height: 700 }, `<style>.app [data-se-theme] { --se-text: rgb(1, 2, 3); }</style><div class="app">${view({ theme: 'light' })}</div>`);
   try {
     assert.equal(await token(light.page, '--se-surface'), '#ffffff');
-    assert.equal(await token(dark.page, '--se-surface'), '#15181d');
-    assert.equal(await token(attribute.page, '--se-surface'), '#15181d');
+    assert.equal(await token(dark.page, '--se-surface'), '#17171a');
+    assert.equal(await token(attribute.page, '--se-surface'), '#17171a');
     assert.equal(await token(override.page, '--se-text'), 'rgb(1, 2, 3)');
   } finally { await light.close(); await dark.close(); await attribute.close(); await override.close(); }
 });

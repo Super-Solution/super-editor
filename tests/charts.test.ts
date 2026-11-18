@@ -275,8 +275,8 @@ test('responsive layout: narrow widths relayout with fewer ticks and thinned lab
 
 test('colors: palette resolves per mode and theme, and only safe colors pass', () => {
   const css = createPaint(), fixed = createPaint({ mode: 'static', theme: 'dark' });
-  assert.match(css.series(0), /^var\(--se-series-1, #2563eb\)$/);
-  assert.equal(fixed.series(0), '#60a5fa');
+  assert.match(css.series(0), /^var\(--se-series-1, #6c4af2\)$/);
+  assert.equal(fixed.series(0), '#9379ff');
   assert.equal(css.series(10), css.series(0), 'the palette wraps');
   assert.equal(css.series(1, '#abcdef'), '#abcdef');
   assert.match(css.series(1, 'url(javascript:alert(1))'), /var\(--se-series-2/);
@@ -318,9 +318,9 @@ test('exported SVG is self-contained: resolved colors, title, legend and provena
   assert.match(light.svg, /Source: OKX daily candles/);
   assert.match(light.svg, /As of: 2026-10-05/);
   assert.match(light.svg, />ETH</);
-  assert.match(light.svg, /#2563eb/);
+  assert.match(light.svg, /#6c4af2/);
   const dark = chartToSvg(spec, { theme: 'dark', hidden: new Set(['1']) });
-  assert.match(dark.svg, /#60a5fa/); assert.match(dark.svg, /fill="#15181d"/);
+  assert.match(dark.svg, /#9379ff/); assert.match(dark.svg, /fill="#17171a"/);
   assert.match(dark.svg, /text-decoration="line-through"/, 'hidden series are struck through in the legend');
   assert.ok(dark.height > 200);
   const failed = chartToSvg(base({ kind: 'sankey' }));
@@ -427,7 +427,7 @@ test('heat-map labels follow the colors a page really uses (host palettes, dark 
   const darkPage = { heatMid: '#1c2026', heatPos: '#60a5fa', heatNeg: '#fb923c' };
   const near = heatCells(layoutChart(heatSpec([[-1, -.05, 0, .05, 1]]), { width: 640, paint: createPaint({ colors: darkPage }) }));
   assert.deepEqual(near.map(inkOf), ['dark', 'light', 'light', 'light', 'dark']);
-  assert.match(near[2]!.fill, /^color-mix\(in srgb, var\(--se-heat-high, #2563eb\) 0%, var\(--se-heat-mid, #f8fafc\)\)$/);
+  assert.match(near[2]!.fill, /^color-mix\(in srgb, var\(--se-heat-high, #6c4af2\) 0%, var\(--se-heat-mid, #f2f2f4\)\)$/);
   // Without live colors the built-in light palette is assumed, which is what the markup of a server render uses.
   assert.deepEqual(heatCells(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640 })).map(inkOf), ['dark', 'dark', 'light']);
   // For paper: print.css swaps in the light palette whatever the screen shows, so each label also says which ink suits those cells.

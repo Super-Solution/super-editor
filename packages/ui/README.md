@@ -24,7 +24,7 @@ The default controls add paragraphs, H2/H3 and sections, set font/page format an
 
 Embeds display links by default. The host may opt into `embedPolicy: { enabled: true, allowedOrigins: ['https://verified-provider.example'] }` after verifying its real provider. Entries must be exact HTTPS origins; wildcards, paths, suffix matches and credentials are rejected. Iframes retain `sandbox="allow-scripts"` and `referrerpolicy="no-referrer"`, without same-origin permission. This is an embed descriptor, not an assumed SuperChart SDK integration.
 
-The stylesheet defaults to neutral colors. Tokens inherit from the host wrapper or report class, including `--se-bg`, `--se-surface`, `--se-text`, `--se-muted`, `--se-border`, `--se-accent`, `--se-subtle`, `--se-hover`, `--se-error`, `--se-error-bg`, `--se-error-border`, `--se-document-width`, `--se-font-sans`, `--se-font-serif`, `--se-font-mono`, `--se-chart-1` through `--se-chart-6`, and `--se-chart-axis`.
+The stylesheet defaults to the Super Solution palette: neutral chrome, one violet accent for the agent and the primary action, and amber only for a proposal waiting on a person. Tokens inherit from the host wrapper or report class, including `--se-bg`, `--se-surface`, `--se-text`, `--se-muted`, `--se-border`, `--se-accent`, `--se-accent-strong`, `--se-accent-tint`, `--se-turn`, `--se-subtle`, `--se-hover`, `--se-error`, `--se-error-bg`, `--se-error-border`, `--se-document-width`, `--se-font-sans`, `--se-font-serif`, `--se-font-mono`, `--se-radius-xs` through `--se-radius-lg`, `--se-dur-1` through `--se-dur-3`, `--se-series-1` through `--se-series-10`, and `--se-chart-axis`.
 
 ```css
 .host-reports {

@@ -66,7 +66,7 @@ See [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), 
 
 Machine-readable discovery schemas are in [schemas/document-v1.schema.json](schemas/document-v1.schema.json) and [schemas/transaction-v1.schema.json](schemas/transaction-v1.schema.json). Core runtime validation additionally enforces semantic guards such as parent/citation references, ordering, versions, timestamps, and numeric budgets. Serialized fixtures live in `examples/fixtures/`.
 
-The default stylesheet uses neutral inherited `--se-*` tokens; see [UI theme customization](packages/ui/README.md). Consumers can replace controls and renderers and override tokens without importing React or coupling their branding to Core. Paragraph controls are plain text editors: changing text replaces that paragraph's inline marks; unchanged text retains them. Rich text editing is a future extension.
+The default stylesheet uses inherited `--se-*` tokens with the Super Solution palette; see [UI theme customization](packages/ui/README.md). Consumers can replace controls and renderers and override tokens without importing React or coupling their branding to Core. Paragraph controls are plain text editors: changing text replaces that paragraph's inline marks; unchanged text retains them. Rich text editing is a future extension.
 
 ## Drive it from an agent
 
