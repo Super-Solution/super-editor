@@ -1,6 +1,6 @@
 # Super Editor local integration contract (v0.1 baseline, v0.2 additions)
 
-The eight `@supersolutions/super-editor-*` packages share version `0.2.0` and publish to the `latest` channel. `super-editor-core`, `-ui`, `-react`, `-element`, `-chat-plugin` and `-cli` are GPL-3.0-or-later; `super-editor-api` and `super-editor-mcp` are AGPL-3.0-or-later; a commercial license is available from SUPER SOLUTION LABS INC. The root workspace remains private. These names replace the earlier unpublished `@super-editor/*` contract.
+The eight `@supersolutions/super-editor-*` packages share version `0.3.0` and publish to the `latest` channel. `super-editor-core`, `-ui`, `-react`, `-element`, `-chat-plugin` and `-cli` are GPL-3.0-or-later; `super-editor-api` and `super-editor-mcp` are AGPL-3.0-or-later; a commercial license is available from SUPER SOLUTION LABS INC. The root workspace remains private. These names replace the earlier unpublished `@super-editor/*` contract.
 
 - `@supersolutions/super-editor-core`: JSON v1 document, runtime validation, immutable `createEditor(document, options)`, `createDocument({id,title}, options)`, `parseDocument(json)`, `serializeDocument(document)`, and typed operations in `packages/core/src/types.ts`.
 - `@supersolutions/super-editor-ui`: framework-independent `renderDocument(document, options)` / `mountEditor(container, editor, options)`, replaceable block and chart renderers. No DOM dependency in core.

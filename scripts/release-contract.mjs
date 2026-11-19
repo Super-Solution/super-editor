@@ -7,7 +7,7 @@ export const packageDirs = {
   'chat-plugin': 'packages/integrations/chat-plugin', api: 'backends/typescript/api', mcp: 'backends/typescript/mcp', cli: 'packages/cli'
 };
 /** Dependencies on packages that live outside this workspace (Apache-2.0 protocol layer; publish it first). */
-export const externalDependencies = { 'chat-plugin': { '@supersolutions/super-protocol': '0.1.0' } };
+export const externalDependencies = { 'chat-plugin': { '@supersolutions/super-protocol': '0.2.0' } };
 export const registry = 'https://registry.npmjs.org/';
 /** Network-facing server packages are AGPL; libraries, the CLI and the UI are GPL. Texts live in LICENSES/. */
 export const packageLicenses = { core: 'GPL-3.0-or-later', ui: 'GPL-3.0-or-later', react: 'GPL-3.0-or-later', element: 'GPL-3.0-or-later', 'chat-plugin': 'GPL-3.0-or-later', cli: 'GPL-3.0-or-later', api: 'AGPL-3.0-or-later', mcp: 'AGPL-3.0-or-later' };
