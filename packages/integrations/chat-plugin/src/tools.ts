@@ -10,7 +10,9 @@ import {
   type AsyncReportService,
   type ReportService,
 } from '@supersolutions/super-editor-core';
-import type { AuthorizedPluginTool, PluginToolAuthority, PluginToolRunContext } from './protocol-next.js';
+import type { PluginTool, PluginToolAuthority, PluginToolRunContext } from '@supersolutions/super-protocol';
+
+export type AuthorizedPluginTool = PluginTool & { authority: PluginToolAuthority };
 
 export type EditorToolTarget = { service: ReportService | AsyncReportService; writable: boolean };
 export type EditorToolHost = {

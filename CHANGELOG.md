@@ -2,7 +2,7 @@
 
 All notable changes to the eight `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
-## Unreleased
+## 0.3.0
 
 ### Visual refresh
 

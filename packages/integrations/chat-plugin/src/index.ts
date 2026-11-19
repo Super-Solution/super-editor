@@ -5,13 +5,15 @@ import { mountEditor, renderDocument, type PartialLabels } from '@supersolutions
 import {
   EDITOR_CARD_KIND,
   editorCardKind,
+  readHostTheme,
   validateEditorCardSpec,
   type CardMount,
   type CardMountContext,
   type ChatPlugin,
   type EditorCardSpec,
+  type HostTheme,
+  type ThemeToken,
 } from '@supersolutions/super-protocol';
-import { readHostTheme, type HostCardContext, type HostTheme, type ThemeToken } from './protocol-next.js';
 import { createEditorTools, type EditorToolTarget } from './tools.js';
 
 export type EditorChatPluginOptions = {
@@ -120,7 +122,7 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
       const checked = validateDocument(document as ResearchDocument);
       if (!checked.ok) return note(container, checked.issues[0]?.message ?? 'Invalid document.', 'alert');
       // With a host theme the container carries the look; a theme attribute on the document would override what it inherits.
-      const theme = readHostTheme((context as HostCardContext).hostTheme) ? undefined : context.theme;
+      const theme = readHostTheme(context.hostTheme) ? undefined : context.theme;
       const doc = container.ownerDocument;
       const expose = (service: ReportService): void => {
         const target = { service, writable: editable };
@@ -146,7 +148,7 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
     };
 
     const render = (rawSpec: unknown, context: CardMountContext): void => {
-      const hostTheme = readHostTheme((context as HostCardContext).hostTheme);
+      const hostTheme = readHostTheme(context.hostTheme);
       const nextThemeKey = hostTheme ? JSON.stringify(hostTheme) : '';
       if (nextThemeKey !== themeKey) {
         removeTheme?.();
@@ -229,7 +231,7 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
     manifest: {
       manifestVersion: 0,
       name: '@supersolutions/super-editor-chat-plugin',
-      version: '0.2.0',
+      version: '0.3.0',
       license: 'GPL-3.0-or-later',
       capabilities: [
         { id: 'editor.document', surface: 'card', cardKind: EDITOR_CARD_KIND },
