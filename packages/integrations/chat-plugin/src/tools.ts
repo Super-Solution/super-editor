@@ -12,7 +12,10 @@ import {
 } from '@supersolutions/super-editor-core';
 import type { PluginTool, PluginToolAuthority, PluginToolRunContext } from '@supersolutions/super-protocol';
 
-export type AuthorizedPluginTool = PluginTool & { authority: PluginToolAuthority };
+import { approvalWordingFor, type ToolApprovalWording } from './approvals.js';
+
+/** `approval` words the host's approval card for a tool that asks first; hosts that do not read it use their own. */
+export type AuthorizedPluginTool = PluginTool & { authority: PluginToolAuthority; approval?: (input: unknown) => ToolApprovalWording | undefined };
 
 export type EditorToolTarget = { service: ReportService | AsyncReportService; writable: boolean };
 export type EditorToolHost = {
@@ -46,6 +49,7 @@ export function createEditorTools(host: EditorToolHost): AuthorizedPluginTool[] 
     description,
     inputSchema: withDocumentId(inputSchema),
     ...access,
+    ...(access.confirm && approvalWordingFor(name) ? { approval: approvalWordingFor(name)! } : {}),
     run: async (raw: unknown, context: PluginToolRunContext) => {
       context.signal?.throwIfAborted();
       if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return refuse('Tool input must be an object.', 'Send the arguments as a JSON object.');
