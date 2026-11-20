@@ -1,6 +1,6 @@
 {
   "name": "@supersolutions/super-editor-core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Headless versioned research documents and validated operations",
   "license": "GPL-3.0-or-later",
   "type": "module",

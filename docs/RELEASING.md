@@ -1,6 +1,6 @@
 # Controlled npm releases
 
-The reset release line started at stable **0.1.0** on the npm dist-tag **latest**, for all eight packages; **0.2.0** is the next release on the same channel. `@supersolutions/super-editor-chat-plugin` also depends on the Apache-2.0 `@supersolutions/super-protocol` (published from the super-chat repository): publish that first, then regenerate `package-lock.json` with `npm install --package-lock-only --ignore-scripts` before the release check. Later prereleases (`X.Y.Z-next.N`) use the `next` tag. This does not assert that any npm package has already been published.
+The reset release line started at stable **0.1.0** on the npm dist-tag **latest**, for all eight packages; **0.2.0** is the next release on the same channel. `@supersolutions/super-editor-chat-plugin` also depends on the Apache-2.0 `@supersolutions/super-protocol` (published from the super-protocol repository): publish that first, then regenerate `package-lock.json` with `npm install --package-lock-only --ignore-scripts` before the release check. Later prereleases (`X.Y.Z-next.N`) use the `next` tag. This does not assert that any npm package has already been published.
 
 Licenses: `core`, `ui`, `react`, `element`, `chat-plugin` and `cli` are GPL-3.0-or-later; `api` and `mcp` are AGPL-3.0-or-later. The texts live in `LICENSES/`; `scripts/release-contract.mjs` maps packages to licenses and `scripts/package-build.mjs` copies the matching text into each package. `release:check` fails if a tarball carries the wrong text.
 

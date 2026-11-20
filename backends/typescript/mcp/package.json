@@ -1,6 +1,6 @@
 {
   "name": "@supersolutions/super-editor-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MCP server and tool dispatcher for guarded research report documents",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -38,7 +38,7 @@
     "tag": "latest"
   },
   "dependencies": {
-    "@supersolutions/super-editor-core": "0.3.0"
+    "@supersolutions/super-editor-core": "0.4.0"
   },
   "bin": {
     "super-editor-mcp": "./dist/stdio.js"

@@ -76,7 +76,7 @@ const consumer = resolve(output, 'consumer');
 mkdirSync(consumer, { recursive: true });
 writeFileSync(resolve(output, 'empty.npmrc'), '');
 const dependencies = Object.fromEntries(results.map(item => [item.name, `file:../${item.filename}`]));
-Object.assign(dependencies, { '@supersolutions/super-protocol': '0.2.0', react: '19.2.0', 'react-dom': '19.2.0', '@types/react': '19.2.2', '@types/react-dom': '19.2.2' });
+Object.assign(dependencies, { '@supersolutions/super-protocol': '0.3.0', react: '19.2.0', 'react-dom': '19.2.0', '@types/react': '19.2.2', '@types/react-dom': '19.2.2' });
 writeFileSync(resolve(consumer, 'package.json'), `${JSON.stringify({ private: true, type: 'module', dependencies }, null, 2)}\n`);
 execFileSync(process.execPath, [npmCli, 'install', '--prefix', consumer, '--workspaces=false', '--ignore-scripts', '--package-lock=false', '--no-audit', '--no-fund', '--registry', 'https://registry.npmjs.org/'], {
   cwd: consumer, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024,
