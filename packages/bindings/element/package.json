@@ -1,6 +1,6 @@
 {
   "name": "@supersolutions/super-editor-element",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "The <super-editor> web component: view or edit a research document in any framework",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -32,8 +32,8 @@
     "tag": "latest"
   },
   "dependencies": {
-    "@supersolutions/super-editor-core": "0.3.0",
-    "@supersolutions/super-editor-ui": "0.3.0"
+    "@supersolutions/super-editor-core": "0.4.0",
+    "@supersolutions/super-editor-ui": "0.4.0"
   },
   "author": "SUPER SOLUTION LABS INC"
 }

@@ -2,6 +2,13 @@
 
 All notable changes to the eight `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
+## 0.4.0
+
+### Chat plugin
+
+- **Approval wording.** The nine tools that ask before changing a document (`set_title`, `update_block_text`, `update_block`, `replace_text`, `delete_blocks`, `import_markdown`, `apply_transaction`, `undo`, `redo`) carry an `approval(input)` that words the host's approval card for the person: what will happen, one question and a verb, such as "This document will be titled “Q3 review”." / "Rename the document?" / Rename. No tool names, ids, versions or JSON. Deleting, removing text and replacing the whole document are marked `danger`. Hosts that do not read it are unaffected; Super Chat 0.3.0 reads it.
+- Depends on `@supersolutions/super-protocol` 0.3.0 (was 0.2.0).
+
 ## 0.3.0
 
 ### Visual refresh

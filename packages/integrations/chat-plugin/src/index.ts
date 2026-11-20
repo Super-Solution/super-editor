@@ -231,7 +231,7 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
     manifest: {
       manifestVersion: 0,
       name: '@supersolutions/super-editor-chat-plugin',
-      version: '0.3.0',
+      version: '0.4.0',
       license: 'GPL-3.0-or-later',
       capabilities: [
         { id: 'editor.document', surface: 'card', cardKind: EDITOR_CARD_KIND },
