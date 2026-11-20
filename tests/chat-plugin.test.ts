@@ -189,6 +189,44 @@ test('every tool declares its authority, and every destructive action asks first
   assert.equal(tools.get('editor_read_document')?.authority, 'read');
 });
 
+test('every tool that asks first words its approval for the person, with no internals', () => {
+  type Wording = { title: string; description: string; summary?: { label: string; value: string }[]; confirmLabel: string; danger?: boolean };
+  const tools = toolsOf(createEditorChatPlugin()) as Map<string, Tool & { approval?: (input: unknown) => Wording | undefined }>;
+  const asking = [...tools.values()].filter((tool) => tool.confirm === true);
+  assert.ok(asking.length >= 9);
+  const inputs: Record<string, unknown> = {
+    editor_set_title: { documentId: 'launch-report', title: 'Launch readiness report' },
+    editor_update_block_text: { blockId: 'p1', expectedVersion: 3, text: 'Revenue grew 12%.' },
+    editor_update_block: { blockId: 'tbl-2', expectedVersion: 1, content: { type: 'paragraph', runs: [] } },
+    editor_replace_text: { find: 'Q3', replace: 'third quarter' },
+    editor_delete_blocks: { blocks: [{ blockId: 'p1', expectedVersion: 2 }, { blockId: 'p2', expectedVersion: 1 }] },
+    editor_import_markdown: { markdown: '# New', mode: 'replace', setTitle: true },
+    editor_apply_transaction: { transaction: { operations: [{ type: 'setTitle', title: 'A' }, { type: 'setTitle', title: 'B' }] } },
+    editor_undo: { expectedRevision: 4 },
+    editor_redo: { expectedRevision: 5 },
+  };
+  for (const tool of asking) {
+    const wording = tool.approval?.(inputs[tool.name] ?? {});
+    assert.ok(wording, `${tool.name} words its approval`);
+    assert.match(wording.title, /\?$/, tool.name);
+    assert.match(wording.description, /\.$/, tool.name);
+    const shown = [wording.title, wording.description, wording.confirmLabel, ...(wording.summary ?? []).flatMap((row) => [row.label, row.value])].join('\n');
+    assert.doesNotMatch(shown, /editor_|super-editor|documentId|blockId|expectedVersion|expectedRevision|launch-report|tbl-2|p1|[{}]/, tool.name);
+  }
+  assert.deepEqual(tools.get('editor_set_title')!.approval!(inputs.editor_set_title), {
+    title: 'Rename the document?',
+    description: 'This document will be titled “Launch readiness report”. The new title shows in the header, in exports, and in the revision history.',
+    confirmLabel: 'Rename',
+  });
+  assert.equal(tools.get('editor_delete_blocks')!.approval!(inputs.editor_delete_blocks)!.title, 'Delete these 2 parts?');
+  assert.equal(tools.get('editor_delete_blocks')!.approval!(inputs.editor_delete_blocks)!.danger, true);
+  assert.equal(tools.get('editor_replace_text')!.approval!({ find: 'draft', replace: '' })!.confirmLabel, 'Remove');
+  // Tools that do not ask first carry no approval wording.
+  assert.equal(tools.get('editor_insert_blocks')!.approval, undefined);
+  // Wording never throws on input the model got wrong.
+  for (const tool of asking) for (const bad of [null, 'x', 3, [], { blocks: 'x', transaction: 1, title: 4 }]) tool.approval!(bad);
+});
+
 test('the agent reads a card, and its addition shows in the card with agent provenance', async () => {
   const c = open();
   const listed = await c.call('editor_list_documents');
