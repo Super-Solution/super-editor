@@ -17,8 +17,8 @@
     --se-tone-info: #2b6cb0; --se-tone-info-bg: #edf4fb; --se-tone-success: #12805c; --se-tone-success-bg: #e9f6f1; --se-tone-warning: #9a6400; --se-tone-warning-bg: #fdf4e3;
     --se-tone-danger: #c2362b; --se-tone-danger-bg: #fdf0ee; --se-tone-note: #5f5f68; --se-tone-note-bg: #f2f2f4;
     --se-mark-yellow: #fef08a; --se-mark-green: #bbf7d0; --se-mark-blue: #bfdbfe; --se-mark-pink: #fbcfe8; --se-mark-gray: #e4e4e7;
-    --se-series-1: #6c4af2; --se-series-2: #008f7c; --se-series-3: #c8590c; --se-series-4: #2a78d6; --se-series-5: #b02a7f;
-    --se-series-6: #0a7c98; --se-series-7: #8a6a00; --se-series-8: #5f5f68; --se-series-9: #c2362b; --se-series-10: #4d7c0f;
+    --se-series-1: #6c4af2; --se-series-2: #2fae75; --se-series-3: #e76d3c; --se-series-4: #2e73d4; --se-series-5: #e6a41f;
+    --se-series-6: #e8729e; --se-series-7: #008200; --se-series-8: #dc4749; --se-series-9: #5f5f68; --se-series-10: #0a7c98;
   }
   .super-editor, .se-app { padding: 0 !important; background: #fff !important; }
   .super-editor-document { padding: 0; max-width: none !important; box-shadow: none; border: 0; background: #fff; color: #111113; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

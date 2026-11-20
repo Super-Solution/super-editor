@@ -12,8 +12,8 @@ export type TokenColors = Partial<Record<TokenName, string>>;
 
 export const SERIES_COUNT = 10;
 const series: Record<ChartTheme, readonly string[]> = {
-  light: ['#6c4af2', '#008f7c', '#c8590c', '#2a78d6', '#b02a7f', '#0a7c98', '#8a6a00', '#5f5f68', '#c2362b', '#4d7c0f'],
-  dark: ['#9379ff', '#0f9f8b', '#e0702c', '#4f92e6', '#d65fa5', '#3cc4de', '#e0a53a', '#a1a1aa', '#ff7b72', '#a3e635'],
+  light: ['#6c4af2', '#2fae75', '#e76d3c', '#2e73d4', '#e6a41f', '#e8729e', '#008200', '#dc4749', '#5f5f68', '#0a7c98'],
+  dark: ['#9379ff', '#259d6e', '#d65d32', '#408ae9', '#cc8300', '#dc4d7c', '#0fa000', '#e16b6a', '#a1a1aa', '#3cc4de'],
 };
 const tokens: Record<TokenName, { css: string; light: string; dark: string }> = {
   text: { css: '--se-text', light: '#111113', dark: '#f4f4f5' },

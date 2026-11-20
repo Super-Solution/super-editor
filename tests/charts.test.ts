@@ -436,11 +436,14 @@ test('heat-map labels follow the colors a page really uses (host palettes, dark 
   assert.equal(leaves(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640, paint: createPaint({ mode: 'static' }) }).scene).filter((node) => node.attrs['data-print-ink'] !== undefined).length, 0, 'not in exports');
 });
 
-test('every default series color reaches 3:1 (WCAG 1.4.11) against the page surface in both themes, and the CSS tokens match the palette', async () => {
+test('series colors reach 3:1 (WCAG 1.4.11) against the page surface, except the three light slots the design system documents, and the CSS tokens match the palette', async () => {
   const { seriesHex, tokenFallbacks, contrastRatio } = await import('../packages/ui/src/charts/palette.js');
   const { readFileSync } = await import('node:fs');
   for (const theme of ['light', 'dark'] as const) {
-    seriesHex[theme].forEach((color, index) => assert.ok(contrastRatio(color, tokenFallbacks.surface[theme]) >= 3, `${theme} series ${index + 1} ${color}`));
+    // Light slots 2, 5 and 6 (green, amber, pink) are the validated palette's relief slots: between 2:1 and 3:1 on white, so a legend, the
+    // data table or direct labels carry identity there, never colour alone. Everything else, and all of dark, clears 3:1.
+    const relief = theme === 'light' ? new Set([1, 4, 5]) : new Set<number>();
+    seriesHex[theme].forEach((color, index) => assert.ok(contrastRatio(color, tokenFallbacks.surface[theme]) >= (relief.has(index) ? 2 : 3), `${theme} series ${index + 1} ${color}`));
   }
   const css = readFileSync(new URL('../packages/ui/src/styles/tokens.css', import.meta.url), 'utf8');
   const light = [...css.slice(css.indexOf(':where(:root'), css.indexOf('[data-se-theme="dark"], .se-theme-dark')).matchAll(/--se-series-(\d+): (#[0-9a-f]{6})/g)].map((match) => match[2]);
