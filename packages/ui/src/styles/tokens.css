@@ -51,8 +51,10 @@
   --se-heat-high: #6c4af2; --se-heat-low: #c8590c; --se-heat-mid: #f2f2f4;
   /* Label ink on data-driven fills (heat-map cells): the chart picks whichever of the two reads better on each cell (WCAG contrast). */
   --se-chart-ink-dark: #000000; --se-chart-ink-light: #ffffff;
-  --se-series-1: #6c4af2; --se-series-2: #008f7c; --se-series-3: #c8590c; --se-series-4: #2a78d6; --se-series-5: #b02a7f;
-  --se-series-6: #0a7c98; --se-series-7: #8a6a00; --se-series-8: #5f5f68; --se-series-9: #c2362b; --se-series-10: #4d7c0f;
+  /* Series 1 to 8 are the Super Solution data palette (design-system.md): validated for neighbours that stay apart under colour-vision
+     deficiency, with their own steps in dark. 9 and 10 are outside it; a legend or labels must carry identity there. */
+  --se-series-1: #6c4af2; --se-series-2: #2fae75; --se-series-3: #e76d3c; --se-series-4: #2e73d4; --se-series-5: #e6a41f;
+  --se-series-6: #e8729e; --se-series-7: #008200; --se-series-8: #dc4749; --se-series-9: #5f5f68; --se-series-10: #0a7c98;
 
   /* Type. Inter leads when the host has it; no webfont is fetched. Explicit Latin faces come before CJK faces, and system-ui comes last,
      because system-ui resolves per OS locale and would pull Latin text into a CJK face. */
@@ -114,8 +116,8 @@
   --se-up: #4fd1a1; --se-down: #ff7b72;
   --se-chart-axis: #6b6b75; --se-chart-grid: #2a2a30; --se-chart-neutral: #a1a1aa; --se-chart-band: rgba(161, 161, 170, .14);
   --se-heat-high: #a28cff; --se-heat-low: #e0702c; --se-heat-mid: #1d1d21;
-  --se-series-1: #9379ff; --se-series-2: #0f9f8b; --se-series-3: #e0702c; --se-series-4: #4f92e6; --se-series-5: #d65fa5;
-  --se-series-6: #3cc4de; --se-series-7: #e0a53a; --se-series-8: #a1a1aa; --se-series-9: #ff7b72; --se-series-10: #a3e635;
+  --se-series-1: #9379ff; --se-series-2: #259d6e; --se-series-3: #d65d32; --se-series-4: #408ae9; --se-series-5: #cc8300;
+  --se-series-6: #dc4d7c; --se-series-7: #0fa000; --se-series-8: #e16b6a; --se-series-9: #a1a1aa; --se-series-10: #3cc4de;
 }
 
 /* Derived on the element that carries the accent, so a host that sets only --se-accent gets matching selection and text colors. */
@@ -147,8 +149,8 @@
     --se-up: #4fd1a1; --se-down: #ff7b72;
     --se-chart-axis: #6b6b75; --se-chart-grid: #2a2a30; --se-chart-neutral: #a1a1aa; --se-chart-band: rgba(161, 161, 170, .14);
     --se-heat-high: #a28cff; --se-heat-low: #e0702c; --se-heat-mid: #1d1d21;
-    --se-series-1: #9379ff; --se-series-2: #0f9f8b; --se-series-3: #e0702c; --se-series-4: #4f92e6; --se-series-5: #d65fa5;
-    --se-series-6: #3cc4de; --se-series-7: #e0a53a; --se-series-8: #a1a1aa; --se-series-9: #ff7b72; --se-series-10: #a3e635;
+    --se-series-1: #9379ff; --se-series-2: #259d6e; --se-series-3: #d65d32; --se-series-4: #408ae9; --se-series-5: #cc8300;
+    --se-series-6: #dc4d7c; --se-series-7: #0fa000; --se-series-8: #e16b6a; --se-series-9: #a1a1aa; --se-series-10: #3cc4de;
   }
 }
 
