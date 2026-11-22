@@ -2,9 +2,9 @@
 
 All notable changes to the eight `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
-## Unreleased
+## 0.5.0
 
-Two behaviour changes that make bad input visible instead of quietly accepting it. Release as a minor version, not a patch.
+Two behaviour changes that make bad input visible instead of quietly accepting it, so this is a minor release. Everything else in this version is internal hardening from 15 audit rounds (correctness, reliability, packaging); see `docs/engineering/improvement-log.md`. Document format unchanged (`schemaVersion: 1`).
 
 ### Text that is not valid Unicode is refused
 
