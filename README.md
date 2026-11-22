@@ -42,7 +42,8 @@ npm ci --ignore-scripts   # needs @supersolutions/super-protocol on npm; until i
 npm run check
 npm run build:demo
 npm run example
-npm run bench   # timings of the hot paths on large documents
+npm run bench        # cost of a one-block edit as documents grow
+npm run bench:core   # timings of the other hot paths on large documents
 npm run dev
 ```
 
