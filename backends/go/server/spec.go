@@ -133,3 +133,6 @@ func str(o *validation.Object, key string) string { s, _ := get(o, key).(string)
 func boolOf(o *validation.Object, key string) bool { b, _ := get(o, key).(bool); return b }
 
 func limit(name string) int { return int(spec().limits[name]) }
+
+// MaxFileBytes is the largest document file the servers read (the spec's fileBytes limit).
+func MaxFileBytes() int64 { return int64(limit("fileBytes")) }

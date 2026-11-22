@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import { createEditor, createReportService, validateDocument, type Actor, type AsyncReportService, type ReportService, type ResearchDocument } from '@supersolutions/super-editor-core';
+import { LIMITS, createEditor, createReportService, validateDocument, type Actor, type AsyncReportService, type ReportService, type ResearchDocument } from '@supersolutions/super-editor-core';
 import { mountEditor, renderDocument, type PartialLabels } from '@supersolutions/super-editor-ui';
 import {
   EDITOR_CARD_KIND,
@@ -14,6 +14,7 @@ import {
   type HostTheme,
   type ThemeToken,
 } from '@supersolutions/super-protocol';
+import { judgeServiceUrl, normalizeOrigins } from './service-policy.js';
 import { createEditorTools, type EditorToolTarget } from './tools.js';
 
 export type EditorChatPluginOptions = {
@@ -25,8 +26,18 @@ export type EditorChatPluginOptions = {
   onChange?: (document: ResearchDocument, spec: EditorCardSpec) => void;
   /** Where a `service` reference is read from. Default: `${baseUrl}/documents/${documentId}/document`. */
   resolveServiceUrl?: (service: NonNullable<EditorCardSpec['service']>) => string;
-  /** Extra request headers (authentication) for service reads. */
+  /**
+   * Extra request headers (authentication) for service reads. A card is content from the conversation, so the service address it
+   * names is not trusted and no setup is needed to be safe: the headers go only to an address on the page's own origin, to an origin
+   * in `allowedServiceOrigins`, or to a URL you build with `resolveServiceUrl`. Any other public `https` address is read anonymously.
+   */
   headers?: () => Record<string, string> | Promise<Record<string, string>>;
+  /**
+   * Optional. Extra origins (for example `https://editor.example.com`) a card may name: they receive `headers`, and may be plain `http` or
+   * a private address (an internal editor service, a local development server). Leave it out when the service is on the page's own origin
+   * or on a public `https` host. A value that is not an origin throws when the plugin is created.
+   */
+  allowedServiceOrigins?: readonly string[];
   fetch?: typeof fetch;
   /** Who edits in the chat. Default `{ id: 'chat-user' }`; the kind is always human. */
   actor?: { id: string };
@@ -40,6 +51,24 @@ export type EditorChatPluginOptions = {
 
 const defaultServiceUrl = (s: NonNullable<EditorCardSpec['service']>): string =>
   `${s.baseUrl.replace(/\/+$/, '')}/documents/${encodeURIComponent(s.documentId)}/document`;
+
+/** Reads a JSON body of at most `limit` characters, so a service cannot make the page buffer an unbounded response. */
+async function readJson(response: Response, limit: number): Promise<unknown> {
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > limit) throw new Error('The editor service answered with a document that is too large.');
+  const reader = response.body?.getReader();
+  let text = '';
+  if (reader) {
+    const decoder = new TextDecoder();
+    for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+      text += decoder.decode(chunk.value, { stream: true });
+      if (text.length > limit) { await reader.cancel().catch(() => undefined); throw new Error('The editor service answered with a document that is too large.'); }
+    }
+    text += decoder.decode();
+  } else text = await response.text();
+  if (text.length > limit) throw new Error('The editor service answered with a document that is too large.');
+  try { return JSON.parse(text) as unknown; } catch { throw new Error('The editor service did not answer with JSON.'); }
+}
 
 function note(container: HTMLElement, text: string, role?: string): void {
   const p = container.ownerDocument.createElement('p');
@@ -72,6 +101,7 @@ function applyHostTheme(container: HTMLElement, theme: HostTheme): () => void {
 
 /** The chat plugin for `super-editor.document` cards and the tools an agent edits them with. License: GPL-3.0-or-later. */
 export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): ChatPlugin {
+  const allowedOrigins = normalizeOrigins(options.allowedServiceOrigins);
   const onScreen = new Map<string, EditorToolTarget>();
   const release = (id: string, target: EditorToolTarget): void => { if (onScreen.get(id) === target) onScreen.delete(id); };
   // A chat host may remount a card at any time (a finished turn does). The editor outlives the mount, so what the user and the
@@ -180,17 +210,26 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
 
       // A service reference is read-only: super-protocol rejects `mode: "edit"` with a service, and the plugin never writes to it.
       const service = spec.service!;
-      const url = (options.resolveServiceUrl ?? defaultServiceUrl)(service);
+      // A URL the host builds itself (`resolveServiceUrl`) is the host's decision. One named by the card is judged first: see service-policy.ts.
+      let url: string, trusted: boolean, cardNamed = false;
+      if (options.resolveServiceUrl) { url = options.resolveServiceUrl(service); trusted = true; }
+      else {
+        const verdict = judgeServiceUrl(defaultServiceUrl(service), container.ownerDocument.defaultView?.location.href, allowedOrigins);
+        if (!verdict.allowed) return note(container, verdict.reason, 'alert');
+        url = verdict.url; trusted = verdict.credentials; cardNamed = true;
+      }
       const own = new AbortController();
       controller = own;
       note(container, text.loading);
       void (async () => {
         try {
           const send = options.fetch ?? globalThis.fetch;
-          const extra = options.headers ? await options.headers() : {};
-          const response = await send(url, { signal: own.signal, headers: { accept: 'application/json', ...extra } });
+          const extra = options.headers && trusted ? await options.headers() : {};
+          // A card-named address is requested without cookies or referrer unless it is the page's own origin or listed, and never follows a redirect elsewhere.
+          const guard: RequestInit = cardNamed ? { redirect: 'error', referrerPolicy: 'no-referrer', ...(trusted ? {} : { credentials: 'omit' as const }) } : {};
+          const response = await send(url, { ...guard, signal: own.signal, headers: { accept: 'application/json', ...extra } });
           if (!response.ok) throw new Error(`The editor service answered ${response.status}.`);
-          const body: unknown = await response.json();
+          const body = await readJson(response, LIMITS.json);
           if (destroyed || own.signal.aborted) return;
           showDocument(spec, body, false, context);
         } catch (error) {

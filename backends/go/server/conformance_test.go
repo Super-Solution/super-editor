@@ -269,3 +269,40 @@ func TestConcurrentRequests(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// A lone surrogate in a request body is refused with an explicit 400 (TypeScript answers with the validation issue at the string's
+// path); it is never stored as U+FFFD. Valid emoji, written raw or as an escaped pair, are kept.
+func TestUnpairedSurrogateInBodyIsRefusedNotReplaced(t *testing.T) {
+	doc, err := validation.Decode([]byte(`{"schemaVersion":1,"id":"d","title":"T","revision":0,"createdAt":"2026-01-01T00:00:00.000Z","updatedAt":"2026-01-01T00:00:00.000Z","format":{"page":"screen","font":"sans","fontSize":16,"lineHeight":1.6},"blocks":[],"citations":[],"retiredBlockIds":[]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := func() string { return "2026-06-01T00:00:00.000Z" }
+	ed, err := editor.New(doc, editor.Options{Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := NewHandler(NewService(ed), Options{Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	post := func(body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "/actions/set_title", strings.NewReader(body))
+		r.Header.Set("content-type", "application/json")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		return rec
+	}
+	rec := post(`{"title":"half \ud83d"}`)
+	if rec.Code != 400 || !strings.Contains(rec.Body.String(), "unpaired surrogate") {
+		t.Fatalf("lone surrogate: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := post(`{"title":"whole 😀 😀"}`); rec.Code != 200 {
+		t.Fatalf("valid pair: %d %s", rec.Code, rec.Body.String())
+	}
+	out := httptest.NewRecorder()
+	h.ServeHTTP(out, httptest.NewRequest("GET", "/outline", nil))
+	if strings.Contains(out.Body.String(), "�") || strings.Contains(out.Body.String(), "half") {
+		t.Fatalf("damaged or refused text was stored: %s", out.Body.String())
+	}
+}

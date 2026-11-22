@@ -276,6 +276,12 @@ add('document', chain(64)); add('document', chain(65));
 add('document', withDoc(d => { d.blocks = [{ id: 'a', parentId: 'b', content: { type: 'section', title: 's' }, citationIds: [], version: 1, createdAt: d.createdAt, updatedAt: d.createdAt }, { id: 'b', parentId: 'a', content: { type: 'section', title: 's' }, citationIds: [], version: 1, createdAt: d.createdAt, updatedAt: d.createdAt }]; d.citations = []; }));
 add('document', withDoc(d => { d.blocks = [{ id: 'a', parentId: 'a', content: { type: 'section', title: 's' }, citationIds: [], version: 1, createdAt: d.createdAt, updatedAt: d.createdAt }]; d.citations = []; }));
 for (const v of [null, 5, 'x', [], true]) { add('document', v); add('transaction', v); }
+// Text: every valid character is accepted (emoji and rare ideographs are surrogate pairs); an unpaired half is refused, never replaced.
+for (const text of ['😀', '𠮷野家', 'a\uFFFDb', '👨‍👩‍👧', 'e\u0301', 'مرحبا', '\u{10FFFF}']) add('document', withDoc(d => { d.title = text; }));
+for (const text of ['a\ud800b', '\udc00', 'x\ud83d', '\ude00\ud83d', 'ok 😀 then \ud83d']) add('document', withDoc(d => { d.title = text; }));
+add('document', withDoc(d => { d.blocks.find((x: any) => x.id === 'p1').content.runs[0].text = 'half \udfff'; }));
+add('transaction', t([op.setTitle('half \ud83d')]));
+add('transaction', t([op.setTitle('whole 😀')]));
 // Mutations -------------------------------------------------------------------------------------------------------
 const pool: unknown[] = [null, true, false, 0, -1, 1, 1.5, 1e15, 1e16, 9007199254740991, '', ' ', 'x', 'é', 'a'.repeat(1001), 'https://example.com/', 'not a url', [], {}, [1], ['a'], { type: 'divider' }, 'A', '2026-11-08T09:00:00Z', 'sec', 'p1', 'missing'];
 type Path = (string | number)[];

@@ -17,6 +17,19 @@ Card kind `super-editor.document`:
 - `{ document, mode: "view" | "edit" }` — an inline report document. Edits stay local; `onChange` reports them.
 - `{ service: { baseUrl, documentId } }` — read-only view of a document held by a running editor service
   (read from `${baseUrl}/documents/${documentId}/document` unless `resolveServiceUrl` says otherwise).
+  A card is conversation content, so the address it names is not trusted, and no setup is needed to be safe:
+
+  | Address named by the card | What happens |
+  | --- | --- |
+  | On the page's own origin | read with the `headers` option (your authentication) |
+  | Another public `https` host | read **anonymously**: no headers, cookies or referrer; redirects are refused |
+  | Plain `http`, a user name or password in the URL, `localhost`, a single-label or internal name (`.local`, `.internal`), or a private, loopback, link-local or cloud-metadata IP address | refused with a visible message; no request is made |
+  | Built by your `resolveServiceUrl` | your decision: read with the `headers` option |
+
+  `allowedServiceOrigins` is optional and only widens these rules for exactly the origins it lists (for another origin that
+  should receive the headers, or an internal or local development service). A browser cannot see where a public name
+  resolves, so a name pointing at a private address is not caught; it is still requested without credentials. Answers
+  larger than the document size limit or that are not JSON are refused.
 
 Load `@supersolutions/super-editor-ui/styles.css` once on the page.
 

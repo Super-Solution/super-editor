@@ -7,9 +7,85 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
+	"unicode/utf8"
 )
+
+// LoneSurrogateError reports text that holds half of a surrogate pair (a JSON escape such as \ud800 with no partner).
+// encoding/json would swap it for U+FFFD without a word, so the text is refused instead: bad data must stay visible.
+type LoneSurrogateError struct{ Offset int }
+
+func (e *LoneSurrogateError) Error() string {
+	return fmt.Sprintf("text contains an unpaired surrogate (half of a character such as an emoji) at byte %d; it is refused, not replaced", e.Offset)
+}
+
+// ErrInvalidUTF8 is returned for input that is not valid UTF-8 (a Big5 or GBK file, for example). It is never repaired.
+var ErrInvalidUTF8 = errors.New("the input is not valid UTF-8; it is refused, not repaired")
+
+func hex4(b []byte) (rune, bool) {
+	if len(b) < 4 {
+		return 0, false
+	}
+	var v rune
+	for _, c := range b[:4] {
+		switch {
+		case c >= '0' && c <= '9':
+			v = v<<4 | rune(c-'0')
+		case c >= 'a' && c <= 'f':
+			v = v<<4 | rune(c-'a'+10)
+		case c >= 'A' && c <= 'F':
+			v = v<<4 | rune(c-'A'+10)
+		default:
+			return 0, false
+		}
+	}
+	return v, true
+}
+
+// checkText finds a \uXXXX escape inside a JSON string that is half of a surrogate pair. A malformed escape is left for the
+// decoder to report.
+func checkText(data []byte) error {
+	inString := false
+	for i := 0; i < len(data); i++ {
+		c := data[i]
+		if !inString {
+			inString = c == '"'
+			continue
+		}
+		switch c {
+		case '"':
+			inString = false
+		case '\\':
+			if i+1 >= len(data) {
+				return nil
+			}
+			if data[i+1] != 'u' {
+				i++
+				continue
+			}
+			unit, ok := hex4(data[i+2:])
+			if !ok {
+				return nil
+			}
+			switch {
+			case unit >= 0xD800 && unit <= 0xDBFF:
+				if i+11 < len(data) && data[i+6] == '\\' && data[i+7] == 'u' {
+					if next, ok := hex4(data[i+8:]); ok && next >= 0xDC00 && next <= 0xDFFF {
+						i += 11
+						continue
+					}
+				}
+				return &LoneSurrogateError{Offset: i}
+			case unit >= 0xDC00 && unit <= 0xDFFF:
+				return &LoneSurrogateError{Offset: i}
+			}
+			i += 5
+		}
+	}
+	return nil
+}
 
 // Object is a decoded JSON object that remembers member order. The reference validator reports the first
 // unknown member in JavaScript property order, so the order is part of the contract.
@@ -27,6 +103,12 @@ func (o *Object) Get(key string) (any, bool) {
 // Decode parses one JSON document into nil, bool, float64, string, []any and *Object. Numbers that overflow a
 // float64 become ±Inf (as JSON.parse does), which the validators then refuse.
 func Decode(data []byte) (any, error) {
+	if !utf8.Valid(data) {
+		return nil, ErrInvalidUTF8
+	}
+	if err := checkText(data); err != nil {
+		return nil, err
+	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
 	v, err := decodeValue(dec)

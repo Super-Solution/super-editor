@@ -364,6 +364,18 @@ test('the client reports network, timeout and non-JSON problems as HttpClientErr
   await assert.rejects(unreachable.health(), (error: unknown) => error instanceof HttpClientError && /connection refused/.test(error.message) && error.status === undefined);
   const hanging = createHttpClient({ baseUrl: 'http://local', timeoutMs: 20, fetch: ((_url: unknown, init?: RequestInit) => new Promise((_resolve, reject) => { init?.signal?.addEventListener('abort', () => { reject(new Error('aborted')); }); })) as typeof fetch });
   await assert.rejects(hanging.health(), (error: unknown) => error instanceof HttpClientError && /timed out after 20 ms/.test(error.message));
+  // The deadline covers the body too: headers arrive, the body never ends. A fetch that ignores the abort signal is cut off as well.
+  const stalledBody = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode('{"ok":true,')); } });
+  const stalling = createHttpClient({ baseUrl: 'http://local', timeoutMs: 20, fetch: (async () => new Response(stalledBody, { status: 200 })) as typeof fetch });
+  await assert.rejects(stalling.health(), (error: unknown) => error instanceof HttpClientError && /timed out after 20 ms/.test(error.message));
+  const deaf = createHttpClient({ baseUrl: 'http://local', timeoutMs: 20, fetch: (() => new Promise(() => undefined)) as typeof fetch });
+  await assert.rejects(deaf.health(), (error: unknown) => error instanceof HttpClientError && /timed out after 20 ms/.test(error.message));
+  const controller = new AbortController();
+  const cancellable = createHttpClient({ baseUrl: 'http://local', signal: controller.signal, fetch: (() => new Promise(() => undefined)) as typeof fetch });
+  const pending = cancellable.health();
+  controller.abort();
+  await assert.rejects(pending, (error: unknown) => error instanceof HttpClientError && /was aborted/.test(error.message));
+  await assert.rejects(cancellable.health(), (error: unknown) => error instanceof HttpClientError && /was aborted/.test(error.message), 'a client whose signal already aborted refuses new requests');
   const html = createHttpClient({ baseUrl: 'http://local', fetch: (async () => new Response('<html>gateway</html>', { status: 502 })) as typeof fetch });
   await assert.rejects(html.actions.get_outline(), (error: unknown) => error instanceof HttpClientError && error.status === 502);
   assert.throws(() => createHttpClient({ baseUrl: '/relative' }), TypeError);

@@ -14,6 +14,8 @@ export type HttpClientOptions = {
   actor?: Actor;
   /** Abort a request after this many milliseconds. Default 30 000. */
   timeoutMs?: number;
+  /** Cancels every request in flight (and refuses new ones) when it aborts; the call rejects with an HttpClientError. */
+  signal?: AbortSignal;
 };
 
 /** Thrown when no usable answer arrived: a network failure, a timeout or a body that is not JSON. API-level failures are returned, not thrown. */
@@ -51,17 +53,25 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     if (typeof send !== 'function') throw new HttpClientError('No fetch implementation is available; pass options.fetch.');
     const extra = typeof options.headers === 'function' ? await options.headers() : options.headers ?? {};
     const controller = new AbortController();
-    const timer = setTimeout(() => { controller.abort(); }, timeoutMs);
-    let response: Response;
+    let timer: ReturnType<typeof setTimeout> | undefined, timedOut = false, cancelled = false;
+    // The deadline covers the whole exchange, body included: a server that sends headers and then stalls must not hang the caller.
+    // The caller's own signal ends the exchange the same way.
+    let stop: (reason: Error) => void = () => undefined;
+    const deadline = new Promise<never>((_resolve, reject) => { stop = reject; timer = setTimeout(() => { timedOut = true; controller.abort(); reject(new Error('deadline')); }, timeoutMs); });
+    deadline.catch(() => undefined);
+    const external = options.signal;
+    const onAbort = (): void => { cancelled = true; controller.abort(); stop(new Error('aborted by the caller')); };
+    if (external?.aborted) onAbort(); else external?.addEventListener('abort', onAbort, { once: true });
+    let response: Response, text: string;
     try {
-      response = await send(`${base}${path}`, {
+      response = await Promise.race([send(`${base}${path}`, {
         method, signal: controller.signal, headers: { accept: 'application/json', ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...extra },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
+      }), deadline]);
+      text = await Promise.race([response.text(), deadline]);
     } catch (cause) {
-      throw new HttpClientError(controller.signal.aborted ? `Request to ${path} timed out after ${timeoutMs} ms.` : `Request to ${path} failed: ${cause instanceof Error ? cause.message : 'network error'}.`, undefined, { cause });
-    } finally { clearTimeout(timer); }
-    const text = await response.text();
+      throw new HttpClientError(cancelled ? `Request to ${path} was aborted.` : timedOut ? `Request to ${path} timed out after ${timeoutMs} ms.` : `Request to ${path} failed: ${cause instanceof Error ? cause.message : 'network error'}.`, undefined, { cause });
+    } finally { clearTimeout(timer); external?.removeEventListener('abort', onAbort); }
     try { return JSON.parse(text) as T; }
     catch { throw new HttpClientError(`${method} ${path} returned ${response.status} with a body that is not JSON.`, response.status); }
   }

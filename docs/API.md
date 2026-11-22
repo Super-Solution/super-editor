@@ -120,7 +120,7 @@ typed client are TypeScript only.
 
 `GET /export.html` sends `Content-Security-Policy: default-src 'none'; img-src https:; style-src 'unsafe-inline'; sandbox` so a generated page stays inert even when opened directly.
 
-**Typed client.** `createHttpClient({ baseUrl, fetch?, headers?, actor?, timeoutMs? })`:
+**Typed client.** `createHttpClient({ baseUrl, fetch?, headers?, actor?, timeoutMs?, signal? })`:
 
 ```ts
 const client = createHttpClient({ baseUrl: 'https://host/api', headers: () => ({ authorization: `Bearer ${token()}` }), actor: { id: 'bot', kind: 'agent' } });
@@ -131,7 +131,7 @@ await client.apply(transaction); await client.undo(actor, revision); await clien
 await client.run('document_stats');                                       // by name, untyped
 ```
 
-A network failure, a timeout (default 30 s) or a body that is not JSON throws `HttpClientError`.
+A network failure, a timeout (default 30 s, counted until the whole response body has arrived), an abort of the optional `signal` or a body that is not JSON throws `HttpClientError`.
 
 ## MCP
 

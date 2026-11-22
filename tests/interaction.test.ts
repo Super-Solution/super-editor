@@ -150,6 +150,11 @@ test('inline runs: marks toggle across runs, links, splits and citations', () =>
   assert.equal(linked[0]!.text, 'plain');
   assert.deepEqual(wordRangeAt('hello big world', 7), { start: 6, end: 9 });
   assert.equal(wordRangeAt('a  b', 2), null);
+  // Characters outside the BMP are letters too: 𠀀 is a CJK ideograph, 𝒜 a mathematical letter, 😀 is not a letter.
+  assert.deepEqual(wordRangeAt('x 𠀀a𝒜 y', 4), { start: 2, end: 7 });
+  assert.deepEqual(wordRangeAt('x 𠀀a𝒜 y', 3), { start: 2, end: 7 }, 'a caret between the two halves of a pair');
+  assert.deepEqual(wordRangeAt('x 𠀀a𝒜 y', 7), { start: 2, end: 7 }, 'touching the end of the word');
+  assert.equal(wordRangeAt('a 😀 b', 3), null);
   assert.equal(runs('**x**')[0]!.bold, true);
 });
 

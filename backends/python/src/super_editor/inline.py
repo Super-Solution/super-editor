@@ -10,6 +10,7 @@ the parser's size limits.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from typing import Any
 
@@ -327,6 +328,18 @@ def _space_or_end(src: str, i: int) -> bool:
     return _at_line_end(src, i) or src[i] in JS_SPACE
 
 
+def escape_heading_text(text: str) -> str:
+    """``escape_inline`` for text after an ATX marker.
+
+    A trailing ``#`` run after a space would read back as a closing sequence and vanish.
+    """
+    escaped = escape_inline(text)
+    body = escaped.rstrip("#")
+    if len(body) == len(escaped) or (body and body[-1] not in JS_SPACE):
+        return escaped
+    return body + "\\#" * (len(escaped) - len(body))
+
+
 def escape_line_starts(text: str) -> str:  # noqa: C901
     """Escape constructs that would start a block at the beginning of a line."""
     src = text
@@ -366,7 +379,69 @@ def escape_line_starts(text: str) -> str:  # noqa: C901
             k += 1
         if _at_line_end(src, k):
             at.append(p)
+    src = _insert_backslashes(src, at)
+    # A thematic break written with spaces ("--- ---").
+    at = []
+    for start in _line_starts(src):
+        p = start + _spaces_at(src, start)
+        if p >= len(src) or src[p] != "-":
+            continue
+        k = p + 1
+        while k < len(src) and src[k] in "- \t":
+            k += 1
+        if _at_line_end(src, k):
+            at.append(p)
+    src = _insert_backslashes(src, at)
+    # A table delimiter row ("|---|:--:|") turns the line above it into a table header.
+    at = []
+    for start in _line_starts(src):
+        p = start
+        while p < len(src) and _is_hspace(src[p]):
+            p += 1
+        if _is_table_rule_line(src, p):
+            at.append(p)
     return _insert_backslashes(src, at)
+
+
+def _is_hspace(ch: str) -> bool:
+    return ch in JS_SPACE and ch not in "\n\r\u2028\u2029"
+
+
+def _is_table_rule_line(src: str, p: int) -> bool:
+    """A table delimiter row from p (dash cells with optional colons, pipes between) with a pipe on the line."""
+    n = len(src)
+
+    def skip(i: int) -> int:
+        while i < n and _is_hspace(src[i]):
+            i += 1
+        return i
+
+    pipes = 0
+    i = p
+    if i < n and src[i] == "|":
+        pipes += 1
+        i += 1
+    i = skip(i)
+    while True:
+        if i < n and src[i] == ":":
+            i += 1
+        dashes = 0
+        while i < n and src[i] == "-":
+            i += 1
+            dashes += 1
+        if dashes == 0:
+            return False
+        if i < n and src[i] == ":":
+            i += 1
+        i = skip(i)
+        if i < n and src[i] == "|":
+            pipes += 1
+            i += 1
+            i = skip(i)
+            if _at_line_end(src, i):
+                return pipes > 0
+            continue
+        return _at_line_end(src, i) and pipes > 0
 
 
 def _code_span(text: str) -> str:
@@ -381,6 +456,9 @@ def _code_span(text: str) -> str:
     if text.startswith("`") or text.endswith("`"):
         return f"{fence} {text} {fence}"
     return f"{fence}{text}{fence}"
+
+
+_BLANK_LINES = re.compile(r"\n(?:[ \t]*\n)+")
 
 
 def _hard_breaks(text: str) -> str:
@@ -417,7 +495,8 @@ def runs_to_markdown(runs: list[Run]) -> str:
             out.append(_hard_breaks(lead) + inner + _hard_breaks(trail))
         if "citationId" in run:
             out.append(f"[^{run['citationId']}]")
-    return "".join(out)
+    # A blank line ends a paragraph in Markdown: consecutive line breaks collapse into one hard break.
+    return _BLANK_LINES.sub("\n", "".join(out))
 
 
 def inline_to_plain(markdown: str) -> str:

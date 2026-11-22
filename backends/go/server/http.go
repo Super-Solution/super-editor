@@ -232,6 +232,10 @@ func (q *request) body() any {
 		panic(newProblem(415, "Content-Type must be application/json.", "Send the body as JSON with Content-Type: application/json.", ""))
 	}
 	v, err := validation.Decode([]byte(q.text()))
+	var lone *validation.LoneSurrogateError
+	if errors.As(err, &lone) {
+		panic(newProblem(400, "The request body contains an unpaired surrogate (half of a character such as an emoji), so it is not valid Unicode.", fmt.Sprintf("Fix the text where it was produced; the bad escape is at byte %d. It is refused, not replaced, so no text is changed behind your back.", lone.Offset), ""))
+	}
 	if err != nil {
 		panic(newProblem(400, "The request body is not valid JSON.", "Send one JSON value.", ""))
 	}

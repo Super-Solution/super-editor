@@ -6,6 +6,16 @@ import type { BlockContent, InlineRun } from './types.js';
 export function runsOf(content: BlockContent): InlineRun[] | undefined {
   return content.type === 'paragraph' || content.type === 'quote' || content.type === 'callout' ? content.runs : undefined;
 }
+/**
+ * The first `max` UTF-16 units of `text`, without splitting a surrogate pair: a cut that would leave half of an emoji or of a rare
+ * ideograph backs off one unit, so the result is always well-formed Unicode (a lone surrogate breaks strict JSON and UTF-8 consumers).
+ */
+export function clipText(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const end = Math.max(0, max);
+  const last = text.charCodeAt(end - 1);
+  return text.slice(0, end > 0 && last >= 0xd800 && last <= 0xdbff ? end - 1 : end);
+}
 export function runsText(runs: readonly InlineRun[]): string { return runs.map(run => run.text).join(''); }
 
 /**

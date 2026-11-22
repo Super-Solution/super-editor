@@ -433,19 +433,19 @@ func ToMarkdown(doc record, o MarkdownOptions) string {
 	rows := chartRows(o.ChartRows, 100)
 	var parts []string
 	if title := str(doc, "title"); !o.NoTitle && title != "" {
-		parts = append(parts, "# "+EscapeInline(line(title)))
+		parts = append(parts, "# "+EscapeHeadingText(line(title)))
 	}
 	var render func(b record, depth int)
 	render = func(b record, depth int) {
 		c := contentOf(b)
 		switch c["type"] {
 		case "section":
-			parts = append(parts, strings.Repeat("#", min(6, 2+depth))+" "+EscapeInline(line(str(c, "title"))))
+			parts = append(parts, strings.Repeat("#", min(6, 2+depth))+" "+EscapeHeadingText(line(str(c, "title"))))
 		case "toggle":
 			parts = append(parts, "**"+EscapeInline(line(str(c, "title")))+"**")
 		case "heading":
 			level, _ := c["level"].(float64)
-			parts = append(parts, strings.Repeat("#", min(6, int(level)+depth))+" "+EscapeInline(line(str(c, "text"))))
+			parts = append(parts, strings.Repeat("#", min(6, int(level)+depth))+" "+EscapeHeadingText(line(str(c, "text"))))
 		case "paragraph":
 			text := EscapeLineStarts(RunsToMarkdown(RunsOf(c)))
 			if jsTrim(text) != "" {

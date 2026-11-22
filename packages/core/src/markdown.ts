@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import { escapeInline, escapeLineStarts, inlineToPlain, normalizeRuns, plainRuns, runs as parseRuns, runsToMarkdown } from './inline.js';
+import { escapeHeadingText, escapeInline, escapeLineStarts, inlineToPlain, normalizeRuns, plainRuns, runs as parseRuns, runsToMarkdown } from './inline.js';
 import { getOutline, type OutlineItem } from './query.js';
 import { runsOf } from './text.js';
 import type { Block, BlockContent, BlockInput, ChartSpec, InlineRun, ResearchDocument } from './types.js';
@@ -81,13 +81,13 @@ function outlineMarkdown(items: OutlineItem[], depth = 0): string[] {
  */
 export function toMarkdown(document: ResearchDocument, options: MarkdownOptions = {}): string {
   const model = tree(document), chartRows = options.chartRows ?? 100, parts: string[] = [];
-  if (options.title !== false && document.title) parts.push(`# ${escapeInline(line(document.title))}`);
+  if (options.title !== false && document.title) parts.push(`# ${escapeHeadingText(line(document.title))}`);
   const render = (block: Block, depth: number): void => {
     const content = block.content;
     switch (content.type) {
-      case 'section': parts.push(`${'#'.repeat(Math.min(6, 2 + depth))} ${escapeInline(line(content.title))}`); break;
+      case 'section': parts.push(`${'#'.repeat(Math.min(6, 2 + depth))} ${escapeHeadingText(line(content.title))}`); break;
       case 'toggle': parts.push(`**${escapeInline(line(content.title))}**`); break;
-      case 'heading': parts.push(`${'#'.repeat(Math.min(6, content.level + depth))} ${escapeInline(line(content.text))}`); break;
+      case 'heading': parts.push(`${'#'.repeat(Math.min(6, content.level + depth))} ${escapeHeadingText(line(content.text))}`); break;
       case 'paragraph': { const text = escapeLineStarts(runsToMarkdown(content.runs)); if (text.trim()) parts.push(text); break; }
       case 'list': parts.push(listMarkdown(content)); break;
       case 'table': {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import type { BlockContent, CalloutTone, InlineRun } from '@supersolutions/super-editor-core';
+import { clipText, type BlockContent, type CalloutTone, type InlineRun } from '@supersolutions/super-editor-core';
 import { runsFromText, runsPlainText } from './inline.js';
 
 /** "Turn into": changes a block's type while keeping its text (and inline marks where both sides carry them). */
@@ -43,7 +43,7 @@ export function canTurnInto(content: BlockContent, target: TurnIntoTarget, hasCh
   if (!isConvertible(content) || targetOf(content) === target) return false;
   return !(hasChildren && target !== 'toggle' && target !== 'section');
 }
-const clamp = (text: string, max: number): string => text.length > max ? text.slice(0, max) : text;
+const clamp = clipText;
 export function blankContent(target: TurnIntoTarget, tone: CalloutTone = 'info'): BlockContent {
   switch (target) {
     case 'paragraph': return { type: 'paragraph', runs: [] };
