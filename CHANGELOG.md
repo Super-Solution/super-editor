@@ -2,6 +2,26 @@
 
 All notable changes to the eight `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
+## Unreleased
+
+Two behaviour changes that make bad input visible instead of quietly accepting it. Release as a minor version, not a patch.
+
+### Text that is not valid Unicode is refused
+
+- **Unpaired surrogates are rejected.** A string with half of a surrogate pair (`"a\ud800b"`: valid JSON, not valid text) is refused by validation with an explicit `validation` issue that names the path and the index, in the TypeScript core, the Go server and the Python server (Go refuses it while decoding the request or file, with a 400 and the byte offset). Before, TypeScript and Python stored it and Go silently turned it into U+FFFD. Nothing is replaced: every valid character stays supported, including emoji, rare ideographs and combining sequences, which are surrogate pairs in UTF-16. Hosts that build text by cutting strings should cut at a character boundary (`clipText` does).
+- **Files that are not UTF-8 are refused.** The CLI, the MCP server and the Go decoder no longer read a Big5, GBK or truncated file with U+FFFD in place of the bad bytes, which the next save would store. They stop with "is not valid UTF-8 text". (The HTTP adapters already did.)
+- The conformance data gained 15 text cases (`validation.v1.json`); Go skips none of them, it refuses the lone-surrogate ones at decode time.
+
+### Chat plugin: safe by default, nothing to configure
+
+- **Service addresses named by a card are judged first.** A `super-editor.document` card can name `service.baseUrl`, and a card is conversation content. `createEditorChatPlugin({ headers })` no longer sends the headers to whatever origin a card names. With no configuration: an address on the page's own origin gets them; any other public `https` address is read anonymously (no headers, cookies or referrer; redirects refused); plain `http`, credentials in the URL, `localhost`, single-label and internal names (`.local`, `.internal`) and private, loopback, link-local, carrier-grade-NAT or metadata IP addresses are refused with a visible message and no request. A URL built with `resolveServiceUrl` is still the host's own decision and gets the headers.
+- **`allowedServiceOrigins` is optional.** It is not needed for a service on the page's own origin or on a public `https` host. List an origin only to send it the headers when it is a different origin, or to allow a plain-`http` or private one (an internal service, a local development server). An entry that is not an origin throws at creation.
+- Service answers are read through a size-capped reader (`LIMITS.json`); a non-JSON answer gives a clear message.
+
+### Repository
+
+- `npm run bench:core` (timings of the other hot paths) next to `npm run bench`; the Python server saves through a temporary file that keeps the document's permissions and follows symlinks; the README and `docs/engineering/` record the 15 audit rounds.
+
 ## 0.4.0
 
 ### Chat plugin
@@ -78,7 +98,6 @@ First release of the reset line. The packages move from the `@super-solution` np
 - The repository history and version numbers were reset on 2026-11-07. Earlier prerelease versions published under `@super-solution/editor-*` (`0.1.0-next.0` to `0.3.0-next.2`) were Apache-2.0 licensed for everyone who received them, but are superseded by this line.
 - **License change.** `super-editor-core`, `-ui`, `-react`, `-element`, `-chat-plugin` and `-cli` are GPL-3.0-or-later; `super-editor-api` and `super-editor-mcp` are AGPL-3.0-or-later. A commercial license for closed-source use is available from SUPER SOLUTION LABS INC (contact@supersolution.io). Every source file carries an SPDX header, and each package ships the license text that applies to it.
 - Install snippets no longer use the `@next` tag; this line publishes to `latest`.
-- **Chat plugin credentials.** `createEditorChatPlugin({ headers })` no longer sends the headers to whatever `baseUrl` a card names: list trusted origins in `allowedServiceOrigins`, or build the URL yourself with `resolveServiceUrl`.
 
 ### Go and Python servers
 

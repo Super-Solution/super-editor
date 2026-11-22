@@ -163,11 +163,11 @@ package is published). To build here, `npm install --no-package-lock` with the p
   the URL from the card and attached the host's `headers()` (for example a bearer token) to the request, so any card, written
   by a model or another participant, could make the user's browser send the host's credentials to an origin of the
   attacker's choice. A second gap: `response.json()` buffered an unbounded body.
-* **Fix.** Headers go only to a URL the host built (`resolveServiceUrl`) or to an origin in the new `allowedServiceOrigins`
-  (default none; the request is otherwise made anonymously, so a protected service answers 401 and the card shows the error).
+* **Fix.** Headers go only to a URL the host built (`resolveServiceUrl`), to the page's own origin, or to an origin in the optional
+  `allowedServiceOrigins` (an earlier version of this round made the list mandatory; the owner rejected that, see "Follow-up"
+  below). Any other public `https` address is requested anonymously.
   The body is read through a size-capped reader (`LIMITS.json`), refused early on a large `content-length`, and a non-JSON answer
-  gives a clear message. This is a behaviour change of an unreleased 0.1.0 option, recorded in `CHANGELOG.md`; hosts that
-  relied on the old behaviour add their origin to `allowedServiceOrigins`.
+  gives a clear message. Recorded in `CHANGELOG.md` under "Unreleased".
 * **Tests.** An untrusted origin gets no credential, a listed one does, a host-built URL does, an oversized and a non-JSON
   answer are refused (fails without the change); the existing service test lists its origin.
 * **Not changed.** A card can still make the browser issue an anonymous GET to any http(s) URL, as a markdown image
@@ -244,9 +244,8 @@ package is published). To build here, `npm install --no-package-lock` with the p
   back to ASCII escapes. Go's decoder turns the escape into U+FFFD, so the text silently changes there.
 * **Fix.** Python writes the document through `_dump_document`, which writes only lone surrogates as escapes and leaves every
   other character as UTF-8, matching the reference byte for byte. A test covers the helper and a save round trip.
-* **Decision recorded, not changed.** Rejecting lone surrogates in validation would make all three agree, but it narrows what
-  the reference accepts today and Go would need a pre-scan of the raw bytes. The Go replacement stays a documented deviation
-  (a lone surrogate is not valid text to begin with); decide before 0.1.0 whether validation should refuse them.
+* **Decision (owner).** Support every valid display, encoding and text case, but never store bad data silently: a lone surrogate
+  is refused with an explicit error (see "Follow-up"), not replaced and not carried along.
 * **Final gate.** `npm run build`, TypeScript 381 tests, `go vet`, `go test -race`, `ruff`, `mypy` and 19 Python tests.
 
 ## Iteration 1 (2026-11-08): audit and server scoping
@@ -337,7 +336,8 @@ These are the places where the obvious port differs from JavaScript, and what pi
 
 ### Known differences (all outside what the shared data covers)
 
-- Lone surrogates in strings are not supported in Go or Python; the reference accepts them.
+- A lone surrogate is refused in all three. TypeScript and Python report the validation issue at the string's path; Go refuses it
+  while decoding (a 400 with the byte offset), because `encoding/json` would otherwise swap it for U+FFFD before validation runs.
 - Characters outside the Basic Multilingual Plane are counted by code point in a few size limits, not by UTF-16 unit.
 - The Unicode data of the running Go or Python can differ from Node's on a character added recently (word counts, case
   folding).
@@ -408,3 +408,16 @@ These are the places where the obvious port differs from JavaScript, and what pi
 * Fix: own-property lookup (`Object.hasOwn`).
 * Test: `tests/actions.test.ts` (fails without the fix).
 * Gate: `npx tsc -b` and the TypeScript suite pass; Go and Python untouched and already correct.
+
+## Follow-up: two owner decisions on the open questions
+
+* **Lone surrogates.** Rejected, everywhere. `string()` in the TypeScript validator, `_string` in Python and the decoder in Go refuse
+  an unpaired surrogate with an explicit error (path and index, or byte offset in Go). The CLI, the MCP server and the Go decoder
+  also refuse input that is not valid UTF-8 instead of reading U+FFFD. Valid emoji, rare ideographs, combining marks, right-to-left
+  and zero-width-joiner text all stay supported, and 15 conformance cases pin both sides. The Python server's escape-on-save helper
+  from round 15 is gone: such text can no longer reach it.
+* **Chat plugin origins.** A mandatory allowlist makes every host configure a list before the card works and tells nobody why.
+  Replaced by rules that are safe with no configuration (`packages/integrations/chat-plugin/src/service-policy.ts`): own origin gets the
+  credentials, other public `https` is anonymous, private and local targets are refused. `allowedServiceOrigins` stays as an
+  optional widening. Known limit, written in the module and the README: DNS names that resolve to private addresses are not
+  visible to a browser; they are requested without credentials, cookies or referrer, with redirects refused.
