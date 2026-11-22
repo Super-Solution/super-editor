@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from super_editor.server.__main__ import _dump_document, _read_document_text, _write_atomic
+from super_editor.server.__main__ import _read_document_text, _write_atomic
 
 
 @unittest.skipIf(sys.platform == "win32", "POSIX permission bits and symlinks")
@@ -31,22 +31,17 @@ class WriteAtomicTest(unittest.TestCase):
             self.assertEqual(sorted(entry.name for entry in root.iterdir()), ["link.json", "real.json"])
 
 
-class LoneSurrogateTest(unittest.TestCase):
-    def test_saves_a_lone_surrogate_as_an_escape(self) -> None:
-        document = {"title": "a\ud800b \u2713 \U0001f600"}
-        self.assertEqual(_dump_document(document), '{\n  "title": "a\\ud800b \u2713 \U0001f600"\n}')
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "doc.json"
-            _write_atomic(str(path), document)
-            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), document)
-
-
 class ReadDocumentTextTest(unittest.TestCase):
     def test_enforces_the_limit_while_reading(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             small = Path(directory) / "small.json"
             small.write_text("{}", encoding="utf-8")
             self.assertEqual(_read_document_text(str(small)), "{}")
+        with tempfile.TemporaryDirectory() as directory:
+            legacy = Path(directory) / "legacy.json"
+            legacy.write_bytes(b'{"t":"\xb3\xf8\xa7\x69"}')  # Big5, not UTF-8
+            with self.assertRaises(UnicodeDecodeError):
+                _read_document_text(str(legacy))
         if sys.platform != "win32":
             with self.assertRaises(SystemExit) as raised:
                 _read_document_text("/dev/zero")

@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util';
 import type { Actor, AgentActionResult, ReportService, ResearchDocument } from '@supersolutions/super-editor-core';
 import { AGENT_ACTIONS, TEMPLATE_KINDS, TRANSPORT_LIMITS, createDocument, createEditor, createReportService, createTemplate, getBlock, getAgentAction, isTemplateKind, listTemplates, runAgentAction, serializeDocument, templateTitle, withHints } from '@supersolutions/super-editor-core';
 import { formatFind, formatGet, formatOutline, formatRevisions, formatStats, formatTemplates, formatTools, formatValidate, formatWrite } from './format.js';
-import { InputError, appendHistory, historyExists, historyPath, loadDocument, persistAtomic, readHistory, readTextFile, withFileLock } from './files.js';
+import { InputError, appendHistory, decodeUtf8, historyExists, historyPath, loadDocument, persistAtomic, readHistory, readTextFile, withFileLock } from './files.js';
 
 export type CliIo = { stdout(text: string): void; stderr(text: string): void; /** Reads all of standard input; used for `-` arguments. */ stdin?: () => Promise<string> };
 type OptionDef = { type: 'string' | 'boolean'; multiple?: boolean; short?: string };
@@ -51,7 +51,7 @@ async function readStdin(): Promise<string> {
     if (bytes > TRANSPORT_LIMITS.fileBytes) throw new InputError(`Standard input is larger than the ${TRANSPORT_LIMITS.fileBytes} byte limit.`);
     chunks.push(buffer);
   }
-  return Buffer.concat(chunks).toString('utf8').replace(/^﻿/, '');
+  return decodeUtf8(Buffer.concat(chunks), 'Standard input');
 }
 /** Text from a file path, or from standard input for `-`. */
 async function readSource(c: CommandContext, source: string, label: string): Promise<string> {

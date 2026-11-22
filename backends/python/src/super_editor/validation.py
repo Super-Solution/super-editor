@@ -167,7 +167,26 @@ def _object(value: Any, path: str, required: list[str], optional: list[str] | No
 def _string(value: Any, path: str, maximum: int | float = LIMITS["text"], allow_empty: bool = True) -> str:
     if not isinstance(value, str) or js_length(value) > maximum or (not allow_empty and len(value) == 0):
         _fail(f"Expected {'a' if allow_empty else 'a nonempty'} string of at most {_num(maximum)} characters.", path)
+    broken = _lone_surrogate_index(value)
+    if broken >= 0:
+        _fail(
+            "Text contains an unpaired surrogate (half of a character such as an emoji), so it is not valid Unicode.",
+            path,
+            "Fix the text where it was produced (for example, do not cut a string between the two halves of a "
+            f"character); the bad unit is at index {broken}. It is refused, not replaced, so no text is changed "
+            "behind your back.",
+        )
     return value
+
+
+_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
+def _lone_surrogate_index(value: str) -> int:
+    """UTF-16 index of the first unpaired surrogate, or -1. Python decodes a valid pair into one character, so any
+    surrogate code point left in a str is a lone half."""
+    found = _SURROGATE.search(value)
+    return -1 if found is None else js_length(value[: found.start()])
 
 
 def _num(value: int | float) -> str:

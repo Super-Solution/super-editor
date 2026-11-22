@@ -31,8 +31,27 @@ function object(value: unknown, path: string, required: string[], optional: stri
   for (const key of required) if (!Object.hasOwn(descriptors, key)) fail('Required property is missing.', `${path}.${key}`, `Add "${key}".`);
   return value as RecordValue;
 }
+/**
+ * Index of the first unpaired UTF-16 surrogate in `value`, or -1 when the text is well-formed Unicode. Every character, including
+ * emoji and rare ideographs written as a surrogate pair, is accepted; only a half that lost its partner is bad data.
+ */
+function loneSurrogateAt(value: string): number {
+  // `isWellFormed` is native and fast (Node 20+, current browsers); the loop is the fallback and the way to find the position.
+  const native = (value as { isWellFormed?: () => boolean }).isWellFormed;
+  if (typeof native === 'function' && native.call(value)) return -1;
+  for (let index = 0; index < value.length; index++) {
+    const unit = value.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) index++; else return index;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return index;
+  }
+  return -1;
+}
 function string(value: unknown, path: string, max: number = LIMITS.text, allowEmpty = true): string {
   if (typeof value !== 'string' || value.length > max || (!allowEmpty && value.length === 0)) fail(`Expected ${allowEmpty ? 'a' : 'a nonempty'} string of at most ${max} characters.`, path);
+  const broken = loneSurrogateAt(value);
+  if (broken >= 0) fail('Text contains an unpaired surrogate (half of a character such as an emoji), so it is not valid Unicode.', path, `Fix the text where it was produced (for example, do not cut a string between the two halves of a character); the bad unit is at index ${broken}. It is refused, not replaced, so no text is changed behind your back.`);
   return value;
 }
 function id(value: unknown, path: string): string {

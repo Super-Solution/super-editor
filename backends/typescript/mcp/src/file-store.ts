@@ -28,7 +28,9 @@ export function readDocumentText(path: string): string {
       total += read; chunks.push(chunk.subarray(0, read));
       if (total > limit) throw new FileProblem(`${path} is larger than the ${limit} byte limit.`, 2);
     }
-    return Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/, '');
+    // Invalid UTF-8 is refused, not replaced with U+FFFD: a save would otherwise store the damage.
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)); }
+    catch { throw new FileProblem(`${path} is not valid UTF-8 text. Convert it to UTF-8 first; it is not repaired automatically.`, 2); }
   } catch (error) {
     if (error instanceof FileProblem) throw error;
     throw new FileProblem(`Cannot read ${path}.`);

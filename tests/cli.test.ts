@@ -451,3 +451,24 @@ test('a document path that never ends is refused at the size limit instead of be
   const { readDocumentText } = await import('../backends/typescript/mcp/src/file-store.js');
   assert.throws(() => readDocumentText('/dev/zero'), /larger than the \d+ byte limit/);
 });
+
+test('a file that is not valid UTF-8 is refused, never read with replacement characters', async () => {
+  const { directory, file } = await scratch();
+  try {
+    await run(['new', file, '--id', 'r', '--title', 'T']);
+    // "報告" in Big5 is two bytes per character and is not valid UTF-8.
+    const big5 = Buffer.from([0x7b, 0x22, 0x74, 0x22, 0x3a, 0x22, 0xb3, 0xf8, 0xa7, 0x69, 0x22, 0x7d]);
+    const legacy = join(directory, 'legacy.json');
+    await writeFile(legacy, big5);
+    await assert.rejects(readTextFile(legacy, 'Document'), (error: unknown) => error instanceof InputError && /not valid UTF-8/.test(error.message));
+    const { readDocumentText } = await import('../backends/typescript/mcp/src/file-store.js');
+    assert.throws(() => readDocumentText(legacy), /not valid UTF-8/);
+    // Valid UTF-8 (CJK, emoji, a byte-order mark) still reads exactly.
+    const good = join(directory, 'good.json');
+    await writeFile(good, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('{"t":"報告 😀"}', 'utf8')]));
+    assert.equal(await readTextFile(good, 'Document'), '{"t":"報告 😀"}');
+    assert.equal(readDocumentText(good), '{"t":"報告 😀"}');
+  } finally {
+    await cleanup(directory);
+  }
+});

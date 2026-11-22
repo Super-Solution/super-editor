@@ -429,3 +429,32 @@ test('clipText and the text previews never leave half of a surrogate pair', () =
   assert.ok(found.blocks[0]!.text.endsWith('…'));
   assert.equal(lone.test(found.blocks[0]!.text), false, 'the preview is well-formed Unicode');
 });
+
+test('an unpaired surrogate is refused with an explicit error, never replaced, while every valid character is accepted', () => {
+  // Valid text of every kind stays supported: astral emoji and rare ideographs (a surrogate pair), combining marks, RTL, ZWJ sequences, U+FFFD itself.
+  const valid = ['😀', '👨‍👩‍👧', '𠮷野家', 'é', 'مرحبا', 'a�b', '\u{10FFFF}'];
+  for (const text of valid) {
+    const document = createDocument({ id: 'u', title: `T ${text}` }, { now: () => at });
+    assert.equal(validateDocument({ ...document, title: text }).ok, true, text);
+  }
+  const document = createDocument({ id: 'u', title: 'T' }, { now: () => at });
+  for (const text of ['a\ud800b', '\udc00', 'x\ud83d', '\ude00\ud83d', 'ok 😀 then \ud83d']) {
+    const result = validateDocument({ ...document, title: text });
+    assert.equal(result.ok, false, JSON.stringify(text));
+    const issue = (result as { issues: { code: string; message: string; path?: string; hint?: string }[] }).issues[0]!;
+    assert.equal(issue.code, 'validation');
+    assert.equal(issue.path, 'document.title');
+    assert.match(issue.message, /unpaired surrogate/);
+    assert.match(issue.hint ?? '', /index \d+/, 'the position is reported so the bad data can be found');
+  }
+  // The refusal reaches every write path and leaves the document untouched.
+  const current = editor();
+  const before = current.getSnapshot();
+  bad(transaction(current, human).insert([b.paragraph('p1', 'broken \ud800 text')]).commit(), 'validation');
+  bad(transaction(current, human).setTitle('half \udc00').commit(), 'validation');
+  ok(transaction(current, human).insert([b.paragraph('p2', 'fine 😀')]).commit());
+  const replaced = transaction(current, human).replaceText('p2', 'fine', 'bad \ud83d').commit();
+  bad(replaced, 'validation');
+  assert.equal(JSON.stringify(current.getSnapshot().blocks.map(block => block.id)), '["p2"]');
+  assert.equal(current.getSnapshot().revision, before.revision + 1, 'only the valid insert was committed');
+});

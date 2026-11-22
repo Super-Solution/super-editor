@@ -5,9 +5,11 @@ package validation
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -64,6 +66,14 @@ func TestConformance(t *testing.T) {
 	}
 	for i, c := range data.Cases {
 		input, err := Decode(c.Input)
+		var lone *LoneSurrogateError
+		if errors.As(err, &lone) {
+			// The reference reports the unpaired half at the string's path; Go refuses it while decoding, before any path exists.
+			if c.Expect.OK || len(c.Expect.Issues) == 0 || !strings.Contains(c.Expect.Issues[0]["message"].(string), "unpaired surrogate") {
+				t.Errorf("case %d: refused an unpaired surrogate the reference accepts or words differently: %v", i, c.Expect)
+			}
+			continue
+		}
 		if err != nil {
 			t.Fatalf("case %d: %v", i, err)
 		}

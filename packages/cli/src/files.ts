@@ -8,6 +8,15 @@ import type { EditorIssue, ResearchDocument, Revision } from '@supersolutions/su
 
 /** A caller mistake: bad arguments or content. Exit code 2. */
 export class InputError extends Error {}
+
+/**
+ * Decodes UTF-8 and refuses bytes that are not valid UTF-8 (a Big5 or GBK file, a truncated write). A lenient decode would swap them
+ * for U+FFFD and the next save would store that damage; refusing keeps the bad data visible. A leading byte-order mark is dropped.
+ */
+export function decodeUtf8(bytes: Uint8Array, label: string): string {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { throw new InputError(`${label} is not valid UTF-8 text. Convert it to UTF-8 first; it is not guessed or repaired, so nothing is silently changed.`); }
+}
 /** The document or input is valid but a rule refused the change. */
 export class Refusal extends Error { constructor(message: string, readonly exitCode: 2 | 3 | 4) { super(message); } }
 
@@ -30,7 +39,7 @@ export async function readTextFile(path: string, label = 'File'): Promise<string
       total += bytesRead; chunks.push(chunk.subarray(0, bytesRead));
       if (total > limit) throw new InputError(`${label} is larger than the ${limit} byte limit: ${path}`);
     }
-    return Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/, '');
+    return decodeUtf8(Buffer.concat(chunks), `${label} ${path}`);
   } finally { await handle.close(); }
 }
 
