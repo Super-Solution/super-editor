@@ -14,6 +14,7 @@ import {
   type HostTheme,
   type ThemeToken,
 } from '@supersolutions/super-protocol';
+import { judgeServiceUrl, normalizeOrigins } from './service-policy.js';
 import { createEditorTools, type EditorToolTarget } from './tools.js';
 
 export type EditorChatPluginOptions = {
@@ -26,12 +27,16 @@ export type EditorChatPluginOptions = {
   /** Where a `service` reference is read from. Default: `${baseUrl}/documents/${documentId}/document`. */
   resolveServiceUrl?: (service: NonNullable<EditorCardSpec['service']>) => string;
   /**
-   * Extra request headers (authentication) for service reads. A card is content from the conversation, so its `baseUrl` is not
-   * trusted: when the URL comes from the card (no `resolveServiceUrl`), these headers are sent only to an origin listed in
-   * `allowedServiceOrigins`. A URL built by `resolveServiceUrl` is the host's own decision and always receives them.
+   * Extra request headers (authentication) for service reads. A card is content from the conversation, so the service address it
+   * names is not trusted and no setup is needed to be safe: the headers go only to an address on the page's own origin, to an origin
+   * in `allowedServiceOrigins`, or to a URL you build with `resolveServiceUrl`. Any other public `https` address is read anonymously.
    */
   headers?: () => Record<string, string> | Promise<Record<string, string>>;
-  /** Origins (for example `https://editor.example.com`) that may receive `headers` when the card names the service. Default: none. */
+  /**
+   * Optional. Extra origins (for example `https://editor.example.com`) a card may name: they receive `headers`, and may be plain `http` or
+   * a private address (an internal editor service, a local development server). Leave it out when the service is on the page's own origin
+   * or on a public `https` host. A value that is not an origin throws when the plugin is created.
+   */
   allowedServiceOrigins?: readonly string[];
   fetch?: typeof fetch;
   /** Who edits in the chat. Default `{ id: 'chat-user' }`; the kind is always human. */
@@ -96,6 +101,7 @@ function applyHostTheme(container: HTMLElement, theme: HostTheme): () => void {
 
 /** The chat plugin for `super-editor.document` cards and the tools an agent edits them with. License: GPL-3.0-or-later. */
 export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): ChatPlugin {
+  const allowedOrigins = normalizeOrigins(options.allowedServiceOrigins);
   const onScreen = new Map<string, EditorToolTarget>();
   const release = (id: string, target: EditorToolTarget): void => { if (onScreen.get(id) === target) onScreen.delete(id); };
   // A chat host may remount a card at any time (a finished turn does). The editor outlives the mount, so what the user and the
@@ -204,10 +210,14 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
 
       // A service reference is read-only: super-protocol rejects `mode: "edit"` with a service, and the plugin never writes to it.
       const service = spec.service!;
-      const url = (options.resolveServiceUrl ?? defaultServiceUrl)(service);
-      // Credentials go only where the host sent them on purpose: to a URL it built itself, or to an origin it listed.
-      let trusted = options.resolveServiceUrl !== undefined;
-      if (!trusted) { try { trusted = (options.allowedServiceOrigins ?? []).includes(new URL(url).origin); } catch { trusted = false; } }
+      // A URL the host builds itself (`resolveServiceUrl`) is the host's decision. One named by the card is judged first: see service-policy.ts.
+      let url: string, trusted: boolean, cardNamed = false;
+      if (options.resolveServiceUrl) { url = options.resolveServiceUrl(service); trusted = true; }
+      else {
+        const verdict = judgeServiceUrl(defaultServiceUrl(service), container.ownerDocument.defaultView?.location.href, allowedOrigins);
+        if (!verdict.allowed) return note(container, verdict.reason, 'alert');
+        url = verdict.url; trusted = verdict.credentials; cardNamed = true;
+      }
       const own = new AbortController();
       controller = own;
       note(container, text.loading);
@@ -215,7 +225,9 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
         try {
           const send = options.fetch ?? globalThis.fetch;
           const extra = options.headers && trusted ? await options.headers() : {};
-          const response = await send(url, { signal: own.signal, headers: { accept: 'application/json', ...extra } });
+          // A card-named address is requested without cookies or referrer unless it is the page's own origin or listed, and never follows a redirect elsewhere.
+          const guard: RequestInit = cardNamed ? { redirect: 'error', referrerPolicy: 'no-referrer', ...(trusted ? {} : { credentials: 'omit' as const }) } : {};
+          const response = await send(url, { ...guard, signal: own.signal, headers: { accept: 'application/json', ...extra } });
           if (!response.ok) throw new Error(`The editor service answered ${response.status}.`);
           const body = await readJson(response, LIMITS.json);
           if (destroyed || own.signal.aborted) return;

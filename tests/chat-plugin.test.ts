@@ -16,8 +16,8 @@ function report(text: string) {
 }
 const ctx = (over: Partial<CardMountContext> = {}): CardMountContext => ({ theme: 'light', ...over });
 const tick = () => new Promise((r) => setTimeout(r, 0));
-function host() {
-  const dom = new JSDOM('<!doctype html><body><div id="c"></div></body>', { pretendToBeVisual: true });
+function host(url?: string) {
+  const dom = new JSDOM('<!doctype html><body><div id="c"></div></body>', { pretendToBeVisual: true, ...(url ? { url } : {}) });
   return { dom, container: dom.window.document.getElementById('c') as HTMLElement };
 }
 const mountOf = (plugin = createEditorChatPlugin()) => plugin.mounts![EDITOR_CARD_KIND]!;
@@ -78,13 +78,12 @@ test('an invalid spec or document is reported inline instead of throwing', () =>
   dom.window.close();
 });
 
-test('a service reference is fetched with the host headers, shown read-only, and errors are reported', async () => {
-  const { container, dom } = host();
+test('a service reference on the page\'s own origin is fetched with the host headers, shown read-only, and errors are reported', async () => {
+  const { container, dom } = host('https://e.example.com/app');
   const calls: { url: string; headers: Record<string, string> }[] = [];
   const doc = report('From service');
   const plugin = createEditorChatPlugin({
     headers: () => ({ authorization: 'Bearer t' }),
-    allowedServiceOrigins: ['https://e.example.com'],
     fetch: (async (url: string, init: RequestInit) => {
       calls.push({ url, headers: init.headers as Record<string, string> });
       return url.includes('missing') ? new Response('nope', { status: 404 }) : Response.json(doc);
@@ -106,31 +105,82 @@ test('a service reference is fetched with the host headers, shown read-only, and
   dom.window.close();
 });
 
-test('host headers never go to an origin the card chose, and an oversized or non-JSON service answer is refused', async () => {
-  const { container, dom } = host();
+test('with no configuration a card cannot make the page send credentials anywhere but its own origin, or reach a private network', async () => {
+  const { container, dom } = host('https://app.example.com/chat');
+  const calls: { url: string; init: RequestInit }[] = [];
+  const plugin = createEditorChatPlugin({ headers: () => ({ authorization: 'Bearer secret' }), fetch: (async (url: string, init: RequestInit) => { calls.push({ url, init }); return Response.json(report('Fine')); }) as typeof fetch });
+  const handle = mountOf(plugin)(container, { kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://app.example.com/api', documentId: 'd' } }, ctx());
+  const show = async (baseUrl: string): Promise<string> => { handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl, documentId: 'd' } }, ctx()); await tick(); await tick(); return container.querySelector('[role="alert"]')?.textContent ?? ''; };
+  await tick(); await tick();
+  // The host's own origin gets the credential: it is the host's own server.
+  assert.equal((calls[0]?.init.headers as Record<string, string>).authorization, 'Bearer secret');
+  assert.equal(calls[0]?.url, 'https://app.example.com/api/documents/d/document');
+  assert.equal(await show('https://app.example.com/other'), '');
+  assert.equal((calls[1]?.init.headers as Record<string, string>).authorization, 'Bearer secret');
+  // Another public https host is read, but anonymously: no credential, no cookies, no referrer, no redirect.
+  assert.equal(await show('https://docs.example.net'), '');
+  const anonymous = calls[2]!;
+  assert.equal((anonymous.init.headers as Record<string, string>).authorization, undefined);
+  assert.equal(anonymous.init.credentials, 'omit');
+  assert.equal(anonymous.init.referrerPolicy, 'no-referrer');
+  assert.equal(anonymous.init.redirect, 'error');
+  // Everything that could be an internal target is refused before any request is made.
+  const before = calls.length;
+  for (const baseUrl of [
+    'http://docs.example.net', 'https://user:pw@docs.example.net', 'https://localhost:8080', 'https://app.localhost', 'http://127.0.0.1', 'https://127.0.0.1', 'https://[::1]', 'https://10.0.0.5', 'https://172.16.0.1', 'https://192.168.1.1',
+    'https://169.254.169.254', 'https://100.100.100.200', 'https://0.0.0.0', 'https://2130706433', 'https://0x7f.1', 'https://[::ffff:7f00:1]', 'https://[fd00:ec2::254]', 'https://[fe80::1]',
+    'https://metadata.google.internal', 'https://intranet', 'https://printer.local', 'ftp://docs.example.net', 'javascript:alert(1)', 'https://[2002:7f00:1::1]',
+  ]) {
+    const refused = await show(baseUrl);
+    assert.notEqual(refused, '', `${baseUrl} must be refused with a visible message`);
+    assert.match(refused, /editor service address|http\(s\) baseUrl/);
+  }
+  assert.equal(calls.length, before, 'no request was made for any refused address');
+  // Public addresses written in unusual but valid forms stay supported.
+  for (const baseUrl of ['https://docs.example.net:8443/base/', 'https://xn--fiq228c.example.net', 'https://[2606:4700::1111]', 'https://8.8.8.8']) assert.equal(await show(baseUrl), '', baseUrl);
+  handle.destroy();
+  dom.window.close();
+});
+
+test('allowedServiceOrigins is optional and only widens the rules for exactly the origins it names', async () => {
+  const { container, dom } = host('https://app.example.com/chat');
+  const calls: { url: string; headers: Record<string, string> }[] = [];
+  const plugin = createEditorChatPlugin({
+    headers: () => ({ authorization: 'Bearer secret' }),
+    allowedServiceOrigins: ['https://editor.example.com', 'http://localhost:8080/ignored-path'],
+    fetch: (async (url: string, init: RequestInit) => { calls.push({ url, headers: init.headers as Record<string, string> }); return Response.json(report('Fine')); }) as typeof fetch,
+  });
+  const handle = mountOf(plugin)(container, { kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://editor.example.com', documentId: 'd' } }, ctx());
+  const show = async (baseUrl: string): Promise<string> => { handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl, documentId: 'd' } }, ctx()); await tick(); await tick(); return container.querySelector('[role="alert"]')?.textContent ?? ''; };
+  await tick(); await tick();
+  assert.equal(calls[0]?.headers.authorization, 'Bearer secret', 'a listed origin gets the credential');
+  assert.equal(await show('http://localhost:8080'), '', 'a listed development or internal origin may be plain http or private');
+  assert.equal(calls[1]?.headers.authorization, 'Bearer secret');
+  assert.notEqual(await show('http://localhost:9090'), '', 'a different port is a different origin');
+  assert.equal(await show('https://editor.example.com.evil.net/'), '');
+  assert.equal(calls[2]?.headers.authorization, undefined, 'a look-alike host is not listed, so it stays anonymous');
+  assert.equal(await show('https://other.example.net'), '');
+  assert.equal(calls[3]?.headers.authorization, undefined, 'an unlisted public origin stays anonymous');
+  handle.destroy();
+  dom.window.close();
+  assert.throws(() => createEditorChatPlugin({ allowedServiceOrigins: ['editor.example.com'] }), /not an origin/, 'a typo is reported, not ignored');
+});
+
+test('a URL the host builds with resolveServiceUrl is the host\'s decision and gets the credential; oversized and non-JSON answers are refused', async () => {
+  const { container, dom } = host('https://app.example.com/chat');
   const calls: { url: string; headers: Record<string, string> }[] = [];
   let answer = (): Response => Response.json(report('Fine'));
-  const record = (url: string, init: RequestInit): Response => { calls.push({ url, headers: init.headers as Record<string, string> }); return answer(); };
-  const guarded = createEditorChatPlugin({ headers: () => ({ authorization: 'Bearer secret' }), allowedServiceOrigins: ['https://trusted.example.com'], fetch: (async (url: string, init: RequestInit) => record(url, init)) as typeof fetch });
-  const handle = mountOf(guarded)(container, { kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://attacker.example.net', documentId: 'd' } }, ctx());
+  const own = createEditorChatPlugin({ headers: () => ({ authorization: 'Bearer own' }), resolveServiceUrl: (service) => `https://internal.example.com/${service.documentId}`, fetch: (async (url: string, init: RequestInit) => { calls.push({ url, headers: init.headers as Record<string, string> }); return answer(); }) as typeof fetch });
+  const handle = mountOf(own)(container, { kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://attacker.example.net', documentId: 'mine' } }, ctx());
   await tick(); await tick();
-  assert.equal(calls[0]?.headers.authorization, undefined, 'the credential is not sent to an origin the card named');
-  handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://trusted.example.com', documentId: 'd' } }, ctx());
-  await tick(); await tick();
-  assert.equal(calls[1]?.headers.authorization, 'Bearer secret');
-  // A URL the host builds itself is the host's decision.
-  const own = createEditorChatPlugin({ headers: () => ({ authorization: 'Bearer own' }), resolveServiceUrl: (service) => `https://internal.example.com/${service.documentId}`, fetch: (async (url: string, init: RequestInit) => record(url, init)) as typeof fetch });
-  const second = mountOf(own)(host().container, { kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://attacker.example.net', documentId: 'mine' } }, ctx());
-  await tick(); await tick();
-  assert.equal(calls[2]?.url, 'https://internal.example.com/mine');
-  assert.equal(calls[2]?.headers.authorization, 'Bearer own');
-  second.destroy();
+  assert.equal(calls[0]?.url, 'https://internal.example.com/mine');
+  assert.equal(calls[0]?.headers.authorization, 'Bearer own');
   answer = () => new Response('x'.repeat(LIMITS.json + 1), { status: 200 });
-  handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://trusted.example.com', documentId: 'big' } }, ctx());
+  handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://attacker.example.net', documentId: 'big' } }, ctx());
   await tick(); await tick();
   assert.match(container.querySelector('[role="alert"]')?.textContent ?? '', /too large/);
   answer = () => new Response('<html>', { status: 200 });
-  handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://trusted.example.com', documentId: 'html' } }, ctx());
+  handle.update({ kind: EDITOR_CARD_KIND, service: { baseUrl: 'https://attacker.example.net', documentId: 'html' } }, ctx());
   await tick(); await tick();
   assert.match(container.querySelector('[role="alert"]')?.textContent ?? '', /JSON/);
   handle.destroy();
