@@ -2,9 +2,9 @@
 
 All notable changes to the eight `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
-## Unreleased
+## 0.6.0
 
-Release as a minor version (0.6.0). Document format unchanged (`schemaVersion: 1`): a new block type is added, nothing existing changes.
+A minor release: a new block type is added and nothing existing changes. Document format unchanged (`schemaVersion: 1`).
 
 ### A document can hold a chat plugin's card
 
