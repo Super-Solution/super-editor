@@ -3,17 +3,16 @@
 import { isContainerType } from './constants.js';
 import { withHints } from './issues.js';
 import { replaceInContent, runsOf } from './text.js';
-import type { Actor, ApplyResult, Block, Editor, EditorIssue, EditorOptions, Operation, ResearchDocument, Revision, Transaction } from './types.js';
-import { timestamp, validateDocument, validateHistoryRequest, validateTransaction } from './validation.js';
+import type { Actor, ApplyResult, Block, BlockContent, Editor, EditorIssue, EditorOptions, Operation, ResearchDocument, Revision, Transaction } from './types.js';
+import { rememberVerified, timestamp, validateDocument, validateHistoryRequest, validateTransaction } from './validation.js';
 
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T; }
-/** Structural equality of two JSON values (plain data from the validator). */
-function sameJson(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) return false;
-  if (Array.isArray(a)) return a.length === (b as unknown[]).length && a.every((entry, index) => sameJson(entry, (b as unknown[])[index]));
-  const left = a as Record<string, unknown>, right = b as Record<string, unknown>, keys = Object.keys(left);
-  return keys.length === Object.keys(right).length && keys.every(key => Object.hasOwn(right, key) && sameJson(left[key], right[key]));
+/**
+ * A working copy of a frozen snapshot. Blocks are copied one level (their own fields can be edited), while their contents stay
+ * the shared frozen objects: an operation that changes a block's content replaces it, never edits it in place.
+ */
+function workingCopy(document: ResearchDocument): ResearchDocument {
+  return { ...document, format: { ...document.format }, blocks: document.blocks.map(block => ({ ...block })), citations: [...document.citations], retiredBlockIds: [...document.retiredBlockIds] };
 }
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
@@ -54,6 +53,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
   if (!validated.ok) throw new TypeError(validated.issues[0]?.message ?? 'Invalid document.');
   const { now, historyLimit } = optionsReader(options);
   let snapshot = freeze(validated.value);
+  rememberVerified(snapshot);
   let versions = new Map(snapshot.blocks.map(block => [block.id, block.version]));
   const reserved = new Set([...snapshot.retiredBlockIds, ...snapshot.blocks.map(block => block.id)]);
   // Only the last successful apply retains its exact payload. Earlier IDs stay consumed for this session.
@@ -79,6 +79,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
   }
   function commit(next: ResearchDocument, revision: Revision, nextVersions: Map<string, number>): Extract<ApplyResult, { ok: true }> {
     snapshot = freeze(next);
+    rememberVerified(snapshot);
     versions = nextVersions;
     for (const block of next.blocks) reserved.add(block.id);
     for (const blockId of next.retiredBlockIds) reserved.add(blockId);
@@ -91,17 +92,6 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
     if (block.version !== expectedVersion) reject('conflict', 'Block changed; re-read before proposing another edit.', blockId, `Block "${blockId}" is now at version ${block.version} (you sent ${expectedVersion}). Re-read it and retry with expectedVersion ${block.version} if your edit still applies.`);
     return block;
   }
-  /**
-   * A block that may be changed in place. A candidate document shares the frozen blocks of the current snapshot, so the first write to one
-   * swaps in a private copy (blocks inserted by this transaction are already private). A commit then copies only what it touches.
-   */
-  function own(next: ResearchDocument, block: Block): Block {
-    if (!Object.isFrozen(block)) return block;
-    const copy = clone(block);
-    next.blocks[next.blocks.indexOf(block)] = copy;
-    return copy;
-  }
-  function ownBlockAt(next: ResearchDocument, blockId: string, expectedVersion: number): Block { return own(next, blockAt(next, blockId, expectedVersion)); }
   function parentExists(next: ResearchDocument, parentId: string | null): void {
     const found = parentId === null ? undefined : next.blocks.find(block => block.id === parentId);
     if (parentId !== null && !(found && isContainerType(found.content.type))) reject('validation', 'Parent must reference an existing section or toggle.', parentId, found ? `Block "${parentId}" is a ${found.content.type}; only section and toggle blocks can contain other blocks.` : `No block "${parentId}" exists. Insert the section or toggle first (earlier in the same batch is fine) or use parentId: null.`);
@@ -154,13 +144,9 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
     for (let index = 0; index < queue.length; index++) for (const child of children.get(queue[index]!) ?? []) if (!found.has(child)) { found.add(child); queue.push(child); }
     return found;
   }
-  function removeBlocks(next: ResearchDocument, ids: Set<string>, highWater: Map<string, number>): void {
+  function removeBlocks(next: ResearchDocument, ids: Set<string>, highWater: Map<string, number>, at: string): void {
     const retired = new Set(next.retiredBlockIds);
-    for (const block of next.blocks) if (ids.has(block.id)) {
-      // The block leaves the document, so only the version it takes with it matters (a reused ID can never go back to a lower one).
-      highWater.set(block.id, increment(Math.max(block.version, highWater.get(block.id) ?? 0), `Block ${block.id}`));
-      if (!retired.has(block.id)) { retired.add(block.id); next.retiredBlockIds.push(block.id); }
-    }
+    for (const block of next.blocks) if (ids.has(block.id)) { tick(block, highWater, at); if (!retired.has(block.id)) { retired.add(block.id); next.retiredBlockIds.push(block.id); } }
     next.blocks = next.blocks.filter(block => !ids.has(block.id));
   }
   function tick(block: Block, highWater: Map<string, number>, at: string): void {
@@ -177,13 +163,13 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
         put(next, block, operation.afterId); highWater.set(block.id, 1); pendingReserved.add(block.id); return;
       }
       case 'updateBlock': {
-        const block = ownBlockAt(next, operation.blockId, operation.expectedVersion);
+        const block = blockAt(next, operation.blockId, operation.expectedVersion);
         block.content = clone(operation.content);
         if (operation.citationIds !== undefined) block.citationIds = [...operation.citationIds];
         tick(block, highWater, at); return;
       }
       case 'moveBlock': {
-        const block = ownBlockAt(next, operation.blockId, operation.expectedVersion);
+        const block = blockAt(next, operation.blockId, operation.expectedVersion);
         // Validate destination before detaching; cycles are validated against the final atomic document.
         parentExists(next, operation.parentId);
         if (operation.parentId !== null && subtreeIds(next, [block.id]).has(operation.parentId)) reject('validation', 'A block cannot be moved into itself or its own descendant.', block.id, 'Choose a destination outside the moved subtree.');
@@ -191,7 +177,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
       }
       case 'deleteBlock': {
         blockAt(next, operation.blockId, operation.expectedVersion);
-        removeBlocks(next, subtreeIds(next, [operation.blockId]), highWater); return;
+        removeBlocks(next, subtreeIds(next, [operation.blockId]), highWater, at); return;
       }
       case 'setTitle': next.title = operation.title; return;
       case 'setFormat': next.format = clone(operation.format); return;
@@ -229,7 +215,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
         return;
       }
       case 'replaceText': {
-        const block = ownBlockAt(next, operation.blockId, operation.expectedVersion);
+        const block = blockAt(next, operation.blockId, operation.expectedVersion);
         const result = replaceInContent(block.content, { find: operation.find, replace: operation.replace, ...(operation.all === undefined ? {} : { all: operation.all }), ...(operation.caseSensitive === undefined ? {} : { caseSensitive: operation.caseSensitive }) });
         if (!result) reject('validation', `A ${block.content.type} block has no text to replace.`, block.id, 'Use updateBlock to change this block.');
         if (result.count === 0) reject('not-found', 'The text to replace was not found in the block.', block.id, `Matching ${operation.caseSensitive ? 'is' : 'is not'} case-sensitive. Read the block and copy the exact wording; a match cannot span separate list items or table cells.`);
@@ -237,11 +223,11 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
       }
       case 'deleteBlocks': {
         for (const ref of operation.blocks) blockAt(next, ref.blockId, ref.expectedVersion);
-        removeBlocks(next, subtreeIds(next, operation.blocks.map(ref => ref.blockId)), highWater); return;
+        removeBlocks(next, subtreeIds(next, operation.blocks.map(ref => ref.blockId)), highWater, at); return;
       }
       case 'moveBlocks': {
         const moving = new Set(operation.blocks.map(ref => ref.blockId));
-        const blocks = operation.blocks.map(ref => ownBlockAt(next, ref.blockId, ref.expectedVersion));
+        const blocks = operation.blocks.map(ref => blockAt(next, ref.blockId, ref.expectedVersion));
         if (operation.afterId != null && moving.has(operation.afterId)) reject('validation', 'afterId cannot be one of the moved blocks.', operation.afterId, 'Anchor on a block that stays in place, or omit afterId.');
         parentExists(next, operation.parentId);
         if (operation.parentId !== null && subtreeIds(next, [...moving]).has(operation.parentId)) reject('validation', 'A block cannot be moved into itself or its own descendant.', operation.parentId, 'Choose a destination outside the moved subtrees.');
@@ -259,16 +245,14 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
         if (index === -1) reject('not-found', 'Citation does not exist.', undefined, `No citation "${operation.citationId}". Read the document to list citation IDs.`);
         next.citations.splice(index, 1);
         // References are stripped, never left dangling: block-level IDs, inline markers, and marker-only runs.
-        for (const shared of next.blocks) {
-          if (!shared.citationIds.includes(operation.citationId) && !runsOf(shared.content)?.some(run => run.citationId === operation.citationId)) continue;
-          const block = own(next, shared);
+        for (const block of next.blocks) {
           let changed = false;
           if (block.citationIds.includes(operation.citationId)) { block.citationIds = block.citationIds.filter(entry => entry !== operation.citationId); changed = true; }
           const runs = runsOf(block.content);
           if (runs?.some(run => run.citationId === operation.citationId)) {
-            const kept = runs.filter(run => run.citationId !== operation.citationId || run.text !== '');
-            for (const run of kept) if (run.citationId === operation.citationId) delete run.citationId;
-            runs.splice(0, runs.length, ...kept); changed = true;
+            // Contents are shared and frozen: build the stripped runs and replace the content.
+            const kept = runs.filter(run => run.citationId !== operation.citationId || run.text !== '').map(run => { if (run.citationId !== operation.citationId) return run; const { citationId: _removed, ...rest } = run; return rest; });
+            block.content = { ...block.content, runs: kept } as BlockContent; changed = true;
           }
           if (changed) tick(block, highWater, at);
         }
@@ -294,18 +278,20 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
       if (stale && (transaction.baseRevision > snapshot.revision || transaction.conflictPolicy !== 'rebase-safe' || !transaction.operations.every(operation => operation.type === 'updateBlock' || operation.type === 'replaceText'))) reject('conflict', 'Document changed; re-read before proposing another edit.', undefined, transaction.baseRevision > snapshot.revision ? `baseRevision ${transaction.baseRevision} is ahead of the document (revision ${snapshot.revision}).` : `The document is at revision ${snapshot.revision} (you sent ${transaction.baseRevision}). Re-read it and retry with baseRevision ${snapshot.revision}. conflictPolicy "rebase-safe" only carries version-guarded updateBlock and replaceText operations over a stale revision.`);
       if (stale) for (const operation of transaction.operations) if (operation.type === 'updateBlock' && snapshot.blocks.find(block => block.id === operation.blockId)?.content.type !== operation.content.type) reject('conflict', 'Rebased updates must preserve the block content type.', operation.blockId, 'Re-read the block and propose the change against the current document revision.');
       const at = clock();
-      // Shallow candidate: blocks and citations are shared with the frozen snapshot until an operation copies the ones it changes.
-      const next: ResearchDocument = { ...snapshot, blocks: [...snapshot.blocks], citations: [...snapshot.citations], retiredBlockIds: [...snapshot.retiredBlockIds] };
+      const next = workingCopy(snapshot);
       const highWater = new Map(versions);
       const pendingReserved = new Set(reserved);
       for (const operation of transaction.operations) applyOperation(next, operation, highWater, at, pendingReserved);
       next.revision = increment(snapshot.revision, 'Document'); next.updatedAt = at;
+      // Every change to a block bumps its version, so a block still at its old version is the old (frozen, validated) block.
+      const before = new Map(snapshot.blocks.map(block => [block.id, block]));
+      next.blocks = next.blocks.map(block => { const original = before.get(block.id); return original && original.version === block.version ? original : block; });
       const final = validateDocument(next);
       if (!final.ok) return failure(final.issues);
       const revision: Revision = { number: next.revision, transactionId: transaction.id, actor: clone(transaction.actor), at, kind: 'apply', operations: clone(transaction.operations), ...(stale ? { rebasedFrom: transaction.baseRevision } : {}) };
-      const before = snapshot;
+      const previous = snapshot;
       committed = commit(final.value, revision, highWater);
-      if (historyLimit > 0) undoStack = [...undoStack, { before, after: snapshot, transaction: freeze(clone(transaction)) }].slice(-historyLimit);
+      if (historyLimit > 0) undoStack = [...undoStack, { before: previous, after: snapshot, transaction: freeze(clone(transaction)) }].slice(-historyLimit);
       redoStack = [];
       seen.add(transaction.id);
       lastApply = { id: transaction.id, fingerprint, result: committed };
@@ -326,9 +312,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
     let committed: Extract<ApplyResult, { ok: true }>;
     try {
       const at = clock();
-      // Shallow copies are enough: blocks are rewritten below, their frozen content is only ever replaced, and validation rebuilds the tree.
-      const source = kind === 'undo' ? entry.before : entry.after;
-      const target: ResearchDocument = { ...source, blocks: source.blocks.map(block => ({ ...block })), citations: [...source.citations], retiredBlockIds: [...source.retiredBlockIds] };
+      const target = workingCopy(kind === 'undo' ? entry.before : entry.after);
       const highWater = new Map(versions);
       const currentById = new Map(snapshot.blocks.map(block => [block.id, block]));
       const targetIds = new Set(target.blocks.map(block => block.id));
@@ -343,8 +327,10 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
       // History never copies old versions back: all restored blocks receive their current high-water version.
       for (const block of target.blocks) {
         const current = currentById.get(block.id);
+        const currentContent = current ? JSON.stringify({ parentId: current.parentId, content: current.content, citationIds: current.citationIds }) : undefined;
+        const nextContent = JSON.stringify({ parentId: block.parentId, content: block.content, citationIds: block.citationIds });
         const reordered = current && currentPredecessors.get(block.id) !== targetPredecessors.get(block.id);
-        if (!current || current.parentId !== block.parentId || !sameJson(current.content, block.content) || !sameJson(current.citationIds, block.citationIds) || reordered) tick(block, highWater, at);
+        if (!current || currentContent !== nextContent || reordered) tick(block, highWater, at);
         else { block.version = current.version; block.updatedAt = current.updatedAt; }
       }
       target.retiredBlockIds = [...retired]; target.revision = increment(snapshot.revision, 'Document'); target.updatedAt = at;

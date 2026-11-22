@@ -275,8 +275,8 @@ test('responsive layout: narrow widths relayout with fewer ticks and thinned lab
 
 test('colors: palette resolves per mode and theme, and only safe colors pass', () => {
   const css = createPaint(), fixed = createPaint({ mode: 'static', theme: 'dark' });
-  assert.match(css.series(0), /^var\(--se-series-1, #2563eb\)$/);
-  assert.equal(fixed.series(0), '#60a5fa');
+  assert.match(css.series(0), /^var\(--se-series-1, #6c4af2\)$/);
+  assert.equal(fixed.series(0), '#9379ff');
   assert.equal(css.series(10), css.series(0), 'the palette wraps');
   assert.equal(css.series(1, '#abcdef'), '#abcdef');
   assert.match(css.series(1, 'url(javascript:alert(1))'), /var\(--se-series-2/);
@@ -318,9 +318,9 @@ test('exported SVG is self-contained: resolved colors, title, legend and provena
   assert.match(light.svg, /Source: OKX daily candles/);
   assert.match(light.svg, /As of: 2026-10-05/);
   assert.match(light.svg, />ETH</);
-  assert.match(light.svg, /#2563eb/);
+  assert.match(light.svg, /#6c4af2/);
   const dark = chartToSvg(spec, { theme: 'dark', hidden: new Set(['1']) });
-  assert.match(dark.svg, /#60a5fa/); assert.match(dark.svg, /fill="#15181d"/);
+  assert.match(dark.svg, /#9379ff/); assert.match(dark.svg, /fill="#17171a"/);
   assert.match(dark.svg, /text-decoration="line-through"/, 'hidden series are struck through in the legend');
   assert.ok(dark.height > 200);
   const failed = chartToSvg(base({ kind: 'sankey' }));
@@ -427,11 +427,25 @@ test('heat-map labels follow the colors a page really uses (host palettes, dark 
   const darkPage = { heatMid: '#1c2026', heatPos: '#60a5fa', heatNeg: '#fb923c' };
   const near = heatCells(layoutChart(heatSpec([[-1, -.05, 0, .05, 1]]), { width: 640, paint: createPaint({ colors: darkPage }) }));
   assert.deepEqual(near.map(inkOf), ['dark', 'light', 'light', 'light', 'dark']);
-  assert.match(near[2]!.fill, /^color-mix\(in srgb, var\(--se-heat-high, #2563eb\) 0%, var\(--se-heat-mid, #f8fafc\)\)$/);
+  assert.match(near[2]!.fill, /^color-mix\(in srgb, var\(--se-heat-high, #6c4af2\) 0%, var\(--se-heat-mid, #f2f2f4\)\)$/);
   // Without live colors the built-in light palette is assumed, which is what the markup of a server render uses.
   assert.deepEqual(heatCells(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640 })).map(inkOf), ['dark', 'dark', 'light']);
   // For paper: print.css swaps in the light palette whatever the screen shows, so each label also says which ink suits those cells.
   const printed = leaves(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640, paint: createPaint({ colors: darkPage }) }).scene).filter((node) => node.attrs['data-print-ink'] !== undefined);
   assert.deepEqual(printed.map((node) => node.attrs['data-print-ink']), ['dark', 'dark', 'light']);
   assert.equal(leaves(layoutChart(heatSpec([[-1, 0, 1]]), { width: 640, paint: createPaint({ mode: 'static' }) }).scene).filter((node) => node.attrs['data-print-ink'] !== undefined).length, 0, 'not in exports');
+});
+
+test('series colors reach 3:1 (WCAG 1.4.11) against the page surface, except the three light slots the design system documents, and the CSS tokens match the palette', async () => {
+  const { seriesHex, tokenFallbacks, contrastRatio } = await import('../packages/ui/src/charts/palette.js');
+  const { readFileSync } = await import('node:fs');
+  for (const theme of ['light', 'dark'] as const) {
+    // Light slots 2, 5 and 6 (green, amber, pink) are the validated palette's relief slots: between 2:1 and 3:1 on white, so a legend, the
+    // data table or direct labels carry identity there, never colour alone. Everything else, and all of dark, clears 3:1.
+    const relief = theme === 'light' ? new Set([1, 4, 5]) : new Set<number>();
+    seriesHex[theme].forEach((color, index) => assert.ok(contrastRatio(color, tokenFallbacks.surface[theme]) >= (relief.has(index) ? 2 : 3), `${theme} series ${index + 1} ${color}`));
+  }
+  const css = readFileSync(new URL('../packages/ui/src/styles/tokens.css', import.meta.url), 'utf8');
+  const light = [...css.slice(css.indexOf(':where(:root'), css.indexOf('[data-se-theme="dark"], .se-theme-dark')).matchAll(/--se-series-(\d+): (#[0-9a-f]{6})/g)].map((match) => match[2]);
+  assert.deepEqual(light, [...seriesHex.light]);
 });

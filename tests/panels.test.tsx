@@ -332,7 +332,7 @@ test('DocumentHeader edits the title through setTitle, reverts on Escape and sta
     const results: boolean[] = [], titles: string[] = [];
     const Header = (props: Partial<Parameters<typeof DocumentHeader>[0]> = {}): ReactNode => <DocumentHeader document={editor.getSnapshot()} editor={editor} onResult={(result) => results.push(result.ok)} onTitleChange={(title) => titles.push(title)} now={Date.parse(at) + 120_000} {...props} />;
     await h.render(<Header />);
-    const input = must<HTMLInputElement>(h.container, 'h1 input');
+    const input = must<HTMLTextAreaElement>(h.container, 'h1 textarea');
     assert.equal(input.value, 'Every block'); assert.equal(input.getAttribute('aria-label'), 'Document title'); assert.equal(input.maxLength, 1000);
     assert.match(text(h.container, '.se-doc-meta'), /Revision \d+.*Updated 2 minutes ago.*\d+ words/);
     await act(async () => { input.focus(); });
@@ -343,24 +343,24 @@ test('DocumentHeader edits the title through setTitle, reverts on Escape and sta
     const revision = editor.getRevisions().at(-1)!;
     assert.deepEqual(revision.operations, [{ type: 'setTitle', title: 'A better title' }]); assert.equal(revision.actor.kind, 'human');
     await h.render(<Header />);
-    assert.equal(must<HTMLInputElement>(h.container, 'h1 input').value, 'A better title', 'follows the document');
+    assert.equal(must<HTMLTextAreaElement>(h.container, 'h1 textarea').value, 'A better title', 'follows the document');
     // Escape reverts the draft.
-    const again = must<HTMLInputElement>(h.container, 'h1 input');
+    const again = must<HTMLTextAreaElement>(h.container, 'h1 textarea');
     await act(async () => { again.focus(); });
     await h.type(again, 'Throwaway');
     await keydown(h, again, { key: 'Escape' });
-    assert.equal(must<HTMLInputElement>(h.container, 'h1 input').value, 'A better title'); assert.equal(editor.getSnapshot().title, 'A better title');
+    assert.equal(must<HTMLTextAreaElement>(h.container, 'h1 textarea').value, 'A better title'); assert.equal(editor.getSnapshot().title, 'A better title');
     // An empty or unchanged title is ignored.
     await act(async () => { again.focus(); });
     await h.type(again, '   '); await act(async () => { again.blur(); });
-    assert.equal(editor.getSnapshot().title, 'A better title'); assert.equal(must<HTMLInputElement>(h.container, 'h1 input').value, 'A better title');
+    assert.equal(editor.getSnapshot().title, 'A better title'); assert.equal(must<HTMLTextAreaElement>(h.container, 'h1 textarea').value, 'A better title');
     // Read-only renders a plain heading.
     await h.render(<Header editable={false} meta={<span className="extra">Equity</span>} actions={<button type="button">Export</button>} />);
     assert.equal(h.container.querySelector('input'), null); assert.equal(text(h.container, 'h1'), 'A better title');
     assert.equal(text(h.container, '.extra'), 'Equity'); assert.equal(text(h.container, '.se-doc-actions button'), 'Export');
     // Without an editor the host decides what to do.
     await h.render(<DocumentHeader document={editor.getSnapshot()} onTitleChange={(title) => titles.push(title)} />);
-    const loose = must<HTMLInputElement>(h.container, 'h1 input');
+    const loose = must<HTMLTextAreaElement>(h.container, 'h1 textarea');
     await act(async () => { loose.focus(); }); await h.type(loose, 'Host saved'); await act(async () => { loose.blur(); });
     assert.equal(titles.at(-1), 'Host saved'); assert.equal(editor.getSnapshot().title, 'A better title');
     await h.render(<DocumentHeader document={editor.getSnapshot()} />);
@@ -412,4 +412,19 @@ test('panels render on the server without a DOM', () => {
   </>);
   for (const marker of ['se-outline', 'se-status-bar', 'se-doc-header', 'se-history', 'se-skeleton-document', 'se-empty-state']) assert.ok(html.includes(marker), marker);
   assert.equal(manyParagraphs(2).getSnapshot().blocks.length, 2);
+});
+
+test("every React module that uses React at runtime starts with 'use client' so Next.js App Router can import it from a server component", async () => {
+  const { readdirSync, readFileSync, statSync } = await import('node:fs');
+  const root = new URL('../packages/bindings/react/src/', import.meta.url);
+  const files: URL[] = [];
+  const walk = (dir: URL): void => { for (const name of readdirSync(dir)) { const child = new URL(name + (statSync(new URL(name, dir)).isDirectory() ? '/' : ''), dir); if (name.endsWith('/')) continue; if (statSync(child).isDirectory()) walk(child); else if (/\.tsx?$/.test(name)) files.push(child); } };
+  walk(root);
+  assert.ok(files.length > 20);
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    if (!/^import (?!type)[^\n]*from 'react';/m.test(source)) continue;
+    const code = source.split('\n').filter((line) => line.trim() && !line.startsWith('//'))[0];
+    assert.equal(code, "'use client';", file.pathname);
+  }
 });

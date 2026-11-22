@@ -2,16 +2,18 @@ import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Editor } from '@supersolutions/super-editor-core';
 import { AGENT, SCENARIOS, createAgent, type Scenario, type Step } from './agent.js';
+import { Icon } from './ui.js';
 
 type Run = { key: number; label: string; steps: Step[] };
 
 function StepView({ step }: { step: Step }): ReactNode {
   const { outcome } = step;
-  return <li className="log-step" data-ok={outcome.ok} data-actor={step.actor}>
+  const state = !outcome.ok ? 'refused' : outcome.dryRun ? 'dry' : 'done';
+  return <li className="log-step" data-state={state} data-ok={outcome.ok} data-actor={step.actor}>
     <div className="log-head">
       <span className="se-badge" data-kind={step.actor}>{step.actor === 'agent' ? 'Agent' : 'Person'}</span>
       <code>{step.action}</code>
-      <span className="log-status">{outcome.ok ? outcome.dryRun ? 'dry run' : `ok · revision ${outcome.revision}` : 'refused'}</span>
+      <span className="log-status"><Icon name={state === 'refused' ? 'alert' : state === 'dry' ? 'preview' : 'check'} />{outcome.ok ? outcome.dryRun ? 'Dry run' : `Applied, revision ${outcome.revision}` : 'Refused'}</span>
     </div>
     <p className="log-note">{step.note}</p>
     {outcome.ok ? <p className="log-result">{outcome.dryRun ? 'Would have: ' : ''}{outcome.summary}</p>

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { attachInteraction, createInteraction, formatShortcut, groupSlashItems, indicatorFor } from '@supersolutions/super-editor-ui';
 import type { DropIndicator, DropTarget, Interaction, InteractionOptions, ShortcutInfo, SlashGroup, SlashItem, SlashState, SurfaceBinding, SurfaceOptions } from '@supersolutions/super-editor-ui';

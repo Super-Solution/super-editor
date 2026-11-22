@@ -1,12 +1,12 @@
 {
   "name": "@supersolutions/super-editor-ui",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Composable DOM research report renderer",
   "license": "GPL-3.0-or-later",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
+  "sideEffects": [
+    "./dist/styles.css"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Super-Solution/super-editor.git",
@@ -40,7 +40,7 @@
     "tag": "latest"
   },
   "dependencies": {
-    "@supersolutions/super-editor-core": "0.1.0"
+    "@supersolutions/super-editor-core": "0.4.0"
   },
   "author": "SUPER SOLUTION LABS INC"
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { useMemo, useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { diffDocuments, summarizeRevision } from '@supersolutions/super-editor-core';

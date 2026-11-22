@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getOutline, safeUrl } from '@supersolutions/super-editor-core';
 import type { Block, BlockContent, OutlineItem } from '@supersolutions/super-editor-core';
-import { allowedEmbedUrl, embedHeight, imageModel, listModel, metricModels, revealBlock, TONE_ICONS, tableModel, template } from '@supersolutions/super-editor-ui';
+import { allowedEmbedUrl, embedHeight, formatInstant, imageModel, listModel, metricModels, revealBlock, TONE_ICONS, tableModel, template } from '@supersolutions/super-editor-ui';
 import type { ListItemNode } from '@supersolutions/super-editor-ui';
 import { ChartView } from './chart.js';
 import { HighlightedText, Runs } from './runs.js';
@@ -145,7 +146,7 @@ export function DefaultBlockView({ block, context, children }: { block: Block; c
       return renderer?.(content.spec, context) ?? <ChartView spec={content.spec} actions={context.options.chartActions !== false} {...(context.options.locale ? { locale: context.options.locale } : {})} {...(context.options.exportTheme ? { exportTheme: context.options.exportTheme } : {})} />;
     }
     case 'embed': return <EmbedView content={content} context={context} />;
-    case 'timestamp': return <time className="se-timestamp" dateTime={content.at}>{content.label}: {content.at}</time>;
+    case 'timestamp': { const text = formatInstant(content.at, context.options.locale, context.options.timeZone); return <time className="se-timestamp" dateTime={content.at} {...(text !== content.at ? { title: content.at } : {})}>{content.label}: {text}</time>; }
     case 'quote': return <blockquote className="se-quote"><p><Runs runs={content.runs} report={report} labels={labels} options={context.options} block={block} /></p>{content.attribution ? <footer>— <cite>{content.attribution}</cite></footer> : null}</blockquote>;
     case 'callout': return <div className="se-callout" data-tone={content.tone} role="note" aria-label={labels.blocks.toneNames[content.tone]}>
       <svg className="se-callout-icon" viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={TONE_ICONS[content.tone]} /></svg>

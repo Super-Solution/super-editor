@@ -20,8 +20,22 @@ export function safeLink(document: Document, url: string, label: string, unsafeL
   link.href = safe; link.target = '_blank'; link.rel = 'noopener noreferrer';
   return link;
 }
-export function timeElement(document: Document, at: string, label?: string): HTMLElement {
-  const node = element(document, 'time', label ? `${label}: ${at}` : at);
+/**
+ * An instant for people. Without a `locale` or `timeZone` the ISO text is returned unchanged (the default output of every release);
+ * with either, it is formatted by `Intl.DateTimeFormat` (medium date, short time) and falls back to the ISO text for a value or
+ * time zone the platform rejects.
+ */
+export function formatInstant(at: string, locale?: string, timeZone?: string): string {
+  if (!locale && !timeZone) return at;
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return at;
+  try { return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', ...(timeZone ? { timeZone } : {}) }).format(date); }
+  catch { return at; }
+}
+export function timeElement(document: Document, at: string, label?: string, locale?: string, timeZone?: string): HTMLElement {
+  const text = formatInstant(at, locale, timeZone);
+  const node = element(document, 'time', label ? `${label}: ${text}` : text);
+  if (text !== at) node.title = at;
   node.dateTime = at;
   return node;
 }

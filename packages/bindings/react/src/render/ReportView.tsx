@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
 import { Component, memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, MutableRefObject } from 'react';
 import type { Block, Citation, ResearchDocument } from '@supersolutions/super-editor-core';
 import { blockText } from '@supersolutions/super-editor-core';
-import { citationsKey, hostOf, outlineKey, renderRoots, template, dependsOnDocument, VIRTUALIZE_THRESHOLD } from '@supersolutions/super-editor-ui';
+import { citationsKey, formatInstant, hostOf, outlineKey, renderRoots, template, dependsOnDocument, VIRTUALIZE_THRESHOLD } from '@supersolutions/super-editor-ui';
 import type { Labels } from '@supersolutions/super-editor-ui';
 import { DefaultBlockView, SafeLink } from './blocks.js';
 import { LabelsContext, useResolvedLabels } from './context.js';
@@ -138,12 +139,12 @@ export function ReportView(props: ReportViewProps): ReactNode {
   contextRef.current = context;
 
   // Everything that changes how *every* block renders bumps the epoch; per-block facts live in each block's memo key.
-  const epochRef = useRef({ epoch: 0, blockRenderers: props.blockRenderers, chartRenderers: props.chartRenderers, renderBlockActions: props.renderBlockActions, labels, embed: '', locale: props.locale, chartActions: props.chartActions, todo: !!props.onToggleTodo, exportTheme: props.exportTheme, memoize: props.memoize, reportId: report.id });
+  const epochRef = useRef({ epoch: 0, blockRenderers: props.blockRenderers, chartRenderers: props.chartRenderers, renderBlockActions: props.renderBlockActions, labels, embed: '', locale: props.locale, timeZone: props.timeZone, chartActions: props.chartActions, todo: !!props.onToggleTodo, exportTheme: props.exportTheme, memoize: props.memoize, reportId: report.id });
   const embedKey = props.embedPolicy ? JSON.stringify(props.embedPolicy) : '';
   const previous = epochRef.current;
   if (!shallowSame(previous.blockRenderers, props.blockRenderers) || !shallowSame(previous.chartRenderers, props.chartRenderers) || previous.renderBlockActions !== props.renderBlockActions || previous.labels !== labels
-    || previous.embed !== embedKey || previous.locale !== props.locale || previous.chartActions !== props.chartActions || previous.todo !== !!props.onToggleTodo || previous.exportTheme !== props.exportTheme || previous.reportId !== report.id || props.memoize === false) {
-    epochRef.current = { epoch: previous.epoch + 1, blockRenderers: props.blockRenderers, chartRenderers: props.chartRenderers, renderBlockActions: props.renderBlockActions, labels, embed: embedKey, locale: props.locale, chartActions: props.chartActions, todo: !!props.onToggleTodo, exportTheme: props.exportTheme, memoize: props.memoize, reportId: report.id };
+    || previous.embed !== embedKey || previous.locale !== props.locale || previous.timeZone !== props.timeZone || previous.chartActions !== props.chartActions || previous.todo !== !!props.onToggleTodo || previous.exportTheme !== props.exportTheme || previous.reportId !== report.id || props.memoize === false) {
+    epochRef.current = { epoch: previous.epoch + 1, blockRenderers: props.blockRenderers, chartRenderers: props.chartRenderers, renderBlockActions: props.renderBlockActions, labels, embed: embedKey, locale: props.locale, timeZone: props.timeZone, chartActions: props.chartActions, todo: !!props.onToggleTodo, exportTheme: props.exportTheme, memoize: props.memoize, reportId: report.id };
   }
   const epoch = epochRef.current.epoch;
 
@@ -172,7 +173,7 @@ export function ReportView(props: ReportViewProps): ReactNode {
       {props.showHeader === false ? <h1 className="se-sr" id={titleId}>{report.title || labels.document.untitled}</h1>
         : props.header ?? <header className="se-header">
           <h1 id={titleId}>{report.title || labels.document.untitled}</h1>
-          <p className="super-editor-metadata">{template(labels.document.revision, { revision: report.revision })} · <time dateTime={report.updatedAt}>{labels.document.updated}: {report.updatedAt}</time></p>
+          <p className="super-editor-metadata">{template(labels.document.revision, { revision: report.revision })} · <time dateTime={report.updatedAt} {...(props.locale || props.timeZone ? { title: report.updatedAt } : {})}>{labels.document.updated}: {formatInstant(report.updatedAt, props.locale, props.timeZone)}</time></p>
         </header>}
       {props.loading ? <DocumentSkeleton /> : <>
         {top.length === 0 && props.emptyState !== false ? props.emptyState ?? <p className="se-empty-note">{labels.document.empty}</p> : null}

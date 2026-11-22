@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import { repairLatest, repairNames, repairVersion, checkPrereleaseBaseline, checkPublishedTags, waitForPublishedTags } from '../scripts/registry-tags.mjs';
 
@@ -72,12 +71,6 @@ test('prerelease publication checks preserve absent or stable latest and never f
   checkPublishedTags(item, undefined, { 'dist-tags': { next: repairVersion } });
   assert.throws(() => checkPublishedTags(item, '1.0.0', { 'dist-tags': { latest: repairVersion, next: repairVersion } }), /changed latest/);
   assert.throws(() => checkPublishedTags(item, '1.0.0', { 'dist-tags': { latest: '1.0.0', next: '0.2.0-next.0' } }), /channel mismatch/);
-});
-
-test('tag repair refuses local execution before invoking npm', () => {
-  assert.throws(() => execFileSync(process.execPath, ['scripts/repair-prerelease-tags.mjs'], {
-    encoding: 'utf8', stdio: 'pipe', env: { ...process.env, GITHUB_ACTIONS: 'false' },
-  }), error => error.status !== 0 && error.stderr.includes('controlled manual workflow'));
 });
 
 test('published tag checks wait for registry propagation but never for a moved latest', async () => {

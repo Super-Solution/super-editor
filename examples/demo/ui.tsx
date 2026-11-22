@@ -12,6 +12,9 @@ const PATHS = {
   tight: <path d="M3 2.5h10M3 5.25h10M3 8h10M3 10.75h10M3 13.5h10" />,
   close: <path d="M4 4l8 8M12 4l-8 8" />,
   chevron: <path d="M4 6l4 4 4-4" />,
+  check: <path d="M3.5 8.5l3 3 6-7" />,
+  alert: <><path d="M8 2.5l6.2 11H1.8L8 2.5z" /><path d="M8 6.8v3M8 11.7v.01" /></>,
+  preview: <><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" /><circle cx="8" cy="8" r="1.8" /></>,
 };
 export type IconName = keyof typeof PATHS;
 export function Icon({ name }: { name: IconName }): ReactNode {

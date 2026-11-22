@@ -10,7 +10,8 @@ export type DiffMarks = { added?: Iterable<string>; changed?: Iterable<string>; 
 /** Highlights text matches in the rendered blocks. `activeBlockId` marks the current match. */
 export type FindHighlight = { query: string; caseSensitive?: boolean; activeBlockId?: string | null };
 export type Density = 'compact' | 'comfortable' | 'spacious';
-export type ThemeName = 'light' | 'dark' | 'auto';
+/** `host` follows the page's own switch (an ancestor with class `dark`, `data-theme="dark"` and similar); see tokens.css. */
+export type ThemeName = 'light' | 'dark' | 'auto' | 'host';
 
 /** Options shared by the DOM and React renderers (all optional). */
 export type SharedRenderOptions = {
@@ -19,6 +20,8 @@ export type SharedRenderOptions = {
   /** Any subset of the UI strings; the rest stay English. */
   labels?: PartialLabels | undefined;
   locale?: string | undefined;
+  /** IANA time zone (for example `Asia/Taipei`) for timestamps and the "updated" time. With `locale` or this set they are formatted for people; with neither they stay ISO text. */
+  timeZone?: string | undefined;
   /** Called when a reader opens or closes a toggle. The view updates itself either way. */
   onToggle?: ((block: Block, open: boolean) => void) | undefined;
   /** When set, to-do checkboxes become interactive and report the new state. */
