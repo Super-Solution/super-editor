@@ -771,6 +771,42 @@
           "type": "object",
           "properties": {
             "type": {
+              "const": "card"
+            },
+            "kind": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+              "description": "A card kind a chat plugin registered, for example super.plot or super-chart.chart."
+            },
+            "spec": {
+              "type": "object",
+              "description": "The card kind's own spec (JSON, at most 32 levels deep and 100000 values)."
+            },
+            "alt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "description": "What the card shows, in words. Shown when the card cannot be drawn, in print and in Markdown."
+            },
+            "title": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "type",
+            "kind",
+            "spec",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
               "const": "timestamp"
             },
             "at": {

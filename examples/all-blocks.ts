@@ -67,6 +67,7 @@ export function createAllBlocksExample(): Editor {
     b.section('media', 'Media and structure'),
     b.image('image', 'https://example.com/images/sample-chart.png', 'A sample chart image', { parentId: 'media', caption: 'Figure 1: an image block (HTTPS only).', width: 'wide' }),
     b.embed('embed', 'https://example.com/superchart/sample', 'Embedded chart slot', { parentId: 'media', height: 400 }),
+    b.card('price-card', 'super-chart.chart', { symbol: { ticker: 'BTC-USD' }, period: { multiplier: 1, timespan: 'day', text: '1D' }, feed: { id: 'BTC-USD' } }, 'BTC daily price, drawn live by the Super Chart card when the host provides it.', { parentId: 'media', title: 'BTC daily' }),
     b.timestamp('asof', at, 'Data as of', { parentId: 'media' }),
     b.toggle('details', 'Details (a toggle holds blocks)', { parentId: 'media', open: true }),
     b.paragraph('details-text', 'A toggle is a container, like a section.', { parentId: 'details' }),

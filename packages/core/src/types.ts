@@ -30,6 +30,9 @@ export type ChartSpec = {
   /** Heatmap data. `labels`/`series` still carry a row-by-row fallback. */
   matrix?: { rows: string[]; columns: string[]; values: number[][] };
 };
+/** Any JSON value. Numbers are finite; objects are plain. */
+export type JsonValue = null | boolean | number | string | JsonValue[] | JsonObject;
+export type JsonObject = { [key: string]: JsonValue };
 export type CalloutTone = 'info' | 'success' | 'warning' | 'danger' | 'note';
 export type BlockContent =
   | { type: 'section'; title: string }
@@ -50,7 +53,13 @@ export type BlockContent =
   | { type: 'toggle'; title: string; open: boolean }
   | { type: 'metrics'; items: { label: string; value: string; change?: number; tone?: 'up' | 'down' | 'neutral'; hint?: string }[] }
   | { type: 'toc' }
-  | { type: 'pageBreak' };
+  | { type: 'pageBreak' }
+  /**
+   * A card from a chat plugin (a Super Chart chart, a Super Plot figure, …), drawn by that card kind's mount with placement
+   * `document`. `spec` is the card's own spec; `alt` says in words what it shows and is what print, Markdown, text and any
+   * host without the mount show instead.
+   */
+  | { type: 'card'; kind: string; spec: JsonObject; alt: string; title?: string };
 export type BlockType = BlockContent['type'];
 export type BlockInput = {
   id: string; parentId: string | null; content: BlockContent; citationIds: string[];

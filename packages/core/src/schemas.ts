@@ -58,6 +58,11 @@ const contentSchema: Schema = { anyOf: [
   }, ['type', 'columns', 'rows']),
   object({ type: { const: 'chart' }, spec: ref('chart') }, ['type', 'spec']),
   object({ type: { const: 'embed' }, provider: { const: 'superchart' }, url: httpsUrlSchema, title: titleSchema, height: { type: 'integer', minimum: 200, maximum: 1200 } }, ['type', 'provider', 'url', 'title']),
+  object({
+    type: { const: 'card' }, kind: { type: 'string', minLength: 1, maxLength: 100, pattern: '^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$', description: 'A card kind a chat plugin registered, for example super.plot or super-chart.chart.' },
+    spec: { type: 'object', description: 'The card kind\'s own spec (JSON, at most 32 levels deep and 100000 values).' },
+    alt: { ...nonEmpty(2000), description: 'What the card shows, in words. Shown when the card cannot be drawn, in print and in Markdown.' }, title: titleSchema,
+  }, ['type', 'kind', 'spec', 'alt']),
   object({ type: { const: 'timestamp' }, at: timestampSchema, label: titleSchema }, ['type', 'at', 'label']),
   object({ type: { const: 'quote' }, runs: runsSchema, attribution: titleSchema }, ['type', 'runs']),
   object({ type: { const: 'callout' }, tone: { enum: [...CALLOUT_TONES] }, title: titleSchema, runs: runsSchema }, ['type', 'tone', 'runs']),

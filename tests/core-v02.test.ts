@@ -39,6 +39,7 @@ const everyBlock: BlockContent[] = [
   { type: 'list', ordered: false, items: ['a', 'b', 'c'], style: 'todo', checked: [true, false, false], indent: [0, 1, 3] },
   { type: 'table', columns: ['Asset', 'Weight'], rows: [['BTC', '40%']], align: ['left', 'right'], caption: 'Allocation', headerColumn: true },
   { type: 'chart', spec: line }, { type: 'embed', provider: 'superchart', url: 'https://charts.example.org/1', title: 'Chart', height: 480 },
+  { type: 'card', kind: 'super.plot', spec: { spec: { marks: [{ type: 'line', x: [1, 2], y: [3, 4] }] }, alt: 'Rose from 3 to 4.' }, alt: 'Rose from 3 to 4.', title: 'Trend' },
   { type: 'timestamp', at, label: 'As of' }, { type: 'quote', runs: [{ text: 'Quote' }], attribution: 'Someone' },
   { type: 'callout', tone: 'warning', title: 'Careful', runs: [{ text: 'Data is delayed.' }] },
   { type: 'code', language: 'ts', text: 'const a = 1;' }, { type: 'divider' },

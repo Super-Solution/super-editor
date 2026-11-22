@@ -1034,7 +1034,7 @@ func fromValidation(issues []validation.Issue) []editor.Issue {
 }
 
 func blockTypeNames() []string {
-	return []string{"section", "heading", "paragraph", "list", "table", "chart", "embed", "timestamp", "quote", "callout", "code", "divider", "image", "toggle", "metrics", "toc", "pageBreak"}
+	return []string{"section", "heading", "paragraph", "list", "table", "chart", "embed", "timestamp", "quote", "callout", "code", "divider", "image", "toggle", "metrics", "toc", "pageBreak", "card"}
 }
 
 // titlePattern is /^\s*#\s+(.+?)\s*#*\s*$/m with the line terminators other than \n mapped to \n first, so Go's multiline

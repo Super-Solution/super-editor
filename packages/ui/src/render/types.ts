@@ -39,7 +39,20 @@ export type SharedRenderOptions = {
   density?: Density | undefined;
   /** Colors used when a chart is exported as SVG/PNG. Default light. */
   exportTheme?: ChartTheme | undefined;
+  /**
+   * Draws `card` blocks, by card kind. Pass a chat plugin's `mounts` (super-protocol `CardMount`) as they are: each card is
+   * mounted with placement `document`. A kind without a mount, or one that fails, shows the block's title and `alt` text.
+   */
+  cardMounts?: Readonly<Record<string, CardMount>> | undefined;
 };
+
+/** Where a card is drawn. Structurally super-protocol's `CardPlacement`; a document always passes `document`. */
+export type CardPlacement = 'inline' | 'panel' | 'document';
+/** The part of super-protocol's `CardMountContext` a document fills in. */
+export type CardMountContext = { theme: 'light' | 'dark'; placement?: CardPlacement; locale?: string };
+export type CardMountHandle = { update(spec: unknown, context: CardMountContext): void; destroy(): void };
+/** Structurally super-protocol's `CardMount`, so a chat plugin's mounts work here unchanged. */
+export type CardMount = (container: HTMLElement, spec: unknown, context: CardMountContext) => CardMountHandle;
 
 export type RenderOptions = SharedRenderOptions & {
   document?: Document | undefined;

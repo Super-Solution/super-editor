@@ -76,11 +76,14 @@ const (
 	limitEmbedHeightMax     = 1_200
 	limitCodeLanguage       = 40
 	limitSearchText         = 1_000
+	limitCardKind           = 100
+	limitCardSpecDepth      = 32
+	limitCardSpecValues     = 100_000
 	maxSafe                 = 9_007_199_254_740_991
 )
 
 var (
-	blockTypes     = []string{"section", "heading", "paragraph", "list", "table", "chart", "embed", "timestamp", "quote", "callout", "code", "divider", "image", "toggle", "metrics", "toc", "pageBreak"}
+	blockTypes     = []string{"section", "heading", "paragraph", "list", "table", "chart", "embed", "timestamp", "quote", "callout", "code", "divider", "image", "toggle", "metrics", "toc", "pageBreak", "card"}
 	operationTypes = []string{"insertBlock", "updateBlock", "moveBlock", "deleteBlock", "setTitle", "setFormat", "addCitation", "insertBlocks", "duplicateBlock", "replaceText", "deleteBlocks", "moveBlocks", "updateCitation", "removeCitation"}
 	highlights     = []string{"yellow", "green", "blue", "pink", "gray"}
 	calloutTones   = []string{"info", "success", "warning", "danger", "note"}
@@ -264,6 +267,64 @@ func strings_(list []any) []string {
 		out[i] = e.(string)
 	}
 	return out
+}
+
+// CardKindPattern is a card kind as a chat plugin registers it: namespaced, so it never collides with a block type.
+var CardKindPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$`)
+
+func cardKind(value any, path string) string {
+	s := str(value, path, limitCardKind, false)
+	if !CardKindPattern.MatchString(s) {
+		fail(`Card kind must be a namespaced name such as "super.plot".`, path, "Use the card kind a chat plugin registered: lowercase letters, digits and hyphens, with at least one dot.")
+	}
+	return s
+}
+
+// cardSpec checks a card's spec as data (the editor does not interpret it): plain objects and arrays, finite numbers,
+// bounded text, depth and size. Members keep JavaScript property order.
+func cardSpec(value any, path, kind string) *Object {
+	values := 0
+	var walk func(entry any, at string, depth int) any
+	walk = func(entry any, at string, depth int) any {
+		values++
+		if values > limitCardSpecValues {
+			fail(fmt.Sprintf("A card spec may hold at most %d values.", limitCardSpecValues), at, "")
+		}
+		switch t := entry.(type) {
+		case nil, bool:
+			return t
+		case float64:
+			return finite(t, at, -math.MaxFloat64, math.MaxFloat64)
+		case string:
+			return text(t, at)
+		}
+		if depth > limitCardSpecDepth {
+			fail(fmt.Sprintf("A card spec may nest at most %d levels.", limitCardSpecDepth), at, "")
+		}
+		if list, ok := entry.([]any); ok {
+			return array(list, at, limitCardSpecValues, func(item any, p string) any { return walk(item, p, depth+1) })
+		}
+		o, ok := asObject(entry)
+		if !ok {
+			fail("Expected JSON: an object, array, string, finite number, boolean or null.", at, "")
+		}
+		out := &Object{Values: map[string]any{}}
+		for _, key := range jsKeyOrder(o.Keys) {
+			member := at + "." + key
+			str(key, member, limitTitle, true)
+			out.Keys = append(out.Keys, key)
+			out.Values[key] = walk(o.Values[key], member, depth+1)
+		}
+		return out
+	}
+	if _, ok := asObject(value); !ok {
+		fail("Expected a plain object.", path, `Provide the card kind's spec, for example {"data":[…]}.`)
+	}
+	spec := walk(value, path, 1).(*Object)
+	if k, ok := spec.Values["kind"]; ok && k != kind {
+		fail("The spec names a different card kind.", path+".kind", `Remove "kind" from the spec or set it to "`+kind+`".`)
+	}
+	return spec
 }
 
 func unique(values []string, path, hint string) {
@@ -680,6 +741,14 @@ func content(value any, path string) record {
 			"url": urlValue(v.Values["url"], path+".url", true), "title": str(v.Values["title"], path+".title", limitTitle, true)}
 		if has(v, "height") {
 			out["height"] = float64(integer(v.Values["height"], path+".height", limitEmbedHeightMin, limitEmbedHeightMax))
+		}
+		return out
+	case "card":
+		v := object(value, path, []string{"type", "kind", "spec", "alt"}, "title")
+		kind := cardKind(v.Values["kind"], path+".kind")
+		out := record{"type": "card", "kind": kind, "spec": cardSpec(v.Values["spec"], path+".spec", kind), "alt": str(v.Values["alt"], path+".alt", limitCaption, false)}
+		if has(v, "title") {
+			out["title"] = str(v.Values["title"], path+".title", limitTitle, true)
 		}
 		return out
 	case "timestamp":

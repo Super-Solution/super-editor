@@ -202,6 +202,12 @@ def to_html(doc: Document, *, title: bool = True, standalone: bool = False, char
             )
         elif kind == "embed":
             h = f'<p{ident} class="embed">{link(text_of(c, "url"), text(text_of(c, "title")))}</p>'
+        elif kind == "card":
+            title = text_of(c, "title")
+            caption = f"<figcaption>{text(title)}</figcaption>" if title else ""
+            card_kind = escape_html(text_of(c, "kind"))
+            alt = text(text_of(c, "alt"))
+            h = f'<figure{ident} class="card" data-kind="{card_kind}">{caption}<p>{alt}</p></figure>'
         elif kind == "timestamp":
             at = escape_html(text_of(c, "at"))
             h = f'<p{ident}><time datetime="{at}">{text(text_of(c, "label"))}: {at}</time></p>'

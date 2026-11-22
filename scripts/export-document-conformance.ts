@@ -33,13 +33,14 @@ function content(type: string): Record<string, unknown> {
     case 'table': { const columns = Array.from({ length: 1 + rand(3) }, text); return { type, columns, rows: Array.from({ length: rand(3) }, () => columns.map(text)), ...(chance(2) ? { caption: text() } : {}) }; }
     case 'chart': return { type, spec: { kind: pick(['bar', 'pie', 'custom']), title: text(), labels: ['a', 'b'], series: [{ name: 's', values: [1, 2] }], ...(chance(2) ? { caption: text() } : {}) } };
     case 'embed': return { type, provider: 'superchart', url: 'https://example.com/chart', title: text() };
+    case 'card': return { type, kind: 'super.plot', spec: { alt: text(), spec: { marks: [] } }, alt: `${text()}.`, ...(chance(2) ? { title: text() } : {}) };
     case 'image': return { type, url: 'https://example.com/i.png', alt: text(), ...(chance(2) ? { caption: text() } : {}) };
     case 'metrics': return { type, items: Array.from({ length: rand(4) }, () => ({ label: text(), value: String(rand(100)), ...(chance(2) ? { hint: text() } : {}) })) };
     case 'timestamp': return { type, at: '2026-11-07T00:00:00Z', label: text() };
     default: return { type };
   }
 }
-const TYPES = ['section', 'heading', 'paragraph', 'list', 'table', 'chart', 'embed', 'timestamp', 'quote', 'callout', 'code', 'divider', 'image', 'toggle', 'metrics', 'toc', 'pageBreak'];
+const TYPES = ['section', 'heading', 'paragraph', 'list', 'table', 'chart', 'embed', 'timestamp', 'quote', 'callout', 'code', 'divider', 'image', 'toggle', 'metrics', 'toc', 'pageBreak', 'card'];
 
 const textCases = [];
 for (let i = 0; i < 160; i++) {

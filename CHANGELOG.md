@@ -2,6 +2,17 @@
 
 All notable changes to the eight `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
+## Unreleased
+
+Release as a minor version (0.6.0). Document format unchanged (`schemaVersion: 1`): a new block type is added, nothing existing changes.
+
+### A document can hold a chat plugin's card
+
+- **New block `card`**: `{ type: 'card', kind, spec, alt, title? }`. `kind` is a namespaced card kind (`super.plot`, `super-chart.chart`), `spec` is that card's own JSON, and `alt` (required) says in words what it shows. The spec is not interpreted but is checked as data: plain objects and arrays, finite numbers, valid text, at most 32 levels and 100,000 values, and a `kind` inside it must match. TypeScript, Go and Python validate it the same way (new conformance cases); `b.card()` builds one; `BLOCK_TYPES` ends with `card`.
+- **Drawn by the chat plugin that made it.** `cardMounts` on `renderDocument`, `mountEditor`, `ReportView` and `<super-editor>` maps card kinds to super-protocol `CardMount`s, so a Super Chart chart or a Super Plot figure is live inside a report. Mounts are told placement `document`. Without a mount, or when it fails, the block shows its title and alt text. `releaseCards(root)` destroys mounts in detached DOM.
+- **Everywhere else it is its words.** Markdown, HTML and plain-text exports, print, search and replace use the title and alt text (replace changes those, never the spec).
+- **Chat plugin**: `createEditorChatPlugin({ cardMounts })` passes them to the document in the chat, and the manifest declares a `panel` capability for `super-editor.document`, so a chat with a side panel can open a document there.
+
 ## 0.5.0
 
 Two behaviour changes that make bad input visible instead of quietly accepting it, so this is a minor release. Everything else in this version is internal hardening from 15 audit rounds (correctness, reliability, packaging); see `docs/engineering/improvement-log.md`. Document format unchanged (`schemaVersion: 1`).

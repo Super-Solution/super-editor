@@ -48,6 +48,8 @@ def text_parts(content: Mapping[str, Any]) -> list[str]:
         return [spec["title"], *_opt(spec, "caption")]
     if kind == "embed":
         return [content["title"]]
+    if kind == "card":
+        return [*_opt(content, "title"), content["alt"]]
     if kind == "image":
         return [content["alt"], *_opt(content, "caption")]
     if kind == "metrics":

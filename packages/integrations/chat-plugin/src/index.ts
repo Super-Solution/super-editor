@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { LIMITS, createEditor, createReportService, validateDocument, type Actor, type AsyncReportService, type ReportService, type ResearchDocument } from '@supersolutions/super-editor-core';
-import { mountEditor, renderDocument, type PartialLabels } from '@supersolutions/super-editor-ui';
+import { mountEditor, releaseCards, renderDocument, type PartialLabels } from '@supersolutions/super-editor-ui';
 import {
   EDITOR_CARD_KIND,
   editorCardKind,
@@ -45,6 +45,11 @@ export type EditorChatPluginOptions = {
   messages?: { loading?: string; writing?: string; invalid?: string; loadFailed?: string };
   /** UI strings of the rendered document and the classic editor controls (see `Labels` in the UI package). */
   labels?: PartialLabels;
+  /**
+   * Draws `card` blocks inside the document, by card kind: pass other chat plugins' `mounts` (Super Chart, Super Plot) as they
+   * are, for example `{ ...chartPlugin.mounts, ...plotPlugin.mounts }`. Without a mount a card shows its title and alt text.
+   */
+  cardMounts?: Readonly<Record<string, CardMount>>;
   /** Waits this long after the last edit before calling `onChange` (trailing; a pending call is flushed when the card is removed). Default 0: every revision. */
   debounceMs?: number;
 };
@@ -145,6 +150,7 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
       controller = null;
       inner?.destroy();
       inner = null;
+      releaseCards(container);
       container.replaceChildren();
     };
 
@@ -169,11 +175,11 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
           pending = { document: editor.getSnapshot(), spec };
           if (options.debounceMs && options.debounceMs > 0) { clearTimeout(timer); timer = setTimeout(deliver, options.debounceMs); } else deliver();
         });
-        const mounted = mountEditor(container, editor, { document: doc, ...(theme ? { theme } : {}), ...(context.locale ? { locale: context.locale } : {}), ...(options.labels ? { labels: options.labels } : {}), actor: { id: options.actor?.id ?? 'chat-user', kind: 'human' } });
+        const mounted = mountEditor(container, editor, { document: doc, ...(theme ? { theme } : {}), ...(context.locale ? { locale: context.locale } : {}), ...(options.labels ? { labels: options.labels } : {}), ...(options.cardMounts ? { cardMounts: options.cardMounts } : {}), actor: { id: options.actor?.id ?? 'chat-user', kind: 'human' } });
         inner = { destroy: () => { unsubscribe(); mounted.destroy(); } };
       } else {
         expose(createReportService(createEditor(checked.value)));
-        container.replaceChildren(renderDocument(checked.value, { document: doc, ...(theme ? { theme } : {}), ...(context.locale ? { locale: context.locale } : {}), ...(options.labels ? { labels: options.labels } : {}) }));
+        container.replaceChildren(renderDocument(checked.value, { document: doc, ...(theme ? { theme } : {}), ...(context.locale ? { locale: context.locale } : {}), ...(options.labels ? { labels: options.labels } : {}), ...(options.cardMounts ? { cardMounts: options.cardMounts } : {}) }));
       }
     };
 
@@ -274,6 +280,8 @@ export function createEditorChatPlugin(options: EditorChatPluginOptions = {}): C
       license: 'GPL-3.0-or-later',
       capabilities: [
         { id: 'editor.document', surface: 'card', cardKind: EDITOR_CARD_KIND },
+        // A document reads best with room of its own: hosts with a side panel may open it there.
+        { id: 'editor.panel', surface: 'panel', cardKind: EDITOR_CARD_KIND },
         ...tools.map((tool) => ({ id: `editor.tool.${tool.name.replace(/^editor_/, '').replace(/_/g, '-')}`, surface: 'tool' as const, toolName: tool.name })),
       ],
     },

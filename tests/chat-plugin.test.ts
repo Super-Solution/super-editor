@@ -474,3 +474,19 @@ test('a card with a different document does not inherit earlier edits', async ()
   second.destroy();
   dom.window.close();
 });
+
+test('a document in the chat draws its card blocks with the host\'s card mounts, and releases them with the card', () => {
+  const editor = createEditor(createDocument({ id: 'doc', title: 'Doc' }, { now: () => at }), { now: () => at });
+  assert.equal(editor.apply({ id: 'seed', actor: { id: 'h', kind: 'human' }, baseRevision: 0, operations: [{ type: 'insertBlock', block: { id: 'k', parentId: null, citationIds: [], content: { type: 'card', kind: 'super.plot', spec: { spec: {} }, alt: 'Flat.' } } }] }).ok, true);
+  const seen: CardMountContext[] = [];
+  let destroyed = 0;
+  const plugin = createEditorChatPlugin({ cardMounts: { 'super.plot': (_node, _spec, context) => { seen.push(context); return { update() {}, destroy() { destroyed++; } }; } } });
+  assert.ok(plugin.manifest.capabilities.some((capability) => capability.surface === 'panel' && capability.cardKind === EDITOR_CARD_KIND), 'documents may open in a side panel');
+  const { container, dom } = host();
+  const handle = mountOf(plugin)(container, { kind: EDITOR_CARD_KIND, document: editor.getSnapshot() }, ctx());
+  assert.deepEqual(seen.map((context) => (context as { placement?: string }).placement), ['document']);
+  assert.equal(container.querySelector('.se-card')?.getAttribute('data-state'), 'live');
+  handle.destroy();
+  assert.equal(destroyed, 1);
+  dom.window.close();
+});

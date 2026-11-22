@@ -18,7 +18,7 @@ export function ResearchReport() {
 
 Keep the `editor` instance stable for the document session. Changing it resets local draft/error state and releases the former subscription; matching block IDs and revisions cannot transfer a draft across editor instances. Saves preserve the captured exact revision and block version. Conflicting, deleted or replaced block drafts remain available for review or explicit discard within the same editor session.
 
-Both views accept `blockRenderers`, `chartRenderers`, `embedPolicy` and `className`. React renderers receive `(blockOrSpec, context)` and return a `ReactNode`; `context.renderDefaultBlock(block)` renders the default block. `ReportView` also accepts `renderBlockActions(block)`. `ReportEditor` accepts `renderControls: false` or a callback receiving `{ editor, report, actor, applyResult }`. Hosts can submit typed Core operations from their own controls.
+Both views accept `blockRenderers`, `chartRenderers`, `cardMounts`, `embedPolicy` and `className`. `cardMounts` draws `card` blocks with chat plugins' card mounts (placement `document`); each card mounts once, updates in place when its spec changes and is destroyed on unmount. React renderers receive `(blockOrSpec, context)` and return a `ReactNode`; `context.renderDefaultBlock(block)` renders the default block. `ReportView` also accepts `renderBlockActions(block)`. `ReportEditor` accepts `renderControls: false` or a callback receiving `{ editor, report, actor, applyResult }`. Hosts can submit typed Core operations from their own controls.
 
 ```tsx
 <ReportView

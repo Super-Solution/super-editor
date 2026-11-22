@@ -7,7 +7,7 @@ import { attributes, element, hostOf, revealBlock, safeLink, srOnly, timeElement
 import { splitMatches } from './find.js';
 import { template, type Labels } from './labels.js';
 import { allowedEmbedUrl, embedHeight, imageModel, listModel, metricModels, runSegments, tableModel, TONE_ICONS, type ListItemNode } from './models.js';
-import type { RenderContext } from './types.js';
+import type { CardMountContext, CardMountHandle, RenderContext, ThemeName } from './types.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -199,6 +199,58 @@ function renderEmbed(document: Document, content: Extract<BlockContent, { type: 
   return figure;
 }
 
+/** The theme a card mount is told: the document's own when it names one, else the reader's preference. */
+export function cardTheme(document: Document, theme: ThemeName | undefined): 'light' | 'dark' {
+  if (theme === 'light' || theme === 'dark') return theme;
+  return document.defaultView?.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+/** The spec a card mount receives: the block's spec with its card kind, as a chat would send it. */
+export const cardMountSpec = (content: Extract<BlockContent, { type: 'card' }>): Record<string, unknown> => ({ ...content.spec, kind: content.kind });
+
+const mountedCards = new WeakMap<Element, CardMountHandle>();
+/**
+ * Destroys the card mounts inside `root` (a rendered document or any part of it). Call it before dropping or replacing
+ * rendered output; `mountEditor` and the custom element do this themselves. Safe to call twice.
+ */
+export function releaseCards(root: Element): void {
+  const nodes = [...(root.matches('[data-se-card-mounted]') ? [root] : []), ...Array.from(root.querySelectorAll('[data-se-card-mounted]'))];
+  for (const node of nodes) {
+    const handle = mountedCards.get(node);
+    mountedCards.delete(node); node.removeAttribute('data-se-card-mounted');
+    try { handle?.destroy(); } catch { /* a mount that fails to clean up must not stop the others */ }
+  }
+}
+
+/**
+ * A chat plugin's card in the document. With a mount for its kind it is drawn live (placement `document`); the title and alt
+ * text stay in the figure for print, assistive technology and the case where the mount fails.
+ */
+function renderCard(document: Document, block: Block, content: Extract<BlockContent, { type: 'card' }>, context: RenderContext): HTMLElement {
+  const figure = element(document, 'figure', undefined, 'super-editor-card se-card'); figure.dataset.kind = content.kind;
+  const caption = content.title ? element(document, 'figcaption', content.title, 'se-card-title') : null;
+  const alt = element(document, 'p', content.alt.trim() ? content.alt : context.labels.blocks.cardUnavailable, 'se-card-alt');
+  const mounts = context.options.cardMounts;
+  const mount = mounts && Object.hasOwn(mounts, content.kind) ? mounts[content.kind] : undefined;
+  figure.dataset.state = 'text';
+  if (mount) {
+    const host = element(document, 'div', undefined, 'se-card-mount');
+    const mountContext: CardMountContext = { theme: cardTheme(document, context.options.theme), placement: 'document', ...(context.options.locale ? { locale: context.options.locale } : {}) };
+    try {
+      const handle = mount(host, cardMountSpec(content), mountContext);
+      mountedCards.set(host, handle); host.dataset.seCardMounted = '';
+      figure.dataset.state = 'live';
+      figure.append(host);
+    } catch (error) {
+      host.replaceChildren();
+      context.options.onRenderError?.(error, block);
+    }
+  }
+  if (caption) figure.prepend(caption);
+  figure.append(alt);
+  return figure;
+}
+
 function renderToggle(document: Document, block: Block, content: Extract<BlockContent, { type: 'toggle' }>, context: RenderContext): HTMLElement {
   const { labels } = context;
   const wrap = element(document, 'div', undefined, 'se-toggle');
@@ -266,6 +318,7 @@ export function renderDefaultBlock(block: Block, context: RenderContext): HTMLEl
       return renderer?.(content.spec, context) ?? renderChart(content.spec, context);
     }
     case 'embed': return renderEmbed(document, content, context);
+    case 'card': return renderCard(document, block, content, context);
     case 'timestamp': { const stamp = timeElement(document, content.at, content.label, context.options.locale, context.options.timeZone); stamp.className = 'se-timestamp'; return stamp; }
     case 'quote': {
       const quote = element(document, 'blockquote', undefined, 'se-quote');

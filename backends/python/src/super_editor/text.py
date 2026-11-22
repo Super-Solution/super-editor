@@ -104,6 +104,9 @@ def to_plain_text(doc: Document, *, title: bool = True, chart_rows_limit: int | 
             parts.append("\n".join(lines))
         elif kind == "embed":
             parts.append(text_of(c, "title") + " (" + text_of(c, "url") + ")")
+        elif kind == "card":
+            title = text_of(c, "title")
+            parts.append(f"{title}\n{text_of(c, 'alt')}" if title else text_of(c, "alt"))
         elif kind == "timestamp":
             parts.append(text_of(c, "label") + ": " + text_of(c, "at"))
         elif kind == "quote":

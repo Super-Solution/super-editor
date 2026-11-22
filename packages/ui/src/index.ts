@@ -2,6 +2,7 @@
 // Copyright 2026 SUPER SOLUTION LABS INC
 import type { Actor, Block, BlockContent, Editor, ResearchDocument, ApplyResult, Operation } from '@supersolutions/super-editor-core';
 import { contentWithText, editableText, localId } from './presentation.js';
+import { releaseCards } from './render/blocks.js';
 import { renderDocument } from './render/document.js';
 import { element } from './render/dom.js';
 import { resolveLabels, template } from './render/labels.js';
@@ -83,11 +84,12 @@ export function mountEditor(container: HTMLElement, editor: Editor, options: Mou
       const textarea = element(document, 'textarea'); textarea.setAttribute('aria-label', template(c.deletedDraftLabel, { id })); textarea.value = draft.text; textarea.readOnly = true;
       recovery.append(textarea, button(c.discardDraft, () => { drafts.delete(id); render(); })); nodes.push(recovery);
     }
+    releaseCards(root);
     nodes.push(article); root.replaceChildren(...nodes);
   };
   const unsubscribe = editor.subscribe(render);
   render();
-  return { destroy() { if (destroyed) return; destroyed = true; unsubscribe(); drafts.clear(); root.remove(); } };
+  return { destroy() { if (destroyed) return; destroyed = true; unsubscribe(); drafts.clear(); releaseCards(root); root.remove(); } };
 }
 
 export { getChartModel, contentWithText, editableText, localId, type ChartModel, type ChartShape } from './presentation.js';
