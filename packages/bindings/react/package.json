@@ -1,6 +1,6 @@
 {
   "name": "@supersolutions/super-editor-react",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Composable React research report components",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -34,8 +34,8 @@
     "tag": "latest"
   },
   "dependencies": {
-    "@supersolutions/super-editor-core": "0.5.0",
-    "@supersolutions/super-editor-ui": "0.5.0"
+    "@supersolutions/super-editor-core": "0.6.0",
+    "@supersolutions/super-editor-ui": "0.6.0"
   },
   "peerDependencies": {
     "react": ">=18 <20",
