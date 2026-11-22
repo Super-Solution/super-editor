@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 'use client';
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getOutline, safeUrl } from '@supersolutions/super-editor-core';
 import type { Block, BlockContent, OutlineItem } from '@supersolutions/super-editor-core';
-import { allowedEmbedUrl, embedHeight, formatInstant, imageModel, listModel, metricModels, revealBlock, TONE_ICONS, tableModel, template } from '@supersolutions/super-editor-ui';
-import type { ListItemNode } from '@supersolutions/super-editor-ui';
+import { allowedEmbedUrl, cardMountSpec, cardTheme, embedHeight, formatInstant, imageModel, listModel, metricModels, revealBlock, TONE_ICONS, tableModel, template } from '@supersolutions/super-editor-ui';
+import type { CardMountContext, CardMountHandle, ListItemNode } from '@supersolutions/super-editor-ui';
 import { ChartView } from './chart.js';
 import { HighlightedText, Runs } from './runs.js';
 import type { ReactRenderContext } from './types.js';
@@ -107,6 +107,44 @@ function EmbedView({ content, context }: { content: Extract<BlockContent, { type
   </figure>;
 }
 
+/**
+ * A chat plugin's card in the document, drawn by its mount with placement `document`. The title and alt text stay in the
+ * figure for print and assistive technology, and are all that shows when there is no mount for the kind or it fails.
+ */
+function CardView({ block, content, context }: { block: Block; content: Extract<BlockContent, { type: 'card' }>; context: ReactRenderContext }): ReactNode {
+  const { options, labels } = context, mounts = options.cardMounts;
+  const mount = mounts && hasOwn(mounts, content.kind) ? mounts[content.kind] : undefined;
+  const host = useRef<HTMLDivElement>(null), handle = useRef<CardMountHandle | null>(null), sent = useRef<unknown>(null);
+  const [failed, setFailed] = useState(false);
+  const spec = useMemo(() => cardMountSpec(content), [content]);
+  const latest = useRef({ spec, options, block }); latest.current = { spec, options, block };
+  const mountContext = (node: HTMLElement): CardMountContext => {
+    const { options: current } = latest.current;
+    return { theme: cardTheme(node.ownerDocument, current.theme), placement: 'document', ...(current.locale ? { locale: current.locale } : {}) };
+  };
+  useEffect(() => {
+    const node = host.current;
+    if (!mount || !node) return undefined;
+    setFailed(false);
+    try { handle.current = mount(node, latest.current.spec, mountContext(node)); sent.current = latest.current.spec; } catch (error) {
+      latest.current.options.onRenderError?.(error, latest.current.block); node.replaceChildren(); setFailed(true); return undefined;
+    }
+    return () => { const current = handle.current; handle.current = null; sent.current = null; try { current?.destroy(); } catch { /* keep unmounting */ } node.replaceChildren(); };
+  }, [mount]);
+  useEffect(() => {
+    const node = host.current, current = handle.current;
+    if (!node || !current || (sent.current === spec)) return;
+    sent.current = spec;
+    try { current.update(spec, mountContext(node)); } catch (error) { options.onRenderError?.(error, block); }
+  }, [spec, options.theme, options.locale]);
+  const live = !!mount && !failed;
+  return <figure className="super-editor-card se-card" data-kind={content.kind} data-state={live ? 'live' : 'text'}>
+    {content.title ? <figcaption className="se-card-title">{content.title}</figcaption> : null}
+    {mount && !failed ? <div className="se-card-mount" ref={host} /> : null}
+    <p className="se-card-alt">{content.alt.trim() ? content.alt : labels.blocks.cardUnavailable}</p>
+  </figure>;
+}
+
 function ToggleView({ block, content, context, children }: { block: Block; content: Extract<BlockContent, { type: 'toggle' }>; context: ReactRenderContext; children?: ReactNode }): ReactNode {
   const { labels } = context, bodyId = useId();
   const [open, setOpen] = useState(content.open), [seen, setSeen] = useState(block.version);
@@ -146,6 +184,7 @@ export function DefaultBlockView({ block, context, children }: { block: Block; c
       return renderer?.(content.spec, context) ?? <ChartView spec={content.spec} actions={context.options.chartActions !== false} {...(context.options.locale ? { locale: context.options.locale } : {})} {...(context.options.exportTheme ? { exportTheme: context.options.exportTheme } : {})} />;
     }
     case 'embed': return <EmbedView content={content} context={context} />;
+    case 'card': return <CardView block={block} content={content} context={context} />;
     case 'timestamp': { const text = formatInstant(content.at, context.options.locale, context.options.timeZone); return <time className="se-timestamp" dateTime={content.at} {...(text !== content.at ? { title: content.at } : {})}>{content.label}: {text}</time>; }
     case 'quote': return <blockquote className="se-quote"><p><Runs runs={content.runs} report={report} labels={labels} options={context.options} block={block} /></p>{content.attribution ? <footer>— <cite>{content.attribution}</cite></footer> : null}</blockquote>;
     case 'callout': return <div className="se-callout" data-tone={content.tone} role="note" aria-label={labels.blocks.toneNames[content.tone]}>

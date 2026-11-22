@@ -1193,6 +1193,33 @@
       "updatedAt": "2026-10-05T00:00:00.000Z"
     },
     {
+      "id": "price-card",
+      "parentId": "media",
+      "content": {
+        "type": "card",
+        "kind": "super-chart.chart",
+        "spec": {
+          "symbol": {
+            "ticker": "BTC-USD"
+          },
+          "period": {
+            "multiplier": 1,
+            "timespan": "day",
+            "text": "1D"
+          },
+          "feed": {
+            "id": "BTC-USD"
+          }
+        },
+        "alt": "BTC daily price, drawn live by the Super Chart card when the host provides it.",
+        "title": "BTC daily"
+      },
+      "citationIds": [],
+      "version": 1,
+      "createdAt": "2026-10-05T00:00:00.000Z",
+      "updatedAt": "2026-10-05T00:00:00.000Z"
+    },
+    {
       "id": "asof",
       "parentId": "media",
       "content": {

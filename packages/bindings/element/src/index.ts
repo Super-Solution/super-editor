@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { createEditor, validateDocument, type Actor, type Editor, type ResearchDocument } from '@supersolutions/super-editor-core';
-import { mountEditor, renderDocument, type Density, type PartialLabels, type ThemeName } from '@supersolutions/super-editor-ui';
+import { mountEditor, releaseCards, renderDocument, type CardMount, type Density, type PartialLabels, type ThemeName } from '@supersolutions/super-editor-ui';
 
 export type SuperEditorMode = 'view' | 'edit';
 export type SuperEditorChangeDetail = { revision: number; document: ResearchDocument };
@@ -47,6 +47,7 @@ export function defineSuperEditor(options: { tag?: string; registry?: CustomElem
   class Element extends Base implements SuperEditorElement {
     static observedAttributes = ['mode', 'theme', 'readonly', 'density', 'locale', 'time-zone', 'actor', 'src'];
     #labels: PartialLabels | undefined;
+    #cardMounts: Readonly<Record<string, CardMount>> | undefined;
     #controller: AbortController | null = null;
     #editor: Editor | null = null;
     #unsubscribe: (() => void) | null = null;
@@ -59,6 +60,9 @@ export function defineSuperEditor(options: { tag?: string; registry?: CustomElem
     get mode(): SuperEditorMode { const m = this.getAttribute('mode'); return m === 'edit' && !this.hasAttribute('readonly') ? 'edit' : 'view'; }
     get labels(): PartialLabels | undefined { return this.#labels; }
     set labels(value: PartialLabels | undefined) { this.#labels = value; this.#render(); }
+    /** Draws `card` blocks by card kind (a chat plugin's `mounts`); without one a card shows its text. */
+    get cardMounts(): Readonly<Record<string, CardMount>> | undefined { return this.#cardMounts; }
+    set cardMounts(value: Readonly<Record<string, CardMount>> | undefined) { this.#cardMounts = value; this.#render(); }
     set mode(value: SuperEditorMode) {
       if (!MODES.includes(value)) throw new RangeError(`mode must be one of ${MODES.join(', ')}.`);
       this.setAttribute('mode', value);
@@ -116,6 +120,7 @@ export function defineSuperEditor(options: { tag?: string; registry?: CustomElem
     #teardown(): void {
       this.#mounted?.destroy();
       this.#mounted = null;
+      releaseCards(this);
       this.replaceChildren();
     }
 
@@ -131,6 +136,7 @@ export function defineSuperEditor(options: { tag?: string; registry?: CustomElem
       const common = {
         document: doc, ...(theme ? { theme } : {}), ...(densityAttr && DENSITIES.includes(densityAttr) ? { density: densityAttr as Density } : {}),
         ...(locale ? { locale } : {}), ...(timeZone ? { timeZone } : {}), ...(this.#labels ? { labels: this.#labels } : {}),
+        ...(this.#cardMounts ? { cardMounts: this.#cardMounts } : {}),
       };
       if (this.mode === 'edit') {
         const actor: Actor = { id: this.getAttribute('actor') || 'element-user', kind: 'human' };

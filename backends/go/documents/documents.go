@@ -83,6 +83,8 @@ func TextParts(content obj) []string {
 		return append([]string{str(spec, "title")}, optional(spec, "caption")...)
 	case "embed":
 		return []string{str(content, "title")}
+	case "card":
+		return append(optional(content, "title"), str(content, "alt"))
 	case "image":
 		return append([]string{str(content, "alt")}, optional(content, "caption")...)
 	case "metrics":

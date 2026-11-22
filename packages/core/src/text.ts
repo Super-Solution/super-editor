@@ -33,6 +33,7 @@ export function textParts(content: BlockContent): string[] {
     case 'table': return [...(content.caption === undefined ? [] : [content.caption]), content.columns.join('\t'), ...content.rows.map(row => row.join('\t'))];
     case 'chart': return [content.spec.title, ...(content.spec.caption === undefined ? [] : [content.spec.caption])];
     case 'embed': return [content.title];
+    case 'card': return [...(content.title === undefined ? [] : [content.title]), content.alt];
     case 'image': return [content.alt, ...(content.caption === undefined ? [] : [content.caption])];
     case 'metrics': return content.items.flatMap(item => [item.label, item.value, ...(item.hint === undefined ? [] : [item.hint])]);
     case 'timestamp': return [content.label];
@@ -102,6 +103,7 @@ export function replaceInContent(content: BlockContent, options: ReplaceTextOpti
     case 'table': { const caption = optional(content.caption); next = { ...content, ...(caption === undefined ? {} : { caption }), columns: content.columns.map(str), rows: content.rows.map(row => row.map(str)) }; break; }
     case 'chart': { const caption = optional(content.spec.caption); next = { ...content, spec: { ...content.spec, title: str(content.spec.title), ...(caption === undefined ? {} : { caption }) } }; break; }
     case 'embed': next = { ...content, title: str(content.title) }; break;
+    case 'card': { const title = optional(content.title); next = { ...content, ...(title === undefined ? {} : { title }), alt: str(content.alt) }; break; }
     case 'image': { const caption = optional(content.caption); next = { ...content, alt: str(content.alt), ...(caption === undefined ? {} : { caption }) }; break; }
     case 'metrics': next = { ...content, items: content.items.map(item => { const label = str(item.label), value = str(item.value), hint = optional(item.hint); return { ...item, label, value, ...(hint === undefined ? {} : { hint }) }; }) }; break;
     case 'timestamp': next = { ...content, label: str(content.label) }; break;

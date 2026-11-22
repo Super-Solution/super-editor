@@ -217,6 +217,12 @@ func ToHTML(doc record, o HTMLOptions) string {
 				table(data.Head, data.Rows, htmlTable{omitted: data.Omitted}) + notes.String() + "</figure>"
 		case "embed":
 			h = "<p" + id + ` class="embed">` + link(str(c, "url"), text(str(c, "title"))) + "</p>"
+		case "card":
+			caption := ""
+			if t := str(c, "title"); t != "" {
+				caption = "<figcaption>" + text(t) + "</figcaption>"
+			}
+			h = "<figure" + id + ` class="card" data-kind="` + EscapeHTML(str(c, "kind")) + `">` + caption + "<p>" + text(str(c, "alt")) + "</p></figure>"
 		case "timestamp":
 			h = "<p" + id + `><time datetime="` + EscapeHTML(str(c, "at")) + `">` + text(str(c, "label")) + ": " + EscapeHTML(str(c, "at")) + "</time></p>"
 		case "quote":

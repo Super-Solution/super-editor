@@ -114,6 +114,12 @@ func ToPlainText(doc record, o TextOptions) string {
 			parts = append(parts, strings.Join(lines, "\n"))
 		case "embed":
 			parts = append(parts, str(c, "title")+" ("+str(c, "url")+")")
+		case "card":
+			if t := str(c, "title"); t != "" {
+				parts = append(parts, t+"\n"+str(c, "alt"))
+			} else {
+				parts = append(parts, str(c, "alt"))
+			}
 		case "timestamp":
 			parts = append(parts, str(c, "label")+": "+str(c, "at"))
 		case "quote":

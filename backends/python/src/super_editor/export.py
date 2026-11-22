@@ -135,6 +135,10 @@ def to_markdown(doc: Document, *, title: bool = True, chart_rows_limit: int | No
                     parts.append(escape_line_starts(escape_inline(line(extra))))
         elif kind == "embed":
             parts.append("[" + escape_inline(line(text_of(c, "title"))) + "](" + parens(text_of(c, "url")) + ")")
+        elif kind == "card":
+            if title := text_of(c, "title"):
+                parts.append("**" + escape_inline(line(title)) + "**")
+            parts.append(escape_line_starts(escape_inline(line(text_of(c, "alt")))))
         elif kind == "timestamp":
             parts.append(escape_line_starts(escape_inline(line(text_of(c, "label"))) + ": " + text_of(c, "at")))
         elif kind == "quote":

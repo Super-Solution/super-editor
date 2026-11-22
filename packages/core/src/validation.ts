@@ -2,7 +2,7 @@
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { BLOCK_TYPES, CALLOUT_TONES, AXIS_FORMATS, HIGHLIGHTS, IMAGE_WIDTHS, LIST_STYLES, METRIC_TONES, OPERATION_TYPES, TABLE_ALIGNMENTS, isContainerType } from './constants.js';
 import { runsOf } from './text.js';
-import type { Actor, Block, BlockContent, BlockInput, ChartSpec, Citation, DocumentFormat, EditorIssue, InlineRun, Operation, ResearchDocument, Transaction, ValidationResult } from './types.js';
+import type { Actor, Block, BlockContent, BlockInput, ChartSpec, Citation, DocumentFormat, EditorIssue, InlineRun, JsonObject, JsonValue, Operation, ResearchDocument, Transaction, ValidationResult } from './types.js';
 
 /** Explicit limits protect both browser renderers and JSON transport boundaries. */
 export const LIMITS = Object.freeze({
@@ -12,6 +12,8 @@ export const LIMITS = Object.freeze({
   tableColumns: 100, tableRows: 2_000, tableCells: 20_000, tableCellText: 10_000,
   title: 1_000, caption: 2_000, series: 100, annotations: 100, ohlc: 5_000, heatmapDimension: 200, heatmapCells: 20_000,
   metrics: 50, embedHeightMin: 200, embedHeightMax: 1_200, codeLanguage: 40, searchText: 1_000,
+  // v0.6: card blocks.
+  cardKind: 100, cardSpecDepth: 32, cardSpecValues: 100_000,
 });
 type RecordValue = Record<string, unknown>;
 class Invalid extends Error {
@@ -83,6 +85,46 @@ function array<T>(value: unknown, path: string, max: number, parse: (entry: unkn
   return result;
 }
 function unique(values: string[], path: string, hint?: string): void { if (new Set(values).size !== values.length) fail('IDs must be unique.', path, hint); }
+
+/** A card kind as a chat plugin registers it: namespaced, so it never collides with a block type ("super.plot", "super-chart.chart"). */
+export const CARD_KIND_PATTERN = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
+function cardKind(value: unknown, path: string): string {
+  const result = string(value, path, LIMITS.cardKind, false);
+  if (!CARD_KIND_PATTERN.test(result)) fail('Card kind must be a namespaced name such as "super.plot".', path, 'Use the card kind a chat plugin registered: lowercase letters, digits and hyphens, with at least one dot.');
+  return result;
+}
+/**
+ * A card's spec is the card kind's own JSON, which this editor does not interpret. It is still checked as data: plain
+ * objects and arrays, finite numbers, well-formed text, bounded depth and size. Members keep JavaScript property order.
+ */
+function cardSpec(value: unknown, path: string, kind: string): JsonObject {
+  let values = 0;
+  const walk = (entry: unknown, at: string, depth: number): JsonValue => {
+    if (++values > LIMITS.cardSpecValues) fail(`A card spec may hold at most ${LIMITS.cardSpecValues} values.`, at);
+    if (entry === null || typeof entry === 'boolean') return entry;
+    if (typeof entry === 'number') return finite(entry, at);
+    if (typeof entry === 'string') return string(entry, at);
+    if (depth > LIMITS.cardSpecDepth) fail(`A card spec may nest at most ${LIMITS.cardSpecDepth} levels.`, at);
+    if (Array.isArray(entry)) return array(entry, at, LIMITS.cardSpecValues, (item, p) => walk(item, p, depth + 1));
+    if (typeof entry !== 'object') fail('Expected JSON: an object, array, string, finite number, boolean or null.', at);
+    const prototype = Object.getPrototypeOf(entry);
+    if (prototype !== Object.prototype && prototype !== null) fail('Expected a plain object.', at);
+    const descriptors = Object.getOwnPropertyDescriptors(entry);
+    const out: JsonObject = {};
+    for (const key of Reflect.ownKeys(descriptors)) {
+      if (typeof key !== 'string') fail('Unknown property.', `${at}.${String(key)}`);
+      const member = `${at}.${key}`;
+      string(key, member, LIMITS.title);
+      if (!('value' in descriptors[key]!)) fail('Accessors are not accepted.', member);
+      out[key] = walk(descriptors[key]!.value, member, depth + 1);
+    }
+    return out;
+  };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('Expected a plain object.', path, 'Provide the card kind\'s spec, for example {"data":[…]}.');
+  const spec = walk(value, path, 1) as JsonObject;
+  if (Object.hasOwn(spec, 'kind') && spec.kind !== kind) fail('The spec names a different card kind.', `${path}.kind`, `Remove "kind" from the spec or set it to "${kind}".`);
+  return spec;
+}
 
 /** URL validation does not grant permission to load an embed; hosts must separately allow its origin. */
 export function safeUrl(value: unknown, options: { httpsOnly?: boolean } = {}): string | null {
@@ -272,6 +314,12 @@ function content(value: unknown, path: string): BlockContent {
       const v = object(value, path, ['type', 'provider', 'url', 'title'], ['height']);
       return { type: 'embed', provider: enumeration(v.provider, `${path}.provider`, ['superchart']), url: url(v.url, `${path}.url`, true), title: string(v.title, `${path}.title`, LIMITS.title),
         ...(Object.hasOwn(v, 'height') ? { height: integer(v.height, `${path}.height`, LIMITS.embedHeightMin, LIMITS.embedHeightMax) } : {}) };
+    }
+    case 'card': {
+      const v = object(value, path, ['type', 'kind', 'spec', 'alt'], ['title']);
+      const kind = cardKind(v.kind, `${path}.kind`);
+      return { type: 'card', kind, spec: cardSpec(v.spec, `${path}.spec`, kind), alt: string(v.alt, `${path}.alt`, LIMITS.caption, false),
+        ...(Object.hasOwn(v, 'title') ? { title: string(v.title, `${path}.title`, LIMITS.title) } : {}) };
     }
     case 'timestamp': { const v = object(value, path, ['type', 'at', 'label']); return { type: 'timestamp', at: timestamp(v.at, `${path}.at`), label: string(v.label, `${path}.label`, LIMITS.title) }; }
     case 'quote': {

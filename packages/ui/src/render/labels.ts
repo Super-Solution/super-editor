@@ -20,7 +20,7 @@ export type Labels = {
     expand: string; collapse: string; todoDone: string; todoOpen: string;
     toneNames: Record<CalloutTone, string>;
     metricUp: string; metricDown: string; metricFlat: string;
-    imageBroken: string; pageBreak: string; embedOpen: string; embedBlocked: string; embedTitle: string;
+    imageBroken: string; pageBreak: string; embedOpen: string; embedBlocked: string; embedTitle: string; cardUnavailable: string;
     renderError: string; retry: string; language: string; loadingBlock: string; footnote: string;
   };
   outline: { title: string; empty: string; navigation: string; current: string; collapse: string; expand: string };
@@ -75,7 +75,7 @@ export const defaultLabels: Labels = {
     toneNames: { info: 'Info', success: 'Success', warning: 'Warning', danger: 'Danger', note: 'Note' },
     metricUp: 'Up', metricDown: 'Down', metricFlat: 'Unchanged',
     imageBroken: 'This image could not be loaded.', pageBreak: 'Page break', embedOpen: 'Open {title}',
-    embedBlocked: 'The interactive view is not enabled for this document. Open it in a new tab instead.', embedTitle: 'Interactive chart',
+    embedBlocked: 'The interactive view is not enabled for this document. Open it in a new tab instead.', embedTitle: 'Interactive chart', cardUnavailable: 'This card has no description.',
     renderError: 'This block could not be displayed.', retry: 'Try again', language: 'Language: {language}', loadingBlock: 'Loading…', footnote: 'Source {number}',
   },
   outline: { title: 'Outline', empty: 'Add a heading to build an outline.', navigation: 'Document outline', current: 'Current section', collapse: 'Collapse outline', expand: 'Expand outline' },

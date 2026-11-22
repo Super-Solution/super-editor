@@ -3,7 +3,7 @@
 import { runs as parseRuns } from './inline.js';
 import { descendantsOf, findBlocks } from './query.js';
 import { replaceInContent } from './text.js';
-import type { Actor, ApplyResult, BlockContent, BlockInput, ChartSpec, Citation, DocumentFormat, Editor, EditorIssue, InlineRun, Operation, ResearchDocument, Transaction } from './types.js';
+import type { Actor, ApplyResult, BlockContent, BlockInput, ChartSpec, Citation, DocumentFormat, Editor, EditorIssue, InlineRun, JsonObject, Operation, ResearchDocument, Transaction } from './types.js';
 
 export { runs, plainRuns } from './inline.js';
 
@@ -41,6 +41,8 @@ export const b = {
       ...defined({ caption: options?.caption, headerColumn: options?.headerColumn }) }, options),
   chart: (id: string, spec: ChartSpec, options?: BlockOptions): BlockInput => make(id, { type: 'chart', spec }, options),
   embed: (id: string, url: string, title: string, options?: BlockOptions & { height?: number }): BlockInput => make(id, { type: 'embed', provider: 'superchart', url, title, ...defined({ height: options?.height }) }, options),
+  /** A chat plugin's card (`kind`, its `spec`), with `alt` saying what it shows for print, Markdown and hosts without the card. */
+  card: (id: string, kind: string, spec: JsonObject, alt: string, options?: BlockOptions & { title?: string }): BlockInput => make(id, { type: 'card', kind, spec, alt, ...defined({ title: options?.title }) }, options),
   timestamp: (id: string, at: string, label: string, options?: BlockOptions): BlockInput => make(id, { type: 'timestamp', at, label }, options),
   quote: (id: string, text: TextInput, options?: BlockOptions & { attribution?: string }): BlockInput => make(id, { type: 'quote', runs: toRuns(text), ...defined({ attribution: options?.attribution }) }, options),
   callout: (id: string, tone: 'info' | 'success' | 'warning' | 'danger' | 'note', text: TextInput, options?: BlockOptions & { title?: string }): BlockInput => make(id, { type: 'callout', tone, ...defined({ title: options?.title }), runs: toRuns(text) }, options),

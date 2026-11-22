@@ -50,4 +50,6 @@
   .super-editor-block[data-diff] { background: none !important; outline: 0; }
   mark.se-find-match { background: none !important; color: inherit !important; }
   .se-embed-frame { display: none; }
+  .se-card-mount { display: none; }
+  .se-card[data-state="live"] .se-card-alt { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
 }

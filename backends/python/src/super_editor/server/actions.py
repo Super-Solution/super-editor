@@ -30,7 +30,7 @@ _ABSENT: Any = object()
 
 BLOCK_TYPES = (
     "section", "heading", "paragraph", "list", "table", "chart", "embed", "timestamp", "quote", "callout", "code",
-    "divider", "image", "toggle", "metrics", "toc", "pageBreak",
+    "divider", "image", "toggle", "metrics", "toc", "pageBreak", "card",
 )  # fmt: skip
 
 

@@ -45,6 +45,7 @@ function fullDocument(): ResearchDocument {
       b.chart('ch7', chart.waterfall({ title: 'Wf', labels: ['a', 'b'], values: [3, -1] })),
       b.chart('ch8', { kind: 'custom-kind', title: 'Custom', labels: ['a'], series: [{ name: 's', values: [1], color: '#2f6fed' }] }),
       b.embed('em', 'https://example.com/chart?s=1', 'Embed', { height: 400 }),
+      b.card('cr', 'super-chart.chart', { symbol: { ticker: 'BTC' }, feed: { id: 'btc' }, '10': [1, 2.5, -3e-7, true, null], '2': { nested: [{ 'a.b': '雪 👍' }] } }, 'BTC daily price.', { title: 'BTC' }),
       b.timestamp('ts', '2026-11-08T07:00:00.250Z', 'Updated'),
       b.quote('q', 'Quoted', { attribution: 'Someone' }),
       b.callout('co', 'warning', 'Careful', { title: 'Note' }),
@@ -82,6 +83,7 @@ const miniDoc: ResearchDocument = (() => {
     blk('tg', { type: 'toggle', title: 'M', open: false }), blk('im', { type: 'image', url: 'https://example.com/i.png', alt: 'a', width: 'wide' }, 'tg'),
     blk('mt', { type: 'metrics', items: [{ label: 'R', value: '1', change: 1, tone: 'up' }] }), blk('co', { type: 'callout', tone: 'info', runs: [{ text: 'c' }] }),
     blk('cd', { type: 'code', language: 'ts', text: 'x' }),
+    blk('cr', { type: 'card', kind: 'super.plot', spec: { kind: 'super.plot', spec: { marks: [] }, alt: 'Flat.' }, alt: 'Flat.' }),
   ];
   d.retiredBlockIds = ['r1'];
   return d as ResearchDocument;
@@ -231,6 +233,8 @@ for (const spec of [
   { ...base, kind: 'a b' }, { ...base, kind: '' }, { ...base, asOf: '2026-11-08T00:00:00Z', unit: 'x', stacked: true }, { ...base, asOf: 'now' },
 ]) add('transaction', chartTx(spec));
 // Block content rules
+/** A card spec whose innermost object sits `levels` levels down (the spec itself is level 1). */
+const nested = (levels: number): Record<string, unknown> => { let value: Record<string, unknown> = {}; for (let level = 1; level < levels; level++) value = { n: value }; return value; };
 const blockTx = (content: unknown, extra: Record<string, unknown> = {}): Record<string, unknown> => t([op.insertBlock({ id: 'bx', parentId: null, content: content as never, citationIds: [], ...extra })]);
 for (const content of [
   { type: 'heading', level: 0, text: 'x' }, { type: 'heading', level: 4, text: 'x' }, { type: 'heading', level: 3, text: 'x' }, { type: 'heading', level: 1.5, text: 'x' },
@@ -238,6 +242,12 @@ for (const content of [
   { type: 'list', ordered: false, items: ['a'], checked: [true] }, { type: 'list', ordered: false, items: ['a', 'b'], style: 'todo', checked: [true] }, { type: 'list', ordered: false, items: ['a'], indent: [4] }, { type: 'list', ordered: false, items: ['a'], indent: [0, 0] }, { type: 'list', ordered: false, items: [] },
   { type: 'table', columns: [], rows: [] }, { type: 'table', columns: ['a'], rows: [['1', '2']] }, { type: 'table', columns: ['a', 'b'], rows: [['1']] }, { type: 'table', columns: ['a'], rows: [], align: ['left', 'right'] }, { type: 'table', columns: ['a'], rows: [], align: ['middle'] }, { type: 'table', columns: ['a'], rows: [[5]] },
   { type: 'embed', provider: 'superchart', url: 'http://example.com/x', title: 't' }, { type: 'embed', provider: 'other', url: 'https://example.com/x', title: 't' }, { type: 'embed', provider: 'superchart', url: 'https://example.com/x', title: 't', height: 199 }, { type: 'embed', provider: 'superchart', url: 'https://example.com/x', title: 't', height: 1200 }, { type: 'embed', provider: 'superchart', url: 'https://example.com/x', title: 't', height: 1201 },
+  { type: 'card', kind: 'super.plot', spec: {}, alt: 'a' }, { type: 'card', kind: 'super.plot', spec: {}, alt: 'a', title: 'T' }, { type: 'card', kind: 'super.plot', spec: {}, alt: '' }, { type: 'card', kind: 'super.plot', spec: {} },
+  { type: 'card', kind: 'plot', spec: {}, alt: 'a' }, { type: 'card', kind: 'Super.Plot', spec: {}, alt: 'a' }, { type: 'card', kind: 'super..plot', spec: {}, alt: 'a' }, { type: 'card', kind: `x.${'a'.repeat(99)}`, spec: {}, alt: 'a' }, { type: 'card', kind: 7, spec: {}, alt: 'a' },
+  { type: 'card', kind: 'super.plot', spec: [], alt: 'a' }, { type: 'card', kind: 'super.plot', spec: 'x', alt: 'a' }, { type: 'card', kind: 'super.plot', spec: null, alt: 'a' }, { type: 'card', kind: 'super.plot', spec: { kind: 'super-chart.chart' }, alt: 'a' }, { type: 'card', kind: 'super.plot', spec: { kind: 'super.plot', z: 1, a: 2, '1': 3 }, alt: 'a' },
+  { type: 'card', kind: 'super.plot', spec: { a: { b: 'x'.repeat(100001) } }, alt: 'a' }, { type: 'card', kind: 'super.plot', spec: { ['k'.repeat(1001)]: 1 }, alt: 'a' }, { type: 'card', kind: 'super.plot', spec: { a: [1, [2, { b: 1e309 }]] }, alt: 'a' },
+  { type: 'card', kind: 'super.plot', spec: nested(31), alt: 'a' }, { type: 'card', kind: 'super.plot', spec: nested(32), alt: 'a' }, { type: 'card', kind: 'super.plot', spec: { values: Array.from({ length: 99999 }, () => 0) }, alt: 'a' }, { type: 'card', kind: 'super.plot', spec: { values: Array.from({ length: 100000 }, () => 0) }, alt: 'a' },
+  { type: 'card', kind: 'super.plot', spec: {}, alt: 'a'.repeat(2001) }, { type: 'card', kind: 'super.plot', spec: {}, alt: 'a', title: 5 }, { type: 'card', kind: 'super.plot', spec: {}, alt: 'a', extra: 1 },
   { type: 'image', url: 'http://example.com/i.png', alt: 'a' }, { type: 'image', url: 'https://example.com/i.png', alt: 'a', width: 'huge' },
   { type: 'timestamp', at: 'yesterday', label: 'l' }, { type: 'timestamp', at: '2026-11-08T00:00:00Z', label: '' },
   { type: 'code', language: 'c++', text: 'x' }, { type: 'code', language: 'my lang', text: 'x' }, { type: 'code', language: 'x'.repeat(41), text: 'x' }, { type: 'code', language: '', text: '' },

@@ -3,7 +3,7 @@
 import type { BlockType, CalloutTone, ChartKind, Highlight, Operation } from './types.js';
 
 /** Runtime value lists for the closed unions in types.ts. UIs, slash menus and transports enumerate these. */
-export const BLOCK_TYPES = ['section', 'heading', 'paragraph', 'list', 'table', 'chart', 'embed', 'timestamp', 'quote', 'callout', 'code', 'divider', 'image', 'toggle', 'metrics', 'toc', 'pageBreak'] as const satisfies readonly BlockType[];
+export const BLOCK_TYPES = ['section', 'heading', 'paragraph', 'list', 'table', 'chart', 'embed', 'timestamp', 'quote', 'callout', 'code', 'divider', 'image', 'toggle', 'metrics', 'toc', 'pageBreak', 'card'] as const satisfies readonly BlockType[];
 export const CHART_KINDS = ['pie', 'donut', 'bar', 'trend', 'line', 'area', 'scatter', 'histogram', 'candlestick', 'heatmap', 'waterfall'] as const satisfies readonly ChartKind[];
 export const HIGHLIGHTS = ['yellow', 'green', 'blue', 'pink', 'gray'] as const satisfies readonly Highlight[];
 export const CALLOUT_TONES = ['info', 'success', 'warning', 'danger', 'note'] as const satisfies readonly CalloutTone[];

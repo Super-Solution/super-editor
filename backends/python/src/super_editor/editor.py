@@ -216,6 +216,11 @@ def _replace_in_content(  # noqa: C901, PLR0912
         nxt["spec"] = spec
     elif kind == "embed":
         nxt["title"] = r.string(content["title"])
+    elif kind == "card":
+        title = r.optional(content.get("title"))
+        if title is not None:
+            nxt["title"] = title
+        nxt["alt"] = r.string(content["alt"])
     elif kind == "image":
         caption = r.optional(content.get("caption"))
         if caption is not None:

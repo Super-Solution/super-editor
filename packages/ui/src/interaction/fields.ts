@@ -66,6 +66,7 @@ export function plainTextOf(content: BlockContent): string {
     case 'table': return [content.columns.join('\t'), ...content.rows.map((row) => row.join('\t'))].join('\n');
     case 'chart': return content.spec.title;
     case 'embed': return content.title;
+    case 'card': return content.title ? `${content.title}\n${content.alt}` : content.alt;
     case 'image': return content.alt;
     case 'timestamp': return content.label;
     case 'metrics': return content.items.map((item) => `${item.label}: ${item.value}`).join('\n');

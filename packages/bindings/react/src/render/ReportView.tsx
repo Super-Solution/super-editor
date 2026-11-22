@@ -27,7 +27,7 @@ export class BlockErrorBoundary extends Component<{ block: Block; labels: Labels
   }
 }
 
-const ESTIMATES: Record<string, number> = { chart: 360, table: 220, image: 260, embed: 400, metrics: 110, code: 140, paragraph: 56, list: 90, callout: 80, quote: 70, toc: 160 };
+const ESTIMATES: Record<string, number> = { chart: 360, card: 360, table: 220, image: 260, embed: 400, metrics: 110, code: 140, paragraph: 56, list: 90, callout: 80, quote: 70, toc: 160 };
 
 /** Mounts children only while near the viewport; off-screen blocks keep their last measured height as a placeholder. */
 function Lazy({ eager, type, children }: { eager: boolean; type: string; children: ReactNode }): ReactNode {
@@ -139,12 +139,12 @@ export function ReportView(props: ReportViewProps): ReactNode {
   contextRef.current = context;
 
   // Everything that changes how *every* block renders bumps the epoch; per-block facts live in each block's memo key.
-  const epochRef = useRef({ epoch: 0, blockRenderers: props.blockRenderers, chartRenderers: props.chartRenderers, renderBlockActions: props.renderBlockActions, labels, embed: '', locale: props.locale, timeZone: props.timeZone, chartActions: props.chartActions, todo: !!props.onToggleTodo, exportTheme: props.exportTheme, memoize: props.memoize, reportId: report.id });
+  const epochRef = useRef({ epoch: 0, blockRenderers: props.blockRenderers, chartRenderers: props.chartRenderers, cardMounts: props.cardMounts, renderBlockActions: props.renderBlockActions, labels, embed: '', locale: props.locale, timeZone: props.timeZone, chartActions: props.chartActions, todo: !!props.onToggleTodo, exportTheme: props.exportTheme, memoize: props.memoize, reportId: report.id });
   const embedKey = props.embedPolicy ? JSON.stringify(props.embedPolicy) : '';
   const previous = epochRef.current;
-  if (!shallowSame(previous.blockRenderers, props.blockRenderers) || !shallowSame(previous.chartRenderers, props.chartRenderers) || previous.renderBlockActions !== props.renderBlockActions || previous.labels !== labels
+  if (!shallowSame(previous.blockRenderers, props.blockRenderers) || !shallowSame(previous.chartRenderers, props.chartRenderers) || !shallowSame(previous.cardMounts, props.cardMounts) || previous.renderBlockActions !== props.renderBlockActions || previous.labels !== labels
     || previous.embed !== embedKey || previous.locale !== props.locale || previous.timeZone !== props.timeZone || previous.chartActions !== props.chartActions || previous.todo !== !!props.onToggleTodo || previous.exportTheme !== props.exportTheme || previous.reportId !== report.id || props.memoize === false) {
-    epochRef.current = { epoch: previous.epoch + 1, blockRenderers: props.blockRenderers, chartRenderers: props.chartRenderers, renderBlockActions: props.renderBlockActions, labels, embed: embedKey, locale: props.locale, timeZone: props.timeZone, chartActions: props.chartActions, todo: !!props.onToggleTodo, exportTheme: props.exportTheme, memoize: props.memoize, reportId: report.id };
+    epochRef.current = { epoch: previous.epoch + 1, blockRenderers: props.blockRenderers, chartRenderers: props.chartRenderers, cardMounts: props.cardMounts, renderBlockActions: props.renderBlockActions, labels, embed: embedKey, locale: props.locale, timeZone: props.timeZone, chartActions: props.chartActions, todo: !!props.onToggleTodo, exportTheme: props.exportTheme, memoize: props.memoize, reportId: report.id };
   }
   const epoch = epochRef.current.epoch;
 

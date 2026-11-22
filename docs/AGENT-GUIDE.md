@@ -8,7 +8,8 @@ Super Editor edits one **versioned report document**. Everything an agent does i
 
 - A **document** has a title, an ordered tree of **blocks**, a list of **citations** and a **revision** number that grows with every accepted edit.
 - A **block** has an ID you choose (`sec-1`, `macro.summary`), a type, typed content, optional citations and a **version** that grows whenever the block changes. IDs of deleted blocks are never reused.
-- Block types: `section`, `toggle` (both can contain blocks), `heading` (levels 1 to 3), `paragraph`, `list` (bullet, numbered, to-do, nested), `table`, `chart`, `embed`, `timestamp`, `quote`, `callout`, `code`, `divider`, `image`, `metrics`, `toc`, `pageBreak`. There is no raw HTML block.
+- Block types: `section`, `toggle` (both can contain blocks), `heading` (levels 1 to 3), `paragraph`, `list` (bullet, numbered, to-do, nested), `table`, `chart`, `embed`, `timestamp`, `quote`, `callout`, `code`, `divider`, `image`, `metrics`, `toc`, `pageBreak`, `card`. There is no raw HTML block.
+- `card` holds a chat plugin's card in the document: `{ "type": "card", "kind": "super.plot", "spec": { … }, "alt": "What it shows, in words.", "title": "Optional" }`. `kind` is the card kind the chat registered (namespaced, with a dot), `spec` is that card's own spec, and `alt` is required: it is what print, Markdown, plain text and any reader without the card see. Prefer a native `chart` block when it can say the same thing.
 - **Guards**: an edit that overwrites, moves or deletes a block names the version you last read. If the block changed since, the edit is refused with a `conflict` and a hint that contains the current version. Nothing is applied. You read again and decide.
 
 ## Connect

@@ -101,6 +101,7 @@ export function toMarkdown(document: ResearchDocument, options: MarkdownOptions 
         for (const extra of [annotationLine(spec), spec.caption, sourceLine(spec)]) if (extra) parts.push(escapeLineStarts(escapeInline(line(extra)))); break;
       }
       case 'embed': parts.push(`[${escapeInline(line(content.title))}](${content.url.replace(/\(/g, '%28').replace(/\)/g, '%29')})`); break;
+      case 'card': if (content.title) parts.push(`**${escapeInline(line(content.title))}**`); parts.push(escapeLineStarts(escapeInline(line(content.alt)))); break;
       case 'timestamp': parts.push(escapeLineStarts(`${escapeInline(line(content.label))}: ${content.at}`)); break;
       case 'quote': {
         const body = escapeLineStarts(runsToMarkdown(content.runs));
@@ -321,6 +322,7 @@ export function toHTML(document: ResearchDocument, options: HtmlOptions = {}): s
         html = `<figure${id} class="chart" data-kind="${escapeHtml(spec.kind)}"><figcaption>${text(spec.title)} <small>(${text(chartDescriptor(spec))})</small></figcaption>${table(data.head, data.rows, { omitted: data.omitted })}${[annotationLine(spec), spec.caption, sourceLine(spec)].filter(Boolean).map(extra => `<p class="chart-note">${text(extra!)}</p>`).join('')}</figure>`; break;
       }
       case 'embed': html = `<p${id} class="embed">${link(content.url, text(content.title))}</p>`; break;
+      case 'card': html = `<figure${id} class="card" data-kind="${escapeHtml(content.kind)}">${content.title ? `<figcaption>${text(content.title)}</figcaption>` : ''}<p>${text(content.alt)}</p></figure>`; break;
       case 'timestamp': html = `<p${id}><time datetime="${escapeHtml(content.at)}">${text(content.label)}: ${escapeHtml(content.at)}</time></p>`; break;
       case 'quote': html = `<blockquote${id}>${runsHtml(content.runs)}${content.attribution ? `<footer>— ${text(content.attribution)}</footer>` : ''}</blockquote>`; break;
       case 'callout': html = `<aside${id} class="callout" data-tone="${content.tone}" role="note">${content.title ? `<strong>${text(content.title)}</strong>` : ''}<p>${runsHtml(content.runs)}</p></aside>`; break;
@@ -370,6 +372,7 @@ export function toPlainText(document: ResearchDocument, options: PlainTextOption
         parts.push([`${spec.title} (${chartDescriptor(spec)})`, data.head.join('\t'), ...data.rows.map(row => row.join('\t')), ...(data.omitted ? [`… ${data.omitted} more rows`] : []), ...[annotationLine(spec), spec.caption, sourceLine(spec)].filter((entry): entry is string => Boolean(entry))].join('\n')); break;
       }
       case 'embed': parts.push(`${content.title} (${content.url})`); break;
+      case 'card': parts.push(content.title ? `${content.title}\n${content.alt}` : content.alt); break;
       case 'timestamp': parts.push(`${content.label}: ${content.at}`); break;
       case 'quote': parts.push(`“${withMarkers(content.runs)}”${content.attribution ? ` — ${content.attribution}` : ''}`); break;
       case 'callout': parts.push(`${capitalize(content.tone)}${content.title ? `: ${content.title}` : ''}\n${withMarkers(content.runs)}`); break;

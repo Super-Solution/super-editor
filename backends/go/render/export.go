@@ -472,6 +472,11 @@ func ToMarkdown(doc record, o MarkdownOptions) string {
 			}
 		case "embed":
 			parts = append(parts, "["+EscapeInline(line(str(c, "title")))+"]("+parens(str(c, "url"))+")")
+		case "card":
+			if t := str(c, "title"); t != "" {
+				parts = append(parts, "**"+EscapeInline(line(t))+"**")
+			}
+			parts = append(parts, EscapeLineStarts(EscapeInline(line(str(c, "alt")))))
 		case "timestamp":
 			parts = append(parts, EscapeLineStarts(EscapeInline(line(str(c, "label")))+": "+str(c, "at")))
 		case "quote":

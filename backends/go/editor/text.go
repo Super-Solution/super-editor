@@ -213,6 +213,11 @@ func replaceInContent(content record, find, replace string, all, caseSensitive b
 		next["spec"] = spec
 	case "embed":
 		next["title"] = r.str(content["title"].(string))
+	case "card":
+		if s, ok := r.optional(content["title"]); ok {
+			next["title"] = s
+		}
+		next["alt"] = r.str(content["alt"].(string))
 	case "image":
 		if s, ok := r.optional(content["caption"]); ok {
 			next["caption"] = s

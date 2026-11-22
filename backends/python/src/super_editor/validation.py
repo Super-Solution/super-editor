@@ -52,6 +52,9 @@ LIMITS: dict[str, int | float] = {
     "embedHeightMax": 1_200,
     "codeLanguage": 40,
     "searchText": 1_000,
+    "cardKind": 100,
+    "cardSpecDepth": 32,
+    "cardSpecValues": 100_000,
 }
 
 BLOCK_TYPES = (
@@ -72,6 +75,7 @@ BLOCK_TYPES = (
     "metrics",
     "toc",
     "pageBreak",
+    "card",
 )
 OPERATION_TYPES = (
     "insertBlock",
@@ -250,6 +254,64 @@ def _array(value: Any, path: str, maximum: int, parse: Any) -> list[Any]:
     if not isinstance(value, list) or len(value) > maximum:
         _fail(f"Expected an array with at most {maximum} entries.", path)
     return [parse(entry, f"{path}[{index}]") for index, entry in enumerate(value)]
+
+
+CARD_KIND_PATTERN = re.compile(r"[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+")
+"""A card kind as a chat plugin registers it: namespaced, so it never collides with a block type."""
+
+
+def _card_kind(value: Any, path: str) -> str:
+    result = _string(value, path, LIMITS["cardKind"], False)
+    if not CARD_KIND_PATTERN.fullmatch(result):
+        _fail(
+            'Card kind must be a namespaced name such as "super.plot".',
+            path,
+            "Use the card kind a chat plugin registered: lowercase letters, digits and hyphens, with at least one dot.",
+        )
+    return result
+
+
+def _card_spec(value: Any, path: str, kind: str) -> dict[str, Any]:
+    """A card's spec, checked as data (the editor does not interpret it): plain objects and arrays, finite numbers,
+    bounded text, depth and size. Members keep JavaScript property order."""
+    count = 0
+    limit = int(LIMITS["cardSpecValues"])
+    depth_limit = int(LIMITS["cardSpecDepth"])
+
+    def walk(entry: Any, at: str, depth: int) -> Any:
+        nonlocal count
+        count += 1
+        if count > limit:
+            _fail(f"A card spec may hold at most {limit} values.", at)
+        if entry is None or isinstance(entry, bool):
+            return entry
+        if _is_number(entry):
+            return _finite(entry, at)
+        if isinstance(entry, str):
+            return _string(entry, at)
+        if depth > depth_limit:
+            _fail(f"A card spec may nest at most {depth_limit} levels.", at)
+        if isinstance(entry, list):
+            return _array(entry, at, limit, lambda item, p: walk(item, p, depth + 1))
+        if not isinstance(entry, dict):
+            _fail("Expected JSON: an object, array, string, finite number, boolean or null.", at)
+        out: dict[str, Any] = {}
+        for key in _js_key_order(list(entry)):
+            member = f"{at}.{key}"
+            _string(key, member, LIMITS["title"])
+            out[key] = walk(entry[key], member, depth + 1)
+        return out
+
+    if not isinstance(value, dict):
+        _fail("Expected a plain object.", path, 'Provide the card kind\'s spec, for example {"data":[…]}.')
+    spec: dict[str, Any] = walk(value, path, 1)
+    if "kind" in spec and spec["kind"] != kind:
+        _fail(
+            "The spec names a different card kind.",
+            f"{path}.kind",
+            f'Remove "kind" from the spec or set it to "{kind}".',
+        )
+    return spec
 
 
 def _unique(values: list[str], path: str, hint: str | None = None) -> None:
@@ -908,6 +970,18 @@ def _content(value: Any, path: str) -> dict[str, Any]:  # noqa: C901, PLR0912, P
             out["height"] = _integer(
                 v["height"], f"{path}.height", int(LIMITS["embedHeightMin"]), int(LIMITS["embedHeightMax"])
             )
+        return out
+    if kind == "card":
+        v = _object(value, path, ["type", "kind", "spec", "alt"], ["title"])
+        card_kind = _card_kind(v["kind"], f"{path}.kind")
+        out = {
+            "type": "card",
+            "kind": card_kind,
+            "spec": _card_spec(v["spec"], f"{path}.spec", card_kind),
+            "alt": _string(v["alt"], f"{path}.alt", LIMITS["caption"], False),
+        }
+        if "title" in v:
+            out["title"] = _string(v["title"], f"{path}.title", LIMITS["title"])
         return out
     if kind == "timestamp":
         v = _object(value, path, ["type", "at", "label"])

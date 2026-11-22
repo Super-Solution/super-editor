@@ -154,6 +154,13 @@
 .se-image-broken { padding: 1.2rem; border: 1px dashed var(--se-border-strong); border-radius: var(--se-radius); color: var(--se-muted); font-size: var(--se-small-size); }
 @container se-document (max-width: 640px) { .se-image[data-width="narrow"], .se-image[data-width="normal"] { max-width: 100%; } }
 .se-embed { margin: 1.5rem 0; }
+.se-card { margin: 1.5rem 0; }
+.se-card-title { margin: 0 0 .5rem; font-weight: 600; }
+.se-card-mount { min-height: 120px; }
+.se-card[data-state="text"] { padding: .7rem .9rem; border: 1px solid var(--se-border); border-radius: var(--se-radius); background: var(--se-subtle); }
+.se-card[data-state="text"] .se-card-alt { margin: 0; }
+/* A live card keeps its words for assistive technology and print. */
+.se-card[data-state="live"] .se-card-alt { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .se-embed-card { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; padding: .7rem .9rem; border: 1px solid var(--se-border); border-radius: var(--se-radius); background: var(--se-subtle); }
 .se-embed-provider { font-size: 12px; font-weight: 600; color: var(--se-muted); }
 .se-embed-note { flex-basis: 100%; color: var(--se-muted); font-size: var(--se-small-size); }

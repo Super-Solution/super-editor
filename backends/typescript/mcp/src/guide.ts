@@ -14,7 +14,7 @@ export const SERVER_INSTRUCTIONS = [
 export const AGENT_GUIDE = `# Super Editor: agent quick guide
 
 ## Model
-- A document has blocks (section, toggle, heading, paragraph, list, table, chart, embed, timestamp, quote, callout, code, divider, image, metrics, toc, pageBreak), citations and a revision number.
+- A document has blocks (section, toggle, heading, paragraph, list, table, chart, embed, timestamp, quote, callout, code, divider, image, metrics, toc, pageBreak, card), citations and a revision number.
 - Sections and toggles contain other blocks. Block IDs are yours to choose and are never reused after deletion.
 - Every block has a version. Updates, moves and deletes must send the version you last read.
 
