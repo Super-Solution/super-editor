@@ -71,7 +71,7 @@ export function numberingXml(orderedLists: number, bodyFont: string): string {
     + Array.from({ length: orderedLists }, (_, index) => `<w:num w:numId="${index + 2}"><w:abstractNumId w:val="1"/>${restart}</w:num>`).join('') + '</w:numbering>';
 }
 
-export const settingsXml = (): string => `${XML_HEADER}<w:settings xmlns:w="${W}"><w:zoom w:percent="100"/><w:defaultTabStop w:val="720"/><w:characterSpacingControl w:val="doNotCompress"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>`;
+export const settingsXml = (trackRevisions = false): string => `${XML_HEADER}<w:settings xmlns:w="${W}"><w:zoom w:percent="100"/>${trackRevisions ? '<w:trackRevisions/>' : ''}<w:defaultTabStop w:val="720"/><w:characterSpacingControl w:val="doNotCompress"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>`;
 
 export function corePropertiesXml(properties: { title: string; author?: string; created: string; modified: string }): string {
   const text = (value: string): string => escapeXmlText(xmlText(value).text), w3c = (value: string): string => new Date(value).toISOString().replace(/\.\d{3}Z$/, 'Z');
