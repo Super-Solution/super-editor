@@ -39,6 +39,15 @@ const chartDescriptor = (spec: ChartSpec): string => `${spec.kind} chart${spec.u
 const sourceLine = (spec: ChartSpec): string | undefined => spec.source ? `Source: ${spec.source}` : undefined;
 const annotationLine = (spec: ChartSpec): string | undefined => spec.annotations?.length ? `Notes: ${spec.annotations.map(note => `${note.label} (${note.at}${note.value === undefined ? '' : `, ${note.value}`})`).join('; ')}` : undefined;
 
+/**
+ * Everything a format that cannot draw a chart shows instead: the title, a short descriptor ("line chart, USD, as of …"), the data
+ * table (see `chartTable`) and the note lines (annotations, caption, source). Shared by every non-visual export, so they agree.
+ */
+export function chartFallback(spec: ChartSpec, maxRows = 100): { title: string; descriptor: string; head: string[]; rows: string[][]; omitted: number; notes: string[] } {
+  const table = chartTable(spec, maxRows);
+  return { title: spec.title, descriptor: chartDescriptor(spec), ...table, notes: [annotationLine(spec), spec.caption, sourceLine(spec)].filter((entry): entry is string => Boolean(entry)) };
+}
+
 // ---- toMarkdown ----------------------------------------------------------------------------------------------------
 
 export type MarkdownOptions = {

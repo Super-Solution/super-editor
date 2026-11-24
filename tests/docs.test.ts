@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { AGENT_ACTIONS, TEMPLATE_KINDS, TRANSPORT_LIMITS } from '../packages/core/src/index.js';
+import { AGENT_ACTIONS, DOCUMENT_FEATURES, MARKDOWN_LOSSES, TEMPLATE_KINDS, TRANSPORT_LIMITS, createFormatRegistry, htmlExporter, markdownExporter, markdownImporter, textFormatExporter } from '../packages/core/src/index.js';
+import { DOCX_FIDELITY, docxExporter } from '../packages/formats/docx/src/index.js';
 import { ROUTES } from '../backends/typescript/api/src/index.js';
 import { PROMPTS, RESOURCES, RESOURCE_TEMPLATES, listTools } from '../backends/typescript/mcp/src/index.js';
 import { COMMANDS } from '../packages/cli/src/commands.js';
@@ -60,7 +61,7 @@ test('the agent guide covers every tool, every template and the error codes', as
 });
 
 test('relative links in the docs point at files that exist', async () => {
-  for (const file of ['README.md', 'CHANGELOG.md', 'docs/AGENT-GUIDE.md', 'docs/API.md', 'docs/SECURITY.md', 'docs/RELEASING.md', 'docs/API-CONTRACT.md', 'examples/README.md', 'backends/typescript/api/README.md', 'backends/typescript/mcp/README.md', 'packages/cli/README.md', 'packages/core/README.md']) {
+  for (const file of ['README.md', 'CHANGELOG.md', 'docs/AGENT-GUIDE.md', 'docs/API.md', 'docs/SECURITY.md', 'docs/RELEASING.md', 'docs/API-CONTRACT.md', 'docs/FORMATS.md', 'docs/ARCHITECTURE.md', 'packages/formats/opc/README.md', 'packages/formats/docx/README.md', 'examples/README.md', 'backends/typescript/api/README.md', 'backends/typescript/mcp/README.md', 'packages/cli/README.md', 'packages/core/README.md']) {
     const text = await read(file);
     for (const match of text.matchAll(/\]\((?!https?:|mailto:|#)([^)#\s]+)(?:#[^)\s]*)?\)/g)) {
       assert.ok(existsSync(resolve(root, dirname(file), match[1]!)), `${file} links to missing ${match[1]}`);
@@ -71,4 +72,27 @@ test('relative links in the docs point at files that exist', async () => {
 test('SECURITY.md documents image and embed URL handling and the transport boundaries', async () => {
   const security = await read('docs/SECURITY.md');
   for (const needle of ['## Image and embed URLs', '## Transports', 'https://', 'data:', 'javascript:', 'img-src', 'frame-src', 'sandbox', 'no-referrer', 'SSRF', 'Content-Security-Policy', 'tracking', 'readOnlyHint', 'not instructions']) assert.ok(security.includes(needle), needle);
+});
+
+test('docs/FORMATS.md names every document feature, format, warning code and package, and every feature row matches the fidelity tables', async () => {
+  const formats = await read('docs/FORMATS.md');
+  for (const feature of DOCUMENT_FEATURES) assert.ok(formats.includes(`\`${feature}\``), `feature ${feature}`);
+  const registry = createFormatRegistry();
+  for (const exporter of [markdownExporter, htmlExporter, textFormatExporter, docxExporter]) registry.addExporter(exporter);
+  registry.addImporter(markdownImporter);
+  for (const info of registry.exporters()) assert.ok(formats.includes(`\`${info.id}\``), `exporter ${info.id}`);
+  for (const code of ['feature-degraded', 'feature-dropped', 'chart-rows-omitted', 'invalid-xml-characters', ...Object.keys(MARKDOWN_LOSSES)]) assert.ok(formats.includes(`\`${code}\``), `warning code ${code}`);
+  for (const name of ['super-editor-core', 'super-editor-opc', 'super-editor-docx']) assert.ok(formats.includes(name), name);
+  // The Word column of the feature table: a feature the table lists as degraded must be called degraded on its row, one it omits must not.
+  for (const feature of DOCUMENT_FEATURES) {
+    const row = formats.split('\n').find(line => line.startsWith(`| \`${feature}\``) || line.includes(`\`${feature}\`,`) && line.startsWith('|'));
+    if (!row) continue;
+    const word = row.split('|').filter(cell => cell.trim() !== '').pop()!.trim();
+    const level = DOCX_FIDELITY[feature]?.level;
+    assert.equal(word.startsWith('degraded'), level === 'degraded', `FORMATS.md Word column for ${feature}: "${word}" vs table ${level ?? 'carried'}`);
+    assert.equal(word.startsWith('dropped'), level === 'dropped', `FORMATS.md Word column for ${feature}`);
+  }
+  for (const file of ['README.md', 'docs/ARCHITECTURE.md', 'docs/API-CONTRACT.md', 'packages/core/README.md', 'packages/formats/docx/README.md']) assert.ok((await read(file)).includes('FORMATS.md'), `${file} links FORMATS.md`);
+  assert.ok((await read('docs/RELEASING.md')).includes('super-editor-opc') && (await read('docs/RELEASING.md')).includes('super-editor-docx'));
+  assert.ok(existsSync(resolve(root, 'packages/formats/opc/README.md')) && existsSync(resolve(root, 'packages/formats/docx/README.md')));
 });

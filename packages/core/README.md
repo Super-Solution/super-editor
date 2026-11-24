@@ -22,6 +22,8 @@ const result = transaction(editor, { id: 'research-agent', kind: 'agent' })
 
 `documentSchema` and `transactionSchema` provide JSON Schema 2020-12 discovery; Core runtime validation additionally checks references, graph ordering, versions, dates and budgets. `createReportService` shares one Editor across adapters; actor IDs record provenance and do not authenticate a caller. The host owns authorization and persistence.
 
+Exporters, importers and loss warnings: `createFormatRegistry()`, `markdownExporter`, `htmlExporter`, `textFormatExporter`, `markdownImporter` and the `Exporter`/`Importer` contract that the Word package (`@supersolutions/super-editor-docx`) also implements. Every result carries `warnings` for what the format could not hold. See [docs/FORMATS.md](../../docs/FORMATS.md).
+
 ESM, Node.js 22+ or a modern ES2022 browser/bundler. GPL-3.0-or-later; LICENSE is included. Research reporting only; no trade execution.
 
 ## Report templates
