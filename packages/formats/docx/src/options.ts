@@ -65,10 +65,10 @@ function headerFooter(value: unknown, path: string, out: EditorIssue[]): void {
 }
 
 /** Every problem with the options, at once, each with a path and a hint. Empty when the options are fine. */
-export function optionIssues(options: unknown): EditorIssue[] {
+export function optionIssues(options: unknown, extraNames: readonly string[] = []): EditorIssue[] {
   const out: EditorIssue[] = [];
   if (options === undefined) return out;
-  if (!names(options, 'options', TOP, out)) return out;
+  if (!names(options, 'options', [...TOP, ...extraNames], out)) return out;
   if ('title' in options && typeof options.title !== 'boolean') out.push(issue('options.title', 'Expected true or false.', 'Pass a boolean or omit it.'));
   if ('compress' in options && typeof options.compress !== 'boolean') out.push(issue('options.compress', 'Expected true or false.', 'Pass a boolean or omit it.'));
   if ('author' in options) text(options.author, 'options.author', 200, out);

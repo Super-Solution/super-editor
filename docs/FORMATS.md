@@ -49,6 +49,10 @@ One warning per affected feature, not one per block, so a long document gets a s
 | `markdown-footnotes-kept-as-text` | Markdown importer | Footnotes stay as text; no citation is invented. |
 | `markdown-inline-formatting-flattened` | Markdown importer | Bold, italic, code and links inside list items and table cells become plain text (link targets stay in parentheses). |
 | `markdown-image-kept-as-text` | Markdown importer | Only `https` images are imported. |
+| `redline-block-replaced` | Word redline | A changed table, list, chart or other non-text block is shown as the old block deleted and the new one inserted. |
+| `redline-move-not-tracked` | Word redline | A moved block is shown at its new position without a tracked change. |
+| `redline-format-not-tracked` | Word redline | A change of page size, font, font size or line height is not shown. |
+| `redline-no-changes` | Word redline | The two documents are the same; the file has no tracked changes. |
 
 ### Features and fidelity
 
@@ -112,7 +116,26 @@ core  <-  docx  ->  opc          (arrows point at the dependency; core and opc i
 
 **Why opc is not the docx package.** It is a different responsibility with a different audience and heavy code (CRC, DEFLATE through `CompressionStream`, a hardened reader). It uses only web-standard APIs (`CompressionStream`, `TextEncoder`), so it runs unchanged in browsers and Node 22+.
 
-Planned, not built: an importer for `.docx`, PDF export, and a patch mode that applies the editor's changes to a Word file someone else edited. Each would be another package with the same contract.
+Planned, not built: an importer for `.docx`, PDF export, and a patch mode that applies the editor's changes to a Word file someone else edited (the redline above makes a new file from two versions; it does not patch one). Each would be another package with the same contract.
+
+## Tracked changes (Word redline)
+
+A redline is not an `Exporter`: it needs two documents, so it lives in the Word package as two functions and is not in the registry.
+
+```ts
+import { exportDocxRedline, exportProposalDocx } from '@supersolutions/super-editor-docx';
+
+// from an agent's proposed transaction, reviewed against the document as it is now (nothing is applied)
+const out = await exportProposalDocx(document, transaction, { changeAuthor: 'research-agent' });
+// or from any two versions of the same document
+const diff = await exportDocxRedline({ before, after, actor });
+```
+
+- New blocks are inserted changes; removed blocks are deleted changes; a new title and new, changed or removed sources are marked.
+- Paragraphs, headings, sections, quotes, callouts and toggles are compared **word by word** (each CJK character is its own unit), keeping bold, links and citation markers. Anything else that changed (a table, a list, a chart, ...) is the old block deleted and the new one inserted, with `redline-block-replaced`.
+- **Accepting every change gives the new document and rejecting every change gives the old one.** The tests prove it by resolving the XML both ways and comparing with a plain export of each version. Source numbers follow the new document, so a rejected file can show different numbers than the old one when sources were added or removed.
+- A stale or invalid proposal is refused with the review's issues. The author defaults to the proposal's actor and the date to the time of the review (or `now()`), so the same input gives the same bytes. `trackChanges` (default true) asks Word to keep tracking later edits.
+- Not tracked, and said so in a warning: moves, page-format changes. Formatting-only changes (for example a word made bold) are shown as that word deleted and inserted, not as a formatting change.
 
 ## Adding a format
 
@@ -133,7 +156,7 @@ What the tests check (see `tests/formats.test.ts`, `tests/opc.test.ts`, `tests/d
 What is **not** verified, plainly:
 
 - **Microsoft Word itself was not available.** LibreOffice and python-docx are good evidence that the file is valid, but neither proves that Word shows it as intended or does not offer to "repair" it. Open an export in Word before relying on it.
-- **Tracked changes and comments are not implemented.** The editor's document has no tracked changes or comments to write: proposals live beside the document (`reviewProposal`), not in it. Writing them as Word revisions needs a source (for example a redline from a reviewed proposal) and a decision on how authors and dates map; until then no format lists `tracked-changes` or `comments` as a capability, and the Word file makes no claim about them.
+- **Tracked changes are a comparison, not a stored history.** `exportDocxRedline` and `exportProposalDocx` write them from two documents or from a reviewed proposal (see below); the editor's document itself has no revision history to write, and **comments do not exist in the document model**, so none are written. How Word shows the changes was checked in LibreOffice only, and Microsoft Word was not available.
 - **Pictures are not embedded.** `image` becomes alt text and a link, and a chart becomes its data table, because core holds no image bytes and fetching URLs is the host's decision. An image resolver option is the next step if hosts want pictures.
 - **No transport yet.** HTTP, MCP, the CLI and the chat plugin do not offer these formats; wiring them changes the shared action table and the Go and Python conformance and needs its own change.
 - Fonts are named, not embedded: a reader without the named font substitutes one.

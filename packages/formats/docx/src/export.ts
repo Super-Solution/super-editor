@@ -10,7 +10,7 @@ import { CONTENT_TYPES, RELATIONSHIPS, R, STYLE, W, XML_HEADER, corePropertiesXm
 
 export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-/** What a regenerated Word file does not carry. Tracked changes and comments are not in the editor's document model, so they are not listed here; see the package README. */
+/** What a regenerated Word file does not carry. Tracked changes come only from `exportDocxRedline` (a comparison of two documents); comments do not exist in the editor's document model. See the package README. */
 export const DOCX_FIDELITY: FidelityTable = {
   toggle: { level: 'degraded', note: 'A toggle becomes a bold title with its content below it; Word has no collapsible block, and whether it was open is lost.' },
   'todo-list': { level: 'degraded', note: 'Checkboxes become the characters ☐ and ☑, not clickable Word checkboxes.' },
@@ -32,41 +32,47 @@ const TONES: Record<CalloutTone, { color: string; fill: string }> = {
 const HIGHLIGHTS = { yellow: 'FFF3A3', green: 'CDEFD6', blue: 'CDE7FF', pink: 'FFD6EB', gray: 'DDE1E6' } as const;
 const percent = (value: number): string => `${value > 0 ? '+' : ''}${value}%`;
 
-type RunProps = { style?: string; bold?: boolean; italic?: boolean | 'off'; strike?: boolean; underline?: boolean; code?: boolean; fill?: string; superscript?: boolean; color?: string; size?: number };
-type ParagraphProps = { style?: string; keepNext?: boolean; num?: { id: number; level: number }; border?: { side: 'left' | 'bottom'; color: string; size: number; space: number }; fill?: string; spacing?: { before?: number; after?: number }; ind?: { left?: number; hanging?: number }; jc?: 'left' | 'center' | 'right' };
-type Context = {
+export type RunProps = { style?: string; bold?: boolean; italic?: boolean | 'off'; strike?: boolean; underline?: boolean; code?: boolean; fill?: string; superscript?: boolean; color?: string; size?: number };
+export type ParagraphProps = { style?: string; keepNext?: boolean; num?: { id: number; level: number }; border?: { side: 'left' | 'bottom'; color: string; size: number; space: number }; fill?: string; spacing?: { before?: number; after?: number }; ind?: { left?: number; hanging?: number }; jc?: 'left' | 'center' | 'right' };
+export type Context = {
   document: ResearchDocument; labels: DocxLabels; monoFont: string; textWidth: number; chartRows: number; replaced: number;
   children: Map<string | null, Block[]>; numbers: Map<string, number>; headingNames: Map<string, string>; bookmarkSeq: number;
   addLink: (url: string) => string; orderedLists: number;
+  /** Redline only. The text of a block whose words changed, as runs with the changes marked (given the block's base run properties). */
+  merge?: Map<string, (base: RunProps) => string>;
+  /** Redline only. Wraps how a block's own content is written; `render(block)` writes any version of the block. */
+  revise?: (block: Block, render: (version?: Block) => string) => string;
+  /** Redline only. True while a deleted version of a block is written, so a bookmark name is not used twice. */
+  noBookmarks?: boolean;
 };
 
 // ---- XML pieces ----------------------------------------------------------------------------------------------------
 
-const text = (ctx: Context, value: string): string => { const safe = xmlText(value); ctx.replaced += safe.replaced; return escapeXmlText(safe.text); };
-function runProperties(ctx: Context, props: RunProps): string {
+export const text = (ctx: Context, value: string): string => { const safe = xmlText(value); ctx.replaced += safe.replaced; return escapeXmlText(safe.text); };
+export function runProperties(ctx: Context, props: RunProps): string {
   const mono = props.code ? (() => { const name = escapeXmlAttribute(xmlText(ctx.monoFont).text); return `<w:rFonts w:ascii="${name}" w:hAnsi="${name}" w:cs="${name}"/>`; })() : '';
   const size = props.size === undefined ? '' : `<w:sz w:val="${props.size}"/><w:szCs w:val="${props.size}"/>`;
   const xml = `${props.style ? `<w:rStyle w:val="${props.style}"/>` : ''}${mono}${props.bold ? '<w:b/><w:bCs/>' : ''}${props.italic === true ? '<w:i/><w:iCs/>' : props.italic === 'off' ? '<w:i w:val="0"/><w:iCs w:val="0"/>' : ''}${props.strike ? '<w:strike/>' : ''}${props.color ? `<w:color w:val="${props.color}"/>` : ''}${size}${props.underline ? '<w:u w:val="single"/>' : ''}${props.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${props.fill}"/>` : ''}${props.superscript ? '<w:vertAlign w:val="superscript"/>' : ''}`;
   return xml ? `<w:rPr>${xml}</w:rPr>` : '';
 }
 /** Text as runs: a newline is a line break and a tab is a tab, as in Word; everything else is written as given (spaces are kept). */
-function textRuns(ctx: Context, value: string, props: RunProps = {}): string {
+export function textRuns(ctx: Context, value: string, props: RunProps = {}): string {
   const properties = runProperties(ctx, props);
   return value.replace(/\r\n?/g, '\n').split(/(\n|\t)/).map(part => part === '' ? '' : part === '\n' ? `<w:r>${properties}<w:br/></w:r>` : part === '\t' ? `<w:r>${properties}<w:tab/></w:r>` : `<w:r>${properties}<w:t xml:space="preserve">${text(ctx, part)}</w:t></w:r>`).join('');
 }
-const link = (ctx: Context, url: string, inner: string): string => `<w:hyperlink r:id="${ctx.addLink(url)}" w:history="1">${inner}</w:hyperlink>`;
-const marker = (ctx: Context, citationId: string): string => {
+export const link = (ctx: Context, url: string, inner: string): string => `<w:hyperlink r:id="${ctx.addLink(url)}" w:history="1">${inner}</w:hyperlink>`;
+export const marker = (ctx: Context, citationId: string): string => {
   const number = ctx.numbers.get(citationId);
   return `<w:hyperlink w:anchor="se_cite_${number}" w:history="1">${textRuns(ctx, `[${number}]`, { superscript: true })}</w:hyperlink>`;
 };
-function inline(ctx: Context, runs: readonly InlineRun[], base: RunProps = {}): string {
+export function inline(ctx: Context, runs: readonly InlineRun[], base: RunProps = {}): string {
   return runs.map(run => {
     const props: RunProps = { ...base, ...(run.bold ? { bold: true } : {}), ...(run.italic ? { italic: true } : {}), ...(run.strike ? { strike: true } : {}), ...(run.underline ? { underline: true } : {}), ...(run.code ? { code: true } : {}), ...(run.highlight ? { fill: HIGHLIGHTS[run.highlight] } : {}), ...(run.href ? { style: STYLE.link } : {}) };
     const body = textRuns(ctx, run.text, props);
     return (run.href && body ? link(ctx, run.href, body) : body) + (run.citationId === undefined ? '' : marker(ctx, run.citationId));
   }).join('');
 }
-function paragraph(props: ParagraphProps, content = ''): string {
+export function paragraph(props: ParagraphProps, content = ''): string {
   const border = props.border ? `<w:pBdr><w:${props.border.side} w:val="single" w:sz="${props.border.size}" w:space="${props.border.space}" w:color="${props.border.color}"/></w:pBdr>` : '';
   const spacing = props.spacing ? `<w:spacing${props.spacing.before === undefined ? '' : ` w:before="${props.spacing.before}"`}${props.spacing.after === undefined ? '' : ` w:after="${props.spacing.after}"`}/>` : '';
   const ind = props.ind ? `<w:ind${props.ind.left === undefined ? '' : ` w:left="${props.ind.left}"`}${props.ind.hanging === undefined ? '' : ` w:hanging="${props.ind.hanging}"`}/>` : '';
@@ -75,8 +81,8 @@ function paragraph(props: ParagraphProps, content = ''): string {
 }
 /** An empty line that keeps two tables from merging into one, which Word does when nothing separates them. */
 const separator = (): string => paragraph({ spacing: { after: 0 } });
-function bookmarked(ctx: Context, name: string | undefined, content: string): string {
-  if (!name) return content;
+export function bookmarked(ctx: Context, name: string | undefined, content: string): string {
+  if (!name || ctx.noBookmarks) return content;
   const id = ++ctx.bookmarkSeq;
   return `<w:bookmarkStart w:id="${id}" w:name="${name}"/>${content}<w:bookmarkEnd w:id="${id}"/>`;
 }
@@ -100,14 +106,27 @@ const ownSources = (block: Block): string[] => {
   return block.citationIds.filter(id => !inlineIds.has(id));
 };
 
-function renderBlock(ctx: Context, block: Block, depth: number): string {
+const primary = (ctx: Context, block: Block, plain: (base: RunProps) => string, base: RunProps = {}): string => ctx.merge?.get(block.id)?.(base) ?? plain(base);
+
+/** A block and its children. A redline asks `revise` how to write the block itself (as is, inserted, deleted or replaced); the children are written on their own. */
+export function renderBlock(ctx: Context, block: Block, depth: number): string {
+  const own = ctx.revise ? ctx.revise(block, version => {
+    if (version === undefined || version === block) return renderOwn(ctx, block, depth);
+    const flag = ctx.noBookmarks === true; ctx.noBookmarks = true;
+    try { return renderOwn(ctx, version, depth); } finally { ctx.noBookmarks = flag; }
+  }) : renderOwn(ctx, block, depth);
+  const children = (ctx.children.get(block.id) ?? []).map(child => renderBlock(ctx, child, block.content.type === 'section' ? depth + 1 : depth));
+  return own + children.join('');
+}
+
+function renderOwn(ctx: Context, block: Block, depth: number): string {
   const content = block.content, parts: string[] = [];
   const sectionName = ctx.headingNames.get(block.id);
   switch (content.type) {
-    case 'section': parts.push(paragraph({ style: heading(Math.min(6, 1 + depth)) }, bookmarked(ctx, sectionName, textRuns(ctx, content.title)))); break;
-    case 'heading': parts.push(paragraph({ style: heading(Math.min(6, content.level + depth)) }, bookmarked(ctx, sectionName, textRuns(ctx, content.text)))); break;
-    case 'toggle': parts.push(paragraph({ keepNext: true, spacing: { before: 120 } }, textRuns(ctx, content.title, { bold: true }))); break;
-    case 'paragraph': parts.push(paragraph({}, inline(ctx, content.runs))); break;
+    case 'section': parts.push(paragraph({ style: heading(Math.min(6, 1 + depth)) }, bookmarked(ctx, sectionName, primary(ctx, block, base => textRuns(ctx, content.title, base))))); break;
+    case 'heading': parts.push(paragraph({ style: heading(Math.min(6, content.level + depth)) }, bookmarked(ctx, sectionName, primary(ctx, block, base => textRuns(ctx, content.text, base))))); break;
+    case 'toggle': parts.push(paragraph({ keepNext: true, spacing: { before: 120 } }, primary(ctx, block, base => textRuns(ctx, content.title, base), { bold: true }))); break;
+    case 'paragraph': parts.push(paragraph({}, primary(ctx, block, base => inline(ctx, content.runs, base)))); break;
     case 'list': {
       const ordered = content.style ? content.style === 'number' : content.ordered, todo = content.style === 'todo', numId = todo ? 0 : ordered ? ctx.orderedLists++ + 2 : 1;
       content.items.forEach((item, index) => {
@@ -139,14 +158,14 @@ function renderBlock(ctx: Context, block: Block, depth: number): string {
     }
     case 'timestamp': parts.push(paragraph({}, textRuns(ctx, `${content.label}: ${content.at}`))); break;
     case 'quote': {
-      parts.push(paragraph({ style: STYLE.quote }, inline(ctx, content.runs)));
+      parts.push(paragraph({ style: STYLE.quote }, primary(ctx, block, base => inline(ctx, content.runs, base))));
       if (content.attribution) parts.push(paragraph({ style: STYLE.quote }, textRuns(ctx, `— ${content.attribution}`, { italic: 'off' })));
       break;
     }
     case 'callout': {
       const tone = TONES[content.tone], frame: ParagraphProps = { border: { side: 'left', color: tone.color, size: 24, space: 8 }, fill: tone.fill, ind: { left: 200 } };
       if (content.title) parts.push(paragraph({ ...frame, keepNext: true, spacing: { after: 0 } }, textRuns(ctx, content.title, { bold: true, color: tone.color })));
-      parts.push(paragraph({ ...frame, spacing: { after: 120 } }, inline(ctx, content.runs)));
+      parts.push(paragraph({ ...frame, spacing: { after: 120 } }, primary(ctx, block, base => inline(ctx, content.runs, base))));
       break;
     }
     case 'code': for (const line of content.text.replace(/\r\n?/g, '\n').split('\n')) parts.push(paragraph({ style: STYLE.code }, textRuns(ctx, line))); parts.push(paragraph({ spacing: { after: 60 } })); break;
@@ -177,17 +196,19 @@ function renderBlock(ctx: Context, block: Block, depth: number): string {
   }
   const sources = ownSources(block);
   if (sources.length) parts.push(paragraph({ style: STYLE.caption, spacing: { after: 120 } }, textRuns(ctx, `${ctx.labels.sources}: `) + sources.map(id => marker(ctx, id)).join(textRuns(ctx, ' '))));
-  for (const child of ctx.children.get(block.id) ?? []) parts.push(renderBlock(ctx, child, content.type === 'section' ? depth + 1 : depth));
   return parts.join('');
 }
 
-function sourcesSection(ctx: Context): string {
+/** One line of the Sources list. `index` is the citation's position in the document's citation list (the number its markers show). */
+export function sourceEntry(ctx: Context, citation: ResearchDocument['citations'][number], index: number, bookmark = true): string {
+  const dates = ` — ${ctx.labels.accessed} ${citation.accessedAt.slice(0, 10)}${citation.publishedAt ? `, ${ctx.labels.published} ${citation.publishedAt.slice(0, 10)}` : ''}`;
+  const inner = textRuns(ctx, `[${index + 1}] `) + link(ctx, citation.url, textRuns(ctx, citation.title, { style: STYLE.link })) + textRuns(ctx, dates);
+  return paragraph({ style: STYLE.sources }, bookmark ? bookmarked(ctx, `se_cite_${index + 1}`, inner) : inner);
+}
+export const sourcesHeading = (ctx: Context): string => paragraph({ style: heading(1) }, textRuns(ctx, ctx.labels.sources));
+export function sourcesSection(ctx: Context): string {
   if (!ctx.document.citations.length) return '';
-  const entries = ctx.document.citations.map((citation, index) => {
-    const dates = ` — ${ctx.labels.accessed} ${citation.accessedAt.slice(0, 10)}${citation.publishedAt ? `, ${ctx.labels.published} ${citation.publishedAt.slice(0, 10)}` : ''}`;
-    return paragraph({ style: STYLE.sources }, bookmarked(ctx, `se_cite_${index + 1}`, textRuns(ctx, `[${index + 1}] `) + link(ctx, citation.url, textRuns(ctx, citation.title, { style: STYLE.link })) + textRuns(ctx, dates)));
-  });
-  return paragraph({ style: heading(1) }, textRuns(ctx, ctx.labels.sources)) + entries.join('');
+  return sourcesHeading(ctx) + ctx.document.citations.map((citation, index) => sourceEntry(ctx, citation, index)).join('');
 }
 
 function headerFooterXml(ctx: Context, tag: 'hdr' | 'ftr', value: HeaderFooter): string {
@@ -219,7 +240,21 @@ export async function exportDocx(input: ResearchDocument, options?: DocxOptions)
   if (bad.length) return refuse(bad);
   const checked = checkDocument(input);
   if (!checked.ok) return checked;
-  const document = checked.document, opts = options ?? {}, page = dimensions(document, opts);
+  return assemble(checked.document, options ?? {});
+}
+
+/** How a redline differs from a plain export. The document handed to `assemble` is then the merged one (old and new blocks together). */
+export type Plan = {
+  prepare?: (ctx: Context) => void;
+  body?: (ctx: Context) => string[];
+  warnings?: (ctx: Context) => FormatWarning[];
+  /** Ask Word to keep tracking edits made to the file. */
+  trackRevisions?: boolean;
+};
+
+/** Writes the package for a checked document and checked options. */
+export async function assemble(document: ResearchDocument, opts: DocxOptions, plan: Plan = {}): Promise<ExportResult> {
+  const page = dimensions(document, opts);
   if (!page.ok) return refuse(page.issues);
   const labels: DocxLabels = { ...DEFAULT_LABELS, ...opts.labels };
   const fonts = { ...DEFAULT_FONTS, ...opts.fonts }, bodyFont = fonts[document.format.font];
@@ -236,10 +271,13 @@ export async function exportDocx(input: ResearchDocument, options?: DocxOptions)
     children, numbers: new Map(document.citations.map((citation, index) => [citation.id, index + 1])), headingNames, bookmarkSeq: 0, orderedLists: 0,
     addLink: url => { let index = linkUrls.indexOf(url); if (index < 0) index = linkUrls.push(url) - 1; return `rId${fixed + index + 1}`; },
   };
-  const body: string[] = [];
-  if (opts.title !== false && document.title) body.push(paragraph({ style: STYLE.title }, textRuns(ctx, document.title)));
-  for (const block of children.get(null) ?? []) body.push(renderBlock(ctx, block, 0));
-  body.push(sourcesSection(ctx));
+  plan.prepare?.(ctx);
+  const body: string[] = plan.body ? plan.body(ctx) : [];
+  if (!plan.body) {
+    if (opts.title !== false && document.title) body.push(paragraph({ style: STYLE.title }, textRuns(ctx, document.title)));
+    for (const block of children.get(null) ?? []) body.push(renderBlock(ctx, block, 0));
+    body.push(sourcesSection(ctx));
+  }
 
   const documentPart = 'word/document.xml', pkg = createPackage();
   const parts: { kind: 'header' | 'footer'; path: string; rel: string }[] = [];
@@ -256,7 +294,7 @@ export async function exportDocx(input: ResearchDocument, options?: DocxOptions)
   pkg.addPart(documentPart, CONTENT_TYPES.document, `${XML_HEADER}<w:document xmlns:w="${W}" xmlns:r="${R}"><w:body>${body.join('')}${section}</w:body></w:document>`);
   pkg.addPart('word/styles.xml', CONTENT_TYPES.styles, stylesXml({ body: bodyFont, mono: fonts.mono, ...(opts.fonts?.eastAsia ? { eastAsia: opts.fonts.eastAsia } : {}) }, { fontSize: document.format.fontSize, lineHeight: document.format.lineHeight, language: opts.language ?? 'en-US', ...(opts.eastAsiaLanguage ? { eastAsiaLanguage: opts.eastAsiaLanguage } : {}) }));
   pkg.addPart('word/numbering.xml', CONTENT_TYPES.numbering, numberingXml(ctx.orderedLists, bodyFont));
-  pkg.addPart('word/settings.xml', CONTENT_TYPES.settings, settingsXml());
+  pkg.addPart('word/settings.xml', CONTENT_TYPES.settings, settingsXml(plan.trackRevisions === true));
   pkg.addPart('docProps/core.xml', CONTENT_TYPES.core, corePropertiesXml({ title: document.title, ...(opts.author ? { author: opts.author } : {}), created: document.createdAt, modified: document.updatedAt }));
   pkg.addPart('docProps/app.xml', CONTENT_TYPES.extended, extendedPropertiesXml());
   pkg.addRelationship(null, { type: RELATIONSHIP_TYPES.officeDocument, part: documentPart });
@@ -275,6 +313,7 @@ export async function exportDocx(input: ResearchDocument, options?: DocxOptions)
     throw error;
   }
   const warnings: FormatWarning[] = lossWarnings(document, DOCX_FIDELITY);
+  if (plan.warnings) warnings.push(...plan.warnings(ctx));
   const cut = chartRowsWarning(document, ctx.chartRows);
   if (cut) warnings.push(cut);
   if (ctx.replaced) warnings.push({ code: 'invalid-xml-characters', count: ctx.replaced, message: `${ctx.replaced} ${ctx.replaced === 1 ? 'character' : 'characters'} cannot be written in a Word file (control characters) and ${ctx.replaced === 1 ? 'was' : 'were'} replaced with U+FFFD.`, hint: 'Remove the control characters from the text at the source; Word files cannot hold them.' });

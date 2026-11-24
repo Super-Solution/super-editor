@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { AGENT_ACTIONS, DOCUMENT_FEATURES, MARKDOWN_LOSSES, TEMPLATE_KINDS, TRANSPORT_LIMITS, createFormatRegistry, htmlExporter, markdownExporter, markdownImporter, textFormatExporter } from '../packages/core/src/index.js';
-import { DOCX_FIDELITY, docxExporter } from '../packages/formats/docx/src/index.js';
+import { DOCX_FIDELITY, REDLINE_LIMITS, docxExporter } from '../packages/formats/docx/src/index.js';
 import { ROUTES } from '../backends/typescript/api/src/index.js';
 import { PROMPTS, RESOURCES, RESOURCE_TEMPLATES, listTools } from '../backends/typescript/mcp/src/index.js';
 import { COMMANDS } from '../packages/cli/src/commands.js';
@@ -81,7 +81,7 @@ test('docs/FORMATS.md names every document feature, format, warning code and pac
   for (const exporter of [markdownExporter, htmlExporter, textFormatExporter, docxExporter]) registry.addExporter(exporter);
   registry.addImporter(markdownImporter);
   for (const info of registry.exporters()) assert.ok(formats.includes(`\`${info.id}\``), `exporter ${info.id}`);
-  for (const code of ['feature-degraded', 'feature-dropped', 'chart-rows-omitted', 'invalid-xml-characters', ...Object.keys(MARKDOWN_LOSSES)]) assert.ok(formats.includes(`\`${code}\``), `warning code ${code}`);
+  for (const code of ['feature-degraded', 'feature-dropped', 'chart-rows-omitted', 'invalid-xml-characters', ...Object.keys(MARKDOWN_LOSSES), ...Object.keys(REDLINE_LIMITS)]) assert.ok(formats.includes(`\`${code}\``), `warning code ${code}`);
   for (const name of ['super-editor-core', 'super-editor-opc', 'super-editor-docx']) assert.ok(formats.includes(name), name);
   // The Word column of the feature table: a feature the table lists as degraded must be called degraded on its row, one it omits must not.
   for (const feature of DOCUMENT_FEATURES) {
