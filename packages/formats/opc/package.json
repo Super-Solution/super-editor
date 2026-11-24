@@ -1,6 +1,6 @@
 {
   "name": "@supersolutions/super-editor-opc",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "ZIP and Open Packaging Conventions reader and writer for Office Open XML, in the browser and Node",
   "license": "GPL-3.0-or-later",
   "type": "module",
