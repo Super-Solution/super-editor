@@ -7,7 +7,7 @@ export { AXIS_FORMATS, BLOCK_TYPES, CALLOUT_TONES, CHART_KINDS, CONTAINER_TYPES,
 export { clipText } from './text.js';
 export { blockText, orderedBlocks, getBlock, childrenOf, ancestorsOf, descendantsOf, findBlocks, getOutline, type BlockSelector, type OutlineItem } from './query.js';
 export { b, chart, op, runs, plainRuns, createBlockId, reservedIds, transaction, type BlockOptions, type TextInput, type Cell, type SeriesInput, type CategoryChartInput, type TransactionBuilder, type TransactionOptions } from './builders.js';
-export { toMarkdown, fromMarkdown, toHTML, toPlainText, escapeHtml, type MarkdownOptions, type FromMarkdownOptions, type HtmlOptions, type PlainTextOptions } from './markdown.js';
+export { toMarkdown, fromMarkdown, toHTML, toPlainText, escapeHtml, chartFallback, chartTable, type MarkdownOptions, type FromMarkdownOptions, type HtmlOptions, type PlainTextOptions } from './markdown.js';
 export { stats, countWords, type DocumentStats } from './stats.js';
 export { diffDocuments, summarizeRevision, type DocumentDiff } from './diff.js';
 export { reviewProposal, type ProposalChange, type ProposalReview, type ProposalStatus } from './proposal.js';
@@ -17,3 +17,5 @@ export { documentSchema, transactionSchema, emptyInputSchema, historyInputSchema
 export { TEMPLATES, TEMPLATE_KINDS, arbitrageTemplate, blankTemplate, comparisonTemplate, createTemplate, equityTemplate, isTemplateKind, listTemplates, macroTemplate, portfolioTemplate, strategyTemplate, templateTitle, type TemplateFunction, type TemplateInfo, type TemplateKind, type TemplateOptions } from './templates.js';
 export { AGENT_ACTIONS, TRANSPORT_LIMITS, getAgentAction, runAgentAction, runAgentActionAsync, type AgentAction, type AgentActionContext, type AgentActionInputs, type AgentActionName, type AgentActionOutputs, type WriteControls, type AgentActionResult, type AgentFailure, type AgentWriteSuccess, type BlockBrief, type TouchedBlock } from './actions.js';
 export { applyToDocument, createMemoryStore, createStoreService, isPromiseLike, openSnapshot, type AsyncReportService, type DocumentStore, type SaveResult, type ServiceSnapshot, type StoreServiceOptions } from './store.js';
+export { DOCUMENT_FEATURES, WARNING_BLOCKS, chartRowsWarning, checkDocument, createFormatRegistry, lossWarnings, scanFeatures, unknownOptionIssues, type DocumentFeature, type ExportResult, type Exporter, type FeatureUse, type Fidelity, type FidelityTable, type FormatCapability, type FormatInfo, type FormatRegistry, type FormatWarning, type ImportBaseOptions, type ImportResult, type Importer, type SyncExporter, type SyncImporter } from './formats.js';
+export { HTML_FIDELITY, MARKDOWN_FIDELITY, MARKDOWN_LOSSES, TEXT_FIDELITY, htmlExporter, markdownExporter, markdownImporter, textFormatExporter, type MarkdownImportOptions } from './formats-builtin.js';

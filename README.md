@@ -10,6 +10,7 @@ Folders group packages by role, so another UI framework or language is one more 
 
 ```
 packages/core, ui, cli      headless model, DOM renderer, command line
+packages/formats/           export and import formats: opc (zip/OOXML package), docx (Word export)
 packages/bindings/          one folder per UI framework: react, element (web component)
 packages/integrations/      chat-plugin (super-chat)
 backends/typescript/        api, mcp (AGPL servers)
@@ -24,7 +25,7 @@ Super Editor is **dual-licensed** by SUPER SOLUTION LABS INC:
 
 | Package | License |
 | --- | --- |
-| `@supersolutions/super-editor-core`, `-ui`, `-react`, `-cli`, and everything else in this repository | [GPL-3.0-or-later](LICENSES/GPL-3.0-or-later.txt) |
+| `@supersolutions/super-editor-core`, `-opc`, `-docx`, `-ui`, `-react`, `-cli`, and everything else in this repository | [GPL-3.0-or-later](LICENSES/GPL-3.0-or-later.txt) |
 | `@supersolutions/super-editor-api`, `@supersolutions/super-editor-mcp`, the Go `server` package and `cmd/super-editor-server`, the Python `super_editor.server` package (server components) | [AGPL-3.0-or-later](LICENSES/AGPL-3.0-or-later.txt) |
 
 You may use, modify and redistribute these packages under those terms, which include sharing your own source code when you distribute a combined work (and, for the AGPL packages, when users interact with a modified version over a network). If you want to use Super Editor in a closed-source product, or otherwise cannot comply with the GPL/AGPL, buy a **commercial license** from SUPER SOLUTION LABS INC: [contact@supersolution.io](mailto:contact@supersolution.io).
@@ -54,6 +55,8 @@ Open the localhost URL printed by Vite. The React demo is a small workspace buil
 | Package | Responsibility |
 | --- | --- |
 | `@supersolutions/super-editor-core` | JSON schema v1, runtime validation, immutable snapshots, atomic typed operations, revisions and session history |
+| `@supersolutions/super-editor-opc` | ZIP and Open Packaging Conventions reader and writer (no dependencies); the container for Word, Excel and PowerPoint files |
+| `@supersolutions/super-editor-docx` | Word (`.docx`) exporter that reports everything it cannot carry; works in the browser and Node |
 | `@supersolutions/super-editor-ui` | DOM rendering and controls, block/chart renderer registry, CSS tokens, safe embed policy |
 | `@supersolutions/super-editor-react` | React subscription hook and composable report view/editor |
 | `@supersolutions/super-editor-element` | `<super-editor>` web component: view or edit a document in any framework |
@@ -62,9 +65,9 @@ Open the localhost URL printed by Vite. The React demo is a small workspace buil
 | `@supersolutions/super-editor-mcp` | MCP JSON-RPC tool dispatcher over the same Core service |
 | `@supersolutions/super-editor-cli` | Local JSON files, lock and atomic replacement through Core |
 
-Core imports no DOM, React, HTTP, or filesystem APIs. UI and React submit the same validated transactions as API, MCP and CLI. Build emits ESM and declarations into each package's `dist/`; public exports use built files, with TypeScript source paths only in the workspace compiler. `npm run release:check` packs and inspects all eight artifacts and tests them in a separate consumer installation. No credentials are needed for this verification.
+Core imports no DOM, React, HTTP, or filesystem APIs. UI and React submit the same validated transactions as API, MCP and CLI. Build emits ESM and declarations into each package's `dist/`; public exports use built files, with TypeScript source paths only in the workspace compiler. `npm run release:check` packs and inspects all ten artifacts and tests them in a separate consumer installation. No credentials are needed for this verification.
 
-See [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), [persistence (database-backed documents)](docs/PERSISTENCE.md), [integration (Next.js, theming, i18n, pasting, proposal review, web component)](docs/INTEGRATION.md), [security and host responsibilities](docs/SECURITY.md), and [provider verification](docs/PROVIDER-VERIFICATION.md). A working report fixture is in [examples/report.ts](examples/report.ts); [examples/headless.ts](examples/headless.ts) demonstrates a rejected stale agent edit.
+See [formats (export, import, loss reports, Word)](docs/FORMATS.md), [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), [persistence (database-backed documents)](docs/PERSISTENCE.md), [integration (Next.js, theming, i18n, pasting, proposal review, web component)](docs/INTEGRATION.md), [security and host responsibilities](docs/SECURITY.md), and [provider verification](docs/PROVIDER-VERIFICATION.md). A working report fixture is in [examples/report.ts](examples/report.ts); [examples/headless.ts](examples/headless.ts) demonstrates a rejected stale agent edit.
 
 Machine-readable discovery schemas are in [schemas/document-v1.schema.json](schemas/document-v1.schema.json) and [schemas/transaction-v1.schema.json](schemas/transaction-v1.schema.json). Core runtime validation additionally enforces semantic guards such as parent/citation references, ordering, versions, timestamps, and numeric budgets. Serialized fixtures live in `examples/fixtures/`.
 

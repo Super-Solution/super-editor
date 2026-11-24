@@ -1,7 +1,7 @@
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { licenseFile, packageDirs } from './release-contract.mjs';
+import { licenseFile, packageDirs, packageOrder } from './release-contract.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /** Inlines relative `@import './x.css';` lines so the published stylesheet is one self-contained file. */
 async function inlineCss(file, seen = new Set()) {
@@ -17,7 +17,7 @@ async function inlineCss(file, seen = new Set()) {
   parts.push(text.slice(last));
   return parts.join('');
 }
-for (const name of ['core', 'ui', 'react', 'element', 'chat-plugin', 'api', 'mcp', 'cli']) {
+for (const name of packageOrder) {
   const directory = resolve(root, packageDirs[name]);
   const destination = resolve(directory, 'dist');
   if (!isAbsolute(destination) || relative(root, destination).startsWith('..')) throw new Error('Build destination leaves workspace.');

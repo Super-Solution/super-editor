@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Exact version already committed in all eight packages
+        description: Exact version already committed in all ten packages
         required: true
         type: string
       channel:

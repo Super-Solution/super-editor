@@ -1,6 +1,18 @@
 # Changelog
 
-All notable changes to the eight `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
+All notable changes to the ten `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
+
+## Unreleased
+
+A minor release when it ships (new packages and new exports; nothing existing changes). Document format unchanged (`schemaVersion: 1`). Not published.
+
+### Export and import with an honest loss report
+
+- **A format contract in core.** `Exporter`, `Importer`, `FormatRegistry` (`createFormatRegistry`), `FormatWarning`, `FidelityTable`, `scanFeatures`, `lossWarnings` and `chartRowsWarning`. Every result carries `warnings`: one per affected feature (not per block) with a stable `code`, a `hint`, a `count` and the first block ids. Bad documents, unknown options and invalid bytes come back as `issues`, never as a throw. See [FORMATS.md](docs/FORMATS.md).
+- **Built-in formats on the contract**: `markdownExporter`, `htmlExporter`, `textFormatExporter` (each with its fidelity table) and `markdownImporter`, which takes the title from `options` or the first `# ` line (never invents one), refuses invalid UTF-8, and reports HTML, setext headings, deep headings, footnotes, flattened inline formatting and non-https images with the source line. `chartFallback` is exported so other formats write charts the same way.
+- **New package `@supersolutions/super-editor-opc`**: a dependency-free ZIP and OPC reader and writer (deterministic output, STORE or DEFLATE, CRC, path safety, entry, size and zip-bomb limits, content types and relationships).
+- **New package `@supersolutions/super-editor-docx`**: `exportDocx` and `docxExporter` write a Word file in the browser and Node, with real headings, numbering, tables with a repeating header row, hyperlinks, a Sources section, header and footer fields, page setup and fonts and language options. Charts become data tables, images become alt text (nothing is embedded), and each of those is a warning. Checked with python-docx and LibreOffice and against Word's element order; **not opened in Microsoft Word**, and tracked changes and comments are not implemented.
+- Release wiring: ten packages in the release contract, build, verify and publish workflow (order core, opc, docx, ui, …). New package names still need npm Trusted Publishing before a release.
 
 ## 0.6.0
 

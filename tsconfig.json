@@ -41,6 +41,12 @@
       ],
       "@supersolutions/super-editor-cli": [
         "./packages/cli/src/index.ts"
+      ],
+      "@supersolutions/super-editor-opc": [
+        "./packages/formats/opc/src/index.ts"
+      ],
+      "@supersolutions/super-editor-docx": [
+        "./packages/formats/docx/src/index.ts"
       ]
     }
   },
