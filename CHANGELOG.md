@@ -2,9 +2,9 @@
 
 All notable changes to the ten `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
-## Unreleased
+## 0.7.0
 
-A minor release when it ships (new packages and new exports; nothing existing changes). Document format unchanged (`schemaVersion: 1`). Not published.
+A minor release: two new packages and new exports; nothing existing changes. Document format unchanged (`schemaVersion: 1`).
 
 ### Export and import with an honest loss report
 

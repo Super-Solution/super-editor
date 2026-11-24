@@ -1,6 +1,6 @@
 {
   "name": "@supersolutions/super-editor-docx",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Exports Super Editor documents as Word (.docx) files, in the browser and Node",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -34,8 +34,8 @@
     "tag": "latest"
   },
   "dependencies": {
-    "@supersolutions/super-editor-core": "0.6.0",
-    "@supersolutions/super-editor-opc": "0.6.0"
+    "@supersolutions/super-editor-core": "0.7.0",
+    "@supersolutions/super-editor-opc": "0.7.0"
   },
   "author": "SUPER SOLUTION LABS INC"
 }
