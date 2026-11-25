@@ -4,7 +4,7 @@ import type { Block, BlockContent, Operation, ResearchDocument } from '@supersol
 import type { Caret, FieldKey } from './types.js';
 import { cellField, fieldKeys, isEditableType, isEmptyContent, itemField, parseField } from './fields.js';
 import { concatRuns, deleteRange, runsFromText, runsLength, runsPlainText, splitRuns } from './inline.js';
-import { blockInput, plural } from './plan.js';
+import { blockInput } from './plan.js';
 import type { EditTarget, IdFactory, PlanResult } from './plan.js';
 import { listChecked, listIndent, listSetIndent, listSplice } from './structure.js';
 import { hasChildren, previousVisible, treeOf, visibleOrder } from './tree.js';
@@ -64,7 +64,7 @@ export function planEnter(doc: ResearchDocument, s: EditSubject, createId: IdFac
       const text = content.title.slice(0, s.start) + content.title.slice(s.end), before = text.slice(0, s.start), after = text.slice(s.start);
       const child = blockInput(createId('block'), s.blockId, { type: 'paragraph', runs: runsFromText(after) });
       const title: BlockContent = content.type === 'toggle' ? { ...content, title: before, open: true } : { ...content, title: before };
-      return { operations: [update(s, title), { type: 'insertBlocks', blocks: [child], afterId: null }], edit: { blockId: child.id, field: 'main', caret: 'start' }, summary: `Added a block inside the ${content.type}` };
+      return { operations: [update(s, title), { type: 'insertBlocks', blocks: [child], afterId: null }], edit: { blockId: child.id, field: 'main', caret: 'start' }, summary: content.type === 'toggle' ? 'Added a block inside the toggle' : 'Added a block inside the section' };
     }
     case 'list': {
       const field = parseField(s.field);
@@ -152,4 +152,4 @@ export function planDeleteAtEnd(doc: ResearchDocument, s: EditSubject): PlanResu
   if (!next || next.parentId !== block.parentId || next.content.type !== 'paragraph') return null;
   return { operations: [update(s, { ...s.content, runs: concatRuns(s.content.runs, next.content.runs) }), { type: 'deleteBlocks', blocks: [{ blockId: next.id, expectedVersion: next.version }] }], edit: { blockId: s.blockId, field: 'main', caret: runsLength(s.content.runs) }, summary: 'Merged with the next block' };
 }
-export { plural, fieldKeys };
+export { fieldKeys };

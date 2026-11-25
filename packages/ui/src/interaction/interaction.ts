@@ -6,10 +6,10 @@ import type { SlashItem, SlashLabels } from './catalog.js';
 import { createSlashCatalog } from './catalog.js';
 import { compatibleChartKinds, patchChartSpec } from './chart-edit.js';
 import type { ChartPatch } from './chart-edit.js';
-import { htmlToBlocks } from './html-paste.js';
+import { htmlToBlocks, type PasteWarning } from './html-paste.js';
 import { CLIPBOARD_MIME, parseBlocksPayload, planPaste, serializeBlocks } from './clipboard.js';
 import type { ClipboardPayload } from './clipboard.js';
-import { translator, type InteractionMessages, type Translate } from './messages.js';
+import { counted, translator, type InteractionMessages, type Translate } from './messages.js';
 import { TURN_INTO_TARGETS, canTurnInto, targetOf } from './convert.js';
 import type { TurnIntoTarget } from './convert.js';
 import { createDrafts } from './drafts.js';
@@ -236,7 +236,7 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
   // ---- feedback and applying -------------------------------------------------------------------------------------
   const t = translator(options.messages);
   const notify = (raw: FeedbackEvent): void => {
-    const event: FeedbackEvent = { ...raw, message: t(raw.message), ...('action' in raw && raw.action ? { action: { ...raw.action, label: t(raw.action.label) } } : {}) };
+    const event: FeedbackEvent = { ...raw, message: t(raw.message, raw.params), ...(raw.params ? { template: raw.message } : {}), ...('action' in raw && raw.action ? { action: { ...raw.action, label: t(raw.action.label) } } : {}) };
     try { options.onFeedback?.(event); } catch { /* Host callbacks must not break editing. */ }
     for (const listener of [...feedbackListeners]) { try { listener(event); } catch { /* ignore */ } }
   };
@@ -305,8 +305,8 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     const plan: Plan = result;
     const outcome = drafts.guarded(consumed, () => run(command, plan.operations));
     if (!outcome.ok) return outcome;
-    const message = plan.summary;
-    notify({ kind: 'success', message, ...(extra.undo ? { action: { label: 'Undo', run: () => { commands.undo(); } } } : {}) });
+    const params = plan.summaryParams && plan.translateParams?.length ? Object.fromEntries(Object.entries(plan.summaryParams).map(([key, value]) => [key, typeof value === 'string' && plan.translateParams!.includes(key) ? t(value) : value])) : plan.summaryParams;
+    notify({ kind: 'success', message: plan.summary, ...(params ? { params } : {}), ...(extra.undo ? { action: { label: 'Undo', run: () => { commands.undo(); } } } : {}) });
     lastRule = null;
     follow(plan, extra.followFocus !== false);
     return outcome;
@@ -837,7 +837,7 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     const result = drafts.guarded([state.blockId], () => run('slash', operations));
     setSlash(null);
     if (!result.ok) return result;
-    notify({ kind: 'success', message: `Inserted ${item.label.toLowerCase()}`, blockIds: [focusId] });
+    notify({ kind: 'success', message: 'Inserted {item}', params: { item: item.label.toLowerCase() }, blockIds: [focusId] });
     if (trailing) api.edit.start(trailing, { field: 'main', caret: 'start' });
     else { const entry = editTargetFor({ id: focusId, content: created }, 'start'); if (entry) api.edit.start(focusId, { field: entry.field ?? 'main', caret: 'start' }); }
     return result;
@@ -934,7 +934,11 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
   };
 
   // ---- clipboard ---------------------------------------------------------------------------------------------------
-  const pasteBlocks = (pasted: readonly ReturnType<typeof blockInput>[]): boolean => {
+  /** Tells the user what a rich paste left out or changed: one notice, each loss in its own sentence, translated like any other. */
+  const reportPaste = (warnings: readonly PasteWarning[]): void => {
+    if (warnings.length) notify({ kind: 'info', message: warnings.map((warning) => t(warning.message, warning.params)).join(' '), warnings });
+  };
+  const pasteBlocks = (pasted: readonly ReturnType<typeof blockInput>[], warnings: readonly PasteWarning[] = []): boolean => {
     if (!pasted.length || !writable()) return false;
     const state = store.get(), current = state.editing ? blockOf(state.editing.blockId) : undefined;
     const draft = current ? drafts.contentOf(current.id) : undefined;
@@ -958,7 +962,8 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     if (consumed.length && current) operations.push({ type: 'deleteBlocks', blocks: [{ blockId: current.id, expectedVersion: drafts.versionOf(current.id) ?? current.version }] });
     const result = drafts.guarded(consumed, () => run('paste', operations));
     if (!result.ok) return true;
-    notify({ kind: 'success', message: `Pasted ${pasted.length} block${pasted.length === 1 ? '' : 's'}`, blockIds: blocks.map((block) => block.id) });
+    notify({ kind: 'success', message: counted(pasted.length, 'Pasted {count} block', 'Pasted {count} blocks'), params: { count: pasted.length }, blockIds: blocks.map((block) => block.id) });
+    reportPaste(warnings);
     const lastBlock = blocks[blocks.length - 1]!, entry = editTargetFor({ id: lastBlock.id, content: lastBlock.content }, 'end');
     if (entry) api.edit.start(lastBlock.id, { field: entry.field ?? 'main', caret: 'end' });
     else store.set({ selection: selectMany(order(), blocks.filter((block) => block.parentId === parentId).map((block) => block.id)), editing: null });
@@ -972,7 +977,7 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
       const payload = serializeBlocks(doc(), state.selection.ids);
       if (!payload) return false;
       data.setData('text/plain', payload.text); data.setData(CLIPBOARD_MIME, payload.json);
-      notify({ kind: 'success', message: `Copied ${state.selection.ids.length} block${state.selection.ids.length === 1 ? '' : 's'}` });
+      notify({ kind: 'success', message: counted(state.selection.ids.length, 'Copied {count} block', 'Copied {count} blocks'), params: { count: state.selection.ids.length } });
       return true;
     },
     cut(data) {
@@ -1006,12 +1011,15 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
         }
       }
       // Rich text (a web page, Word, Docs): keep headings, lists, tables, links and marks. A single paragraph pastes inline.
-      const rich = htmlToBlocks(html, ids, options.linkSchemes ? { linkSchemes: options.linkSchemes } : {});
+      const warnings: PasteWarning[] = [];
+      const rich = htmlToBlocks(html, ids, { ...(options.linkSchemes ? { linkSchemes: options.linkSchemes } : {}), warnings });
       if (rich) {
         const only = rich.length === 1 ? rich[0]!.content : undefined;
-        if (only?.type === 'paragraph') return caret ? edit.insertRuns(only.runs) : pasteBlocks(rich);
-        return pasteBlocks(rich);
+        if (only?.type === 'paragraph' && caret) { const done = edit.insertRuns(only.runs); reportPaste(warnings); return done; }
+        return pasteBlocks(rich, warnings);
       }
+      // Plain text decides; a rich paste that was too large to read says so.
+      reportPaste(warnings);
       const plan = planPaste(text, { hasSelection: !!caret && caret.start !== caret.end, inRichField: !!(caret && content && hasRichField(content, caret.field)), ...(options.linkSchemes ? { linkSchemes: options.linkSchemes } : {}) }, ids);
       if (!plan) return false;
       if (plan.kind === 'link') { const range = formatRange(); if (!range) return false; const next = setLink(range.runs, range.start, range.end, plan.href); drafts.edit(range.blockId, (c) => withFieldRuns(c, range.field, next)); requestSync(range.blockId, range.field, range.caretStart, range.caretEnd); return true; }
@@ -1028,8 +1036,8 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
       if (!upload) { notify({ kind: 'error', message: 'Images cannot be added here: this editor has no image upload.' }); return true; }
       const limit = options.maxImageBytes ?? 20 * 1024 * 1024, chosen = images.slice(0, 10);
       const tooBig = chosen.find((file) => file.size > limit);
-      if (tooBig) { notify({ kind: 'error', message: `The image is larger than ${Math.round(limit / 1024 / 1024)} MB.` }); return true; }
-      notify({ kind: 'info', message: chosen.length === 1 ? 'Uploading the image…' : `Uploading ${chosen.length} images…` });
+      if (tooBig) { notify({ kind: 'error', message: 'The image is larger than {size} MB.', params: { size: Math.round(limit / 1024 / 1024) } }); return true; }
+      notify({ kind: 'info', message: counted(chosen.length, 'Uploading the image…', 'Uploading {count} images…'), params: { count: chosen.length } });
       const ids = makeIds();
       void (async () => {
         const made: ReturnType<typeof blockInput>[] = [];

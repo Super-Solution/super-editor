@@ -2,6 +2,7 @@
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { LIMITS, safeUrl } from '@supersolutions/super-editor-core';
 import type { BlockContent, BlockInput, InlineRun } from '@supersolutions/super-editor-core';
+import { counted, type MessageParams } from './messages.js';
 import type { IdFactory } from './plan.js';
 
 /**
@@ -13,6 +14,28 @@ import type { IdFactory } from './plan.js';
  * handlers, `data:` images and every other element are dropped; their text content is kept where it is visible text.
  */
 const MAX_HTML = 1_000_000;
+
+/** What a paste left out or changed. Everything the allow-list drops on purpose (styles, scripts, classes) is not a warning; content a reader might miss is. */
+export type PasteWarningCode = 'blocks-capped' | 'list-items-capped' | 'text-shortened' | 'table-trimmed' | 'image-left-out' | 'link-removed' | 'html-too-large';
+/**
+ * One kind of loss with how many times it happened. `message` is the English template (`{count}`, `{limit}` filled from `params`), so a
+ * host translates it with `messages` like every other notice, or draws its own from `code` and `params`.
+ */
+export type PasteWarning = { code: PasteWarningCode; count: number; message: string; params: MessageParams };
+const WARNING_TEXT: Record<PasteWarningCode, readonly [one: string, other: string]> = {
+  'blocks-capped': ['{count} block over the limit of {limit} per paste was left out.', '{count} blocks over the limit of {limit} per paste were left out.'],
+  'list-items-capped': ['{count} list item over the limit of {limit} was left out.', '{count} list items over the limit of {limit} were left out.'],
+  'text-shortened': ['{count} piece of text was too long and was shortened.', '{count} pieces of text were too long and were shortened.'],
+  'table-trimmed': ['{count} table was cut to the rows and columns that fit.', '{count} tables were cut to the rows and columns that fit.'],
+  'image-left-out': ['{count} image was left out: only https images can be pasted.', '{count} images were left out: only https images can be pasted.'],
+  'link-removed': ['{count} link was removed because its address is not allowed; its text was kept.', '{count} links were removed because their addresses are not allowed; their text was kept.'],
+  'html-too-large': ['The pasted formatting is over {limit} characters and was ignored; the plain text was used.', 'The pasted formatting is over {limit} characters and was ignored; the plain text was used.'],
+};
+const WARNING_LIMITS: Partial<Record<PasteWarningCode, number>> = { 'blocks-capped': LIMITS.blocksPerOperation, 'list-items-capped': LIMITS.listItems, 'html-too-large': MAX_HTML };
+const warningFor = (code: PasteWarningCode, count: number): PasteWarning => {
+  const limit = WARNING_LIMITS[code], [one, other] = WARNING_TEXT[code];
+  return { code, count, message: counted(count, one, other), params: { count, ...(limit === undefined ? {} : { limit }) } };
+};
 const SKIP = new Set(['script', 'style', 'template', 'noscript', 'head', 'title', 'meta', 'link', 'iframe', 'object', 'embed', 'svg', 'canvas', 'form', 'button', 'select', 'textarea', 'input']);
 const BLOCKS = new Set(['p', 'div', 'section', 'article', 'main', 'header', 'footer', 'aside', 'nav', 'figure', 'figcaption', 'ul', 'ol', 'li', 'blockquote', 'pre', 'table', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'details', 'summary', 'dl', 'dt', 'dd', 'address', 'fieldset']);
 type Marks = { bold?: boolean; italic?: boolean; code?: boolean; strike?: boolean; underline?: boolean; highlight?: boolean; href?: string };
@@ -51,14 +74,25 @@ function normalizeRuns(list: InlineRun[], preserve = false): InlineRun[] {
 
 class Walker {
   blocks: BlockInput[] = [];
+  private readonly losses = new Map<PasteWarningCode, number>();
   constructor(private readonly createId: IdFactory, private readonly linkSchemes: 'https' | 'http-https') {}
+  private lose(code: PasteWarningCode, count = 1): void { if (count > 0) this.losses.set(code, (this.losses.get(code) ?? 0) + count); }
+  /** The text cut to `max` UTF-16 units, counting the cut as a loss. */
+  private clip(text: string, max: number): string {
+    if (text.length <= max) return text;
+    this.lose('text-shortened');
+    return text.slice(0, max);
+  }
+  warnings(): PasteWarning[] { return [...this.losses].map(([code, count]) => warningFor(code, count)); }
   private add(content: BlockContent): void {
-    if (this.blocks.length >= LIMITS.blocksPerOperation) return;
+    if (this.blocks.length >= LIMITS.blocksPerOperation) { this.lose('blocks-capped'); return; }
     this.blocks.push({ id: this.createId('block'), parentId: null, citationIds: [], content });
   }
   private href(value: string | null): string | undefined {
     if (!value) return undefined;
     const url = safeUrl(value.trim(), this.linkSchemes === 'http-https' ? {} : { httpsOnly: true });
+    // A relative or in-page link (Word's table-of-contents anchors) has no address to keep and is not a loss worth a notice.
+    if (!url && /^[a-z][a-z0-9+.-]*:/i.test(value.trim())) this.lose('link-removed');
     return url ?? undefined;
   }
   /** Inline content of a node as runs. Block-level children inside are flattened to their text with a space between. */
@@ -109,8 +143,9 @@ class Walker {
       for (const nested of Array.from(own.querySelectorAll('ul, ol'))) nested.remove();
       const box = own.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
       const text = this.plain(own);
+      if (text && state.items.length >= LIMITS.listItems) this.lose('list-items-capped');
       if (text && state.items.length < LIMITS.listItems) {
-        state.items.push(text.slice(0, LIMITS.listItemText)); state.indent.push(depth);
+        state.items.push(this.clip(text, LIMITS.listItemText)); state.indent.push(depth);
         state.checked.push(box ? box.hasAttribute('checked') : false);
         if (box) state.todo = true;
       }
@@ -119,14 +154,15 @@ class Walker {
   }
   private table(element: Element): void {
     const rows = Array.from(element.querySelectorAll('tr')).filter((row) => row.closest('table') === element)
-      .map((row) => Array.from(row.children).filter((cell) => tag(cell) === 'td' || tag(cell) === 'th').map((cell) => this.plain(cell).slice(0, LIMITS.tableCellText)));
-    const grid = rows.filter((row) => row.length).slice(0, LIMITS.tableRows + 1);
+      .map((row) => Array.from(row.children).filter((cell) => tag(cell) === 'td' || tag(cell) === 'th').map((cell) => this.clip(this.plain(cell), LIMITS.tableCellText)));
+    const filled = rows.filter((row) => row.length), grid = filled.slice(0, LIMITS.tableRows + 1);
     if (!grid.length) return;
-    const width = Math.min(Math.max(...grid.map((row) => row.length)), LIMITS.tableColumns);
+    const widest = Math.max(...filled.map((row) => row.length)), width = Math.min(widest, LIMITS.tableColumns);
+    if (filled.length > grid.length || widest > width) this.lose('table-trimmed');
     const pad = (row: string[]): string[] => Array.from({ length: width }, (_, index) => row[index] ?? '');
     const [head, ...body] = grid.map(pad);
     const caption = element.querySelector('caption');
-    const captionText = caption ? this.plain(caption).slice(0, LIMITS.caption) : '';
+    const captionText = caption ? this.clip(this.plain(caption), LIMITS.caption) : '';
     this.add({ type: 'table', columns: head!, rows: body.length ? body : [pad([])], ...(captionText ? { caption: captionText } : {}) });
   }
   /** Walks block structure; stray inline content between blocks becomes paragraphs. */
@@ -150,15 +186,15 @@ class Walker {
   }
   private image(element: Element): void {
     const src = safeUrl(element.getAttribute('src') ?? '', { httpsOnly: true });
-    if (!src) return;
-    const alt = (element.getAttribute('alt') ?? '').trim().slice(0, LIMITS.caption);
+    if (!src) { if ((element.getAttribute('src') ?? '').trim()) this.lose('image-left-out'); return; }
+    const alt = this.clip((element.getAttribute('alt') ?? '').trim(), LIMITS.caption);
     this.add({ type: 'image', url: src, alt: alt || 'Image' });
   }
   private block(element: Element): void {
     const name = tag(element);
     switch (name) {
       case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6': {
-        const text = this.plain(element).slice(0, LIMITS.text);
+        const text = this.clip(this.plain(element), LIMITS.text);
         if (text) this.add({ type: 'heading', level: Math.min(Number(name[1]), 3) as 1 | 2 | 3, text });
         return;
       }
@@ -181,7 +217,7 @@ class Walker {
         return;
       }
       case 'pre': {
-        const text = (element.textContent ?? '').replace(/\r\n?/g, '\n').replace(/\n+$/, '').slice(0, LIMITS.text);
+        const text = this.clip((element.textContent ?? '').replace(/\r\n?/g, '\n').replace(/\n+$/, ''), LIMITS.text);
         const language = /(?:language|lang)-([a-z0-9+#-]{1,40})/i.exec((element.querySelector('code')?.getAttribute('class') ?? '') + ' ' + (element.getAttribute('class') ?? ''))?.[1] ?? '';
         if (text.trim()) this.add({ type: 'code', language: language.toLowerCase(), text });
         return;
@@ -194,18 +230,25 @@ class Walker {
   }
 }
 
-export type HtmlPasteOptions = { linkSchemes?: 'https' | 'http-https'; parse?: (html: string) => Document | null };
+export type HtmlPasteOptions = {
+  linkSchemes?: 'https' | 'http-https'; parse?: (html: string) => Document | null;
+  /** Receives what the paste left out or changed (see `PasteWarning`), one entry per kind. Left alone, losses stay silent. */
+  warnings?: PasteWarning[];
+};
 const defaultParse = (html: string): Document | null => {
   const Parser = (globalThis as { DOMParser?: new () => { parseFromString(source: string, type: string): Document } }).DOMParser;
   return Parser ? new Parser().parseFromString(html, 'text/html') : null;
 };
 /** Blocks for the HTML flavour of a paste, or `null` when there is no usable structure (plain text then decides). */
 export function htmlToBlocks(html: string | undefined, createId: IdFactory, options: HtmlPasteOptions = {}): BlockInput[] | null {
-  if (!html || html.length > MAX_HTML || !/<[a-z][^>]*>/i.test(html)) return null;
+  if (html && html.length > MAX_HTML) { options.warnings?.push(warningFor('html-too-large', 1)); return null; }
+  if (!html || !/<[a-z][^>]*>/i.test(html)) return null;
   let document: Document | null;
   try { document = (options.parse ?? defaultParse)(html); } catch { return null; }
   if (!document?.body) return null;
   const walker = new Walker(createId, options.linkSchemes ?? 'https');
   walker.children(document.body);
-  return walker.blocks.length ? walker.blocks : null;
+  if (!walker.blocks.length) return null;
+  options.warnings?.push(...walker.warnings());
+  return walker.blocks;
 }

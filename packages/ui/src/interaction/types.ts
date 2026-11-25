@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import type { Actor, ApplyResult, BlockContent, EditorIssue } from '@supersolutions/super-editor-core';
+import type { PasteWarning } from './html-paste.js';
+import type { MessageParams } from './messages.js';
 
 export type Platform = 'mac' | 'other';
 /** Content-space rectangle: pixels relative to the interaction root's scrollable content origin. */
@@ -11,7 +13,14 @@ export type Caret = 'start' | 'end' | number;
 export type FeedbackKind = 'info' | 'success' | 'error' | 'conflict';
 /** Everything a host may want to surface as a toast, live-region message or log line. */
 export type FeedbackEvent = {
-  kind: FeedbackKind; message: string; blockIds?: readonly string[];
+  kind: FeedbackKind;
+  /** The text to show, already translated with the host's `messages`. */
+  message: string;
+  /** Set when the message has `{placeholders}`: the English template `message` was made from, and the values filled in. A host that draws its own notices can translate the template itself. */
+  template?: string; params?: MessageParams;
+  blockIds?: readonly string[];
+  /** For a paste: what was left out or changed in the pasted content (see `PasteWarning`). */
+  warnings?: readonly PasteWarning[];
   /** For `error` and `conflict` events caused by a refused edit: the editor's result, so hosts can build their own message (for example with `toastFromApplyResult`). */
   result?: Extract<ApplyResult, { ok: false }>;
   /** For example "Undo" after a delete. */
