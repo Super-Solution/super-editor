@@ -113,7 +113,8 @@ test('the document can be entered, read, edited and left with the keyboard alone
     assert.match(await blockText(page, 'macro-heading'), /\(kb\)$/, 'the typed text reached the document');
     // Leaving the selection puts the focus back on the surface, so Tab moves on from there rather than from the top.
     await page.keyboard.press('Escape');
-    assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('se-surface')), true);
+    // The focus moves in a later task than the key press, so wait for it (and still fail, with the timeout, if it never comes).
+    await page.waitForFunction(() => document.activeElement?.classList.contains('se-surface') === true, undefined, { timeout: 5000 });
     assert.deepEqual(errors, []);
   } finally { await close(); }
 });
