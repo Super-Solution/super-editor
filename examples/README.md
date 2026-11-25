@@ -11,6 +11,7 @@ Run from the repository root after `npm ci --ignore-scripts`. Every script runs 
 | `http-agent.ts` | A typed `createHttpClient` session against `createHttpHandler`: template, outline, guarded edit, refused stale edit with its hint, chart, export | `npx tsx --conditions=development examples/http-agent.ts` |
 | `cli-walkthrough.ts` | Twelve real `super-editor` commands that build a report in a JSON file, with exit codes (including the conflict, exit 3) | `npx tsx --conditions=development examples/cli-walkthrough.ts` |
 | `mcp-client.ts` | A minimal MCP client over stdio driving `super-editor-mcp`: initialize, list tools, edit with versions, see a stale edit refused, read a resource and a prompt | `npx tsx --conditions=development examples/mcp-client.ts /tmp/demo-report.json` |
+| `vue/ReportEditor.vue`, `svelte/ReportEditor.svelte` | `<super-editor>` in a Vue 3 and a Svelte 5 component: load a document, react to `change` and `error`. Edit mode there is the basic editor (read the header comment). Not compiled here; `tests/examples-framework.test.ts` checks the attributes and events they use | (copy into your app) |
 | `demo.tsx` and `demo/` | The workspace demo: a Notion / Google Docs style React app built only from the public package exports | `npm run dev` |
 
 ## The workspace demo

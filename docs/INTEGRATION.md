@@ -54,6 +54,10 @@ Shows who proposed the change and against which revision, what it would add, cha
 
 `defineSuperEditor()` registers `<super-editor>`. Attributes: `mode="view|edit"`, `readonly`, `theme`, `density`, `locale`, `time-zone`, `actor`, `src` (a URL whose JSON body is the document), `credentials`. Property `labels`; methods `load(document)` and `reload()`; events `change`, `error`, `load`.
 
+> **`mode="edit"` is the basic editor, not the interactive one.** `ReportEditor` (React) is the full editor: the `/` menu, block selection and menu, drag and keyboard moves, rich paste, inline formatting, undo toasts, and the axe, keyboard and input-method tests in [ACCESSIBILITY.md](ACCESSIBILITY.md). The element's edit mode mounts the classic editor from `-ui` (`mountEditor`): a toolbar, an "Edit" button on each text block and a plain-text textarea with Save and Discard. It is a working way to change text, nothing more, and none of the accessibility checks cover it. There is no vanilla-DOM version of the interactive editor yet (the interaction store in `-ui` is already independent of React, so one is possible; it is not done). Use `mode="view"` (fully rendered) for display, or `ReportEditor` when people write.
+>
+> The element tells you: it sets `data-editor="basic"` while in edit mode (style or test on it) and removes it in view mode, and it logs one `console.warn` per page the first time it mounts the basic editor. `defineSuperEditor({ warn: false })` silences the message; the attribute stays.
+
 ```html
 <!-- Vue / Svelte / Angular / plain HTML: it is a custom element -->
 <super-editor mode="edit" theme="host" locale="de-DE" src="/api/reports/7/document"></super-editor>
@@ -64,7 +68,9 @@ const element = document.querySelector('super-editor')!;
 element.addEventListener('change', (event) => save((event as CustomEvent).detail.document));
 ```
 
-In Vue, add `isCustomElement: (tag) => tag === 'super-editor'` to the compiler options; in Angular add `CUSTOM_ELEMENTS_SCHEMA`; in Svelte no setup is needed. Set rich properties (`labels`) on the element instance, not as attributes.
+In Vue, add `isCustomElement: (tag) => tag === 'super-editor'` to the compiler options; in Angular add `CUSTOM_ELEMENTS_SCHEMA`; in Svelte no setup is needed. Set rich properties (`labels`) on the element instance, not as attributes. Working components for [Vue 3](../examples/vue/ReportEditor.vue) and [Svelte 5](../examples/svelte/ReportEditor.svelte) are in `examples/` (not compiled by this repository's tests; a test checks that they name only attributes, methods and events the element has).
+
+The toolbar's `<select>` elements fire native `change` events that bubble through the element, so a `change` listener also sees events that are not the element's: handle only those whose `event.target` is the element itself (they carry `detail.document`). The examples do.
 
 ## Performance
 

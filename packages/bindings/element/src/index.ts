@@ -4,6 +4,8 @@ import { createEditor, validateDocument, type Actor, type Editor, type ResearchD
 import { mountEditor, releaseCards, renderDocument, type CardMount, type Density, type PartialLabels, type ThemeName } from '@supersolutions/super-editor-ui';
 
 export type SuperEditorMode = 'view' | 'edit';
+/** Which editor the element has mounted: `basic` (the classic textarea-per-block editor, `mode="edit"`) or none (`mode="view"`, no `data-editor` attribute). */
+export type SuperEditorKind = 'basic';
 export type SuperEditorChangeDetail = { revision: number; document: ResearchDocument };
 export type SuperEditorErrorDetail = { message: string };
 
@@ -21,6 +23,7 @@ export interface SuperEditorElement extends HTMLElement {
   labels: PartialLabels | undefined;
 }
 
+let warnedBasic = false;
 const MODES: readonly string[] = ['view', 'edit'];
 const THEMES: readonly string[] = ['light', 'dark', 'auto', 'host'];
 const DENSITIES: readonly string[] = ['compact', 'comfortable', 'spacious'];
@@ -35,14 +38,22 @@ const DENSITIES: readonly string[] = ['compact', 'comfortable', 'spacious'];
  * `locale` and `time-zone` (dates and times), `actor` (id recorded on edits, default `element-user`), `src` (a URL whose JSON body is the
  * document; fetched when it is set and on `reload()`), `credentials="include|same-origin|omit"` for that fetch. Property: `labels`.
  * Events: `change` (detail: SuperEditorChangeDetail), `error` (detail: SuperEditorErrorDetail), `load` (a `src` document arrived).
+ *
+ * **`mode="edit"` is the basic editor, not the interactive one.** It mounts the classic editor from `super-editor-ui` (`mountEditor`): a
+ * toolbar, an "Edit" button per text block and a plain-text textarea. It has no `/` menu, block selection or menu, drag handles,
+ * keyboard navigation between blocks, rich paste or inline formatting, and it is not part of the accessibility test suite. The
+ * interactive editor is `ReportEditor` in `super-editor-react`; there is no vanilla DOM version of it yet. The element says so: it sets
+ * `data-editor="basic"` while in edit mode (style or test on it), and logs one `console.warn` per page the first time it mounts the
+ * basic editor, unless you pass `warn: false` here.
  */
-export function defineSuperEditor(options: { tag?: string; registry?: CustomElementRegistry; base?: typeof HTMLElement } = {}): CustomElementConstructor {
+export function defineSuperEditor(options: { tag?: string; registry?: CustomElementRegistry; base?: typeof HTMLElement; warn?: boolean } = {}): CustomElementConstructor {
   const tag = options.tag ?? 'super-editor';
   const registry = options.registry ?? globalThis.customElements;
   const Base = options.base ?? globalThis.HTMLElement;
   if (!registry || !Base) throw new TypeError('defineSuperEditor needs a DOM with custom elements.');
   const existing = registry.get(tag);
   if (existing) return existing;
+  const warn = options.warn !== false;
 
   class Element extends Base implements SuperEditorElement {
     static observedAttributes = ['mode', 'theme', 'readonly', 'density', 'locale', 'time-zone', 'actor', 'src'];
@@ -139,9 +150,15 @@ export function defineSuperEditor(options: { tag?: string; registry?: CustomElem
         ...(this.#cardMounts ? { cardMounts: this.#cardMounts } : {}),
       };
       if (this.mode === 'edit') {
+        this.setAttribute('data-editor', 'basic' satisfies SuperEditorKind);
+        if (warn && !warnedBasic) {
+          warnedBasic = true;
+          globalThis.console?.warn?.('<super-editor mode="edit"> mounts the basic editor (a textarea per block: no "/" menu, block selection, keyboard navigation between blocks or rich paste). For the interactive editor use ReportEditor from @supersolutions/super-editor-react. Pass { warn: false } to defineSuperEditor() to silence this message.');
+        }
         const actor: Actor = { id: this.getAttribute('actor') || 'element-user', kind: 'human' };
         this.#mounted = mountEditor(this, editor, { actor, ...common });
       } else {
+        this.removeAttribute('data-editor');
         this.append(renderDocument(editor.getSnapshot(), common));
       }
     }

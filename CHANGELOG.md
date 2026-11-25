@@ -16,6 +16,12 @@ A minor release when it ships: new optional fields and actions, nothing existing
 - **Docs cannot drift silently.** `tests/docs.test.ts` and `npm run release:check` compare the README with the code: its `Version` line against `package.json` and every manifest, its package table and folder layout against the release contract, and its "not implemented" sentence against the exporters that ship (the README still said 0.3.0 and "no Word export"). The agent guide must name every block type.
 - `npm run bench:size` (`benchmarks/size.mjs`) reports the minified and gzip size of each entry point.
 
+### `<super-editor mode="edit">` says what it is
+
+- The element's edit mode has always mounted the classic editor (a textarea per block), not the interactive `ReportEditor`; the docs said "edit" and left the difference to be found. Now: `data-editor="basic"` on the element while in edit mode (removed in view mode), one `console.warn` per page the first time it mounts the basic editor (`defineSuperEditor({ warn: false })` silences it), a boxed explanation in `docs/INTEGRATION.md` and the element README, and the same note in the accessibility limits. Nothing else about the element changes.
+- New `examples/vue/ReportEditor.vue` and `examples/svelte/ReportEditor.svelte`, with the `change`-event pitfall handled (the toolbar's native `change` events bubble through the element). Not compiled in this repository (no Vue or Svelte dependency); `tests/examples-framework.test.ts` fails if they name an attribute, method or event the element does not have.
+- **Not done:** a vanilla-DOM interactive editor (so the element becomes the full editor). The interaction store in `-ui` is DOM-independent, so it is feasible; it is a separate, larger change and is listed in the PR as open.
+
 ### Paste says what it left out, and notices can be translated
 
 - **`PasteWarning`s from `htmlToBlocks`.** New optional `warnings` array in `HtmlPasteOptions` (existing callers and the return type are unchanged). Seven kinds: blocks, list items, over-long text, table rows and columns over the limits, images that are not https, links with a disallowed address (their text is kept), and HTML over 1,000,000 characters. Each carries `code`, `count`, an English template `message` and `params`. The interactive editor shows one `info` notice after the paste (`FeedbackEvent.warnings` has the structured form). Relative and in-page links, styles and scripts stay silent.
