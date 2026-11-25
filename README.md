@@ -19,7 +19,7 @@ backends/go, backends/python  the full core, read side and HTTP server in Go and
 
 ## Status and licensing
 
-Version `0.3.0`. The repository history and version numbers were reset on 2026-11-07; earlier prerelease versions on npm are superseded.
+Version `0.7.0`. The repository history and version numbers were reset on 2026-11-07; earlier prerelease versions on npm are superseded. `npm run release:check` and the docs tests fail if this number drifts from `package.json`.
 
 Super Editor is **dual-licensed** by SUPER SOLUTION LABS INC:
 
@@ -102,4 +102,4 @@ else console.log(result.issues);
 
 Each batch commits all operations or none. Stable block IDs and expected block versions allow precise incremental updates. Stale transactions reject by default; explicitly opted-in safe rebasing applies only to updates of unchanged blocks. A conflicting human edit is retained. Re-read the affected block and submit a new proposal for review.
 
-Undo/redo and transaction retry records are bounded session state. JSON exports include the validated document and reserved block IDs; they do not include persisted audit/undo history. HTTP/MCP are adapters for host applications, not authenticated hosted services or a full MCP session implementation. This slice does not implement Word-compatible rich text/import/export, CRDT/OT collaboration, multi-user presence, pagination fidelity, or persistent collaborative storage.
+Undo/redo and transaction retry records are bounded session state. JSON exports include the validated document and reserved block IDs; they do not include persisted audit/undo history. HTTP/MCP are adapters for host applications, not authenticated hosted services or a full MCP session implementation. Word export exists (`-docx`, with tracked changes from a proposal) and says what it cannot carry, but this slice does not implement Word import, layout-faithful Word output, comments or suggestions in the document, CRDT/OT collaboration, multi-user presence, pagination fidelity, or persistent collaborative storage.

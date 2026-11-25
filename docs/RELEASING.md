@@ -58,6 +58,8 @@ npm install --package-lock-only --ignore-scripts   # refresh the lockfile
 npm run check && npm run release:check
 ```
 
+The README's "Version `x.y.z`" line is prose, so the script leaves it alone and a guard catches the drift instead: the docs tests (`npm test`) and `npm run release:check` fail while the README version, its package list or its "does not implement" sentence disagree with the code. Edit that line in the same commit as the bump.
+
 It accepts only a stable version (`1.2.3`, channel `latest`) or a prerelease of the form `1.2.3-next.N` (channel `next`), the same rule `scripts/release-contract.mjs` enforces; anything else (`1.2.3-rc.0`, `01.2.3`, `latest`, a version with extra arguments) exits non-zero before a file is written. It sets `publishConfig.tag` from the version and leaves the registry, access level, `files` allow-list, exports, bin entries and dependencies' names alone. It does not read or write tokens, workflows or the lockfile. Running it twice with the same version changes nothing. `tests/bump-version.test.mjs` runs it on a scratch copy of the manifests and then loads the result through `releasePackages`, so a bump that the release workflow would refuse fails the test suite first. Commit the result in a reviewed change; the publish workflow still takes the exact committed version as its input.
 
 ## Manual release

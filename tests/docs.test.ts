@@ -4,11 +4,13 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { AGENT_ACTIONS, DOCUMENT_FEATURES, MARKDOWN_LOSSES, TEMPLATE_KINDS, TRANSPORT_LIMITS, createFormatRegistry, htmlExporter, markdownExporter, markdownImporter, textFormatExporter } from '../packages/core/src/index.js';
+import { AGENT_ACTIONS, BLOCK_TYPES, DOCUMENT_FEATURES, MARKDOWN_LOSSES, TEMPLATE_KINDS, TRANSPORT_LIMITS, createFormatRegistry, htmlExporter, markdownExporter, markdownImporter, textFormatExporter } from '../packages/core/src/index.js';
 import { DOCX_FIDELITY, REDLINE_LIMITS, docxExporter } from '../packages/formats/docx/src/index.js';
 import { ROUTES } from '../backends/typescript/api/src/index.js';
 import { PROMPTS, RESOURCES, RESOURCE_TEMPLATES, listTools } from '../backends/typescript/mcp/src/index.js';
 import { COMMANDS } from '../packages/cli/src/commands.js';
+// @ts-expect-error -- plain ESM script shared with the release tooling, no declarations
+import { packageDirs, packageName, packageOrder } from '../scripts/release-contract.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path: string) => readFile(resolve(root, path), 'utf8');
@@ -95,4 +97,36 @@ test('docs/FORMATS.md names every document feature, format, warning code and pac
   for (const file of ['README.md', 'docs/ARCHITECTURE.md', 'docs/API-CONTRACT.md', 'packages/core/README.md', 'packages/formats/docx/README.md']) assert.ok((await read(file)).includes('FORMATS.md'), `${file} links FORMATS.md`);
   assert.ok((await read('docs/RELEASING.md')).includes('super-editor-opc') && (await read('docs/RELEASING.md')).includes('super-editor-docx'));
   assert.ok(existsSync(resolve(root, 'packages/formats/opc/README.md')) && existsSync(resolve(root, 'packages/formats/docx/README.md')));
+});
+
+test('the README cannot drift from the code: version, package list, folder layout and what it says is not implemented', async () => {
+  const readme = await read('README.md');
+  const workspace = JSON.parse(await read('package.json')) as { version: string };
+  const version = /Version `([^`]+)`/.exec(readme)?.[1];
+  assert.equal(version, workspace.version, `README says Version \`${version}\` but package.json is ${workspace.version}: update the README line when you bump the version`);
+  for (const short of packageOrder as string[]) {
+    assert.ok(readme.includes(`\`${packageName(short)}\``), `README package table lacks ${packageName(short)}`);
+    const manifest = JSON.parse(await read(`${(packageDirs as Record<string, string>)[short]}/package.json`)) as { version: string };
+    assert.equal(manifest.version, workspace.version, `${short} is at ${manifest.version}`);
+  }
+  // The folder map names every role folder that holds a published package (a role folder such as packages/formats/, or a top-level package such as packages/core).
+  for (const directory of Object.values(packageDirs as Record<string, string>)) {
+    const parts = directory.split('/');
+    const named = parts.length > 2 ? readme.includes(`${parts[0]}/${parts[1]}/`) : readme.includes(`${parts[0]}/`) && readme.includes(parts[1]!);
+    assert.ok(named, `README layout does not mention ${directory}`);
+  }
+  const count = (packageOrder as string[]).length;
+  assert.ok(readme.includes('all ten artifacts') === (count === 10), `the README says "all ten artifacts" and there are ${count} packages`);
+  assert.doesNotMatch(readme, /\b(?:two|three|four|five|six|seven|eight|nine) (?:published )?(?:packages|artifacts)\b/i, 'a stale package count');
+  // A format that ships must not be listed as missing. Word export exists, so the "does not implement" sentence cannot claim otherwise.
+  const registry = createFormatRegistry();
+  for (const exporter of [markdownExporter, htmlExporter, textFormatExporter, docxExporter]) registry.addExporter(exporter);
+  assert.ok(registry.exporters().some((info) => info.id === 'docx'));
+  assert.doesNotMatch(readme, /does not implement[^.]*\b(?:Word-compatible )?(?:rich text\/)?import\/export/i, 'the README says Word import/export is not implemented while docx export ships');
+  assert.match(readme, /Word export exists/);
+});
+
+test('the agent guide names every block type', async () => {
+  const guide = await read('docs/AGENT-GUIDE.md');
+  for (const type of BLOCK_TYPES) assert.ok(guide.includes(`\`${type}\``), `AGENT-GUIDE.md does not name the ${type} block`);
 });
