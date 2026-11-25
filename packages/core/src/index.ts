@@ -2,7 +2,7 @@
 // Copyright 2026 SUPER SOLUTION LABS INC
 export type * from './types.js';
 export { createDocument, createEditor } from './editor.js';
-export { LIMITS, parseDocument, safeUrl, serializeDocument, validateDocument, validateTransaction } from './validation.js';
+export { LIMITS, RETIRED_LIMIT, RETIRED_WARNING, parseDocument, safeUrl, serializeDocument, validateDocument, validateTransaction } from './validation.js';
 export { AXIS_FORMATS, BLOCK_TYPES, CALLOUT_TONES, CHART_KINDS, CONTAINER_TYPES, HIGHLIGHTS, IMAGE_WIDTHS, LIST_STYLES, METRIC_TONES, OPERATION_TYPES, TABLE_ALIGNMENTS, isContainerType } from './constants.js';
 export { clipText } from './text.js';
 export { blockText, orderedBlocks, getBlock, childrenOf, ancestorsOf, descendantsOf, findBlocks, getOutline, type BlockSelector, type OutlineItem } from './query.js';

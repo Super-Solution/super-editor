@@ -16,6 +16,12 @@ A minor release when it ships: new optional fields and actions, nothing existing
 - **Docs cannot drift silently.** `tests/docs.test.ts` and `npm run release:check` compare the README with the code: its `Version` line against `package.json` and every manifest, its package table and folder layout against the release contract, and its "not implemented" sentence against the exporters that ship (the README still said 0.3.0 and "no Word export"). The agent guide must name every block type.
 - `npm run bench:size` (`benchmarks/size.mjs`) reports the minified and gzip size of each entry point.
 
+### Long-lived documents: reserved IDs
+
+- **An edit no longer reads every deleted ID.** The `retiredBlockIds` list is shared between snapshots and validated once, not once per edit: a one-block edit in a document that reserves 99,500 deleted IDs takes 2 ms (median) instead of 51 ms (1.3 ms with none), the 500-block delete 9 ms instead of 87 ms. `benchmarks/apply.ts` measures it, `tests/performance.test.ts` guards it, and `tests/retired-ids.test.ts` pins that a reserved ID is still never reused, also across undo and redo.
+- **A warning before the wall.** From 80,000 reserved IDs every successful `apply` carries `warnings: [{ code: 'retired-ids-near-limit', message, hint, used, limit }]` (new `EditorWarning` type, `RETIRED_LIMIT` and `RETIRED_WARNING` exports), and write actions pass it through. TypeScript editor only: the Go and Python editors apply the same rules but do not warn.
+- **A hint at the wall.** The edit that would pass 100,000 is refused with a `validation` issue at `document.retiredBlockIds` whose `hint` says what to do. Same text in the TypeScript, Go and Python validators (each backend test reads the TypeScript source to keep it so). Compaction (forgetting old IDs) is not done: it would let an old reference point at new content, so it is the owner's decision.
+
 ## 0.7.0
 
 A minor release: two new packages and new exports; nothing existing changes. Document format unchanged (`schemaVersion: 1`).

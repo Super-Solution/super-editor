@@ -3,16 +3,17 @@
 import { isContainerType } from './constants.js';
 import { withHints } from './issues.js';
 import { replaceInContent, runsOf } from './text.js';
-import type { Actor, ApplyResult, Block, BlockContent, Editor, EditorIssue, EditorOptions, Operation, ResearchDocument, Revision, Transaction } from './types.js';
-import { rememberVerified, timestamp, validateDocument, validateHistoryRequest, validateTransaction } from './validation.js';
+import type { Actor, ApplyResult, Block, BlockContent, Editor, EditorIssue, EditorOptions, EditorWarning, Operation, ResearchDocument, Revision, Transaction } from './types.js';
+import { RETIRED_LIMIT, RETIRED_LIMIT_HINT, RETIRED_WARNING, rememberVerified, timestamp, trustRetired, validateDocument, validateHistoryRequest, validateTransaction } from './validation.js';
 
 function clone<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T; }
 /**
  * A working copy of a frozen snapshot. Blocks are copied one level (their own fields can be edited), while their contents stay
- * the shared frozen objects: an operation that changes a block's content replaces it, never edits it in place.
+ * the shared frozen objects: an operation that changes a block's content replaces it, never edits it in place. The retired-ID list is
+ * shared as well (it can hold 100,000 entries): a transaction that retires blocks assigns a new list instead of editing this one.
  */
 function workingCopy(document: ResearchDocument): ResearchDocument {
-  return { ...document, format: { ...document.format }, blocks: document.blocks.map(block => ({ ...block })), citations: [...document.citations], retiredBlockIds: [...document.retiredBlockIds] };
+  return { ...document, format: { ...document.format }, blocks: document.blocks.map(block => ({ ...block })), citations: [...document.citations] };
 }
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
@@ -55,7 +56,13 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
   let snapshot = freeze(validated.value);
   rememberVerified(snapshot);
   let versions = new Map(snapshot.blocks.map(block => [block.id, block.version]));
-  const reserved = new Set([...snapshot.retiredBlockIds, ...snapshot.blocks.map(block => block.id)]);
+  // Retired IDs are tracked incrementally: copying a 100,000-entry set per edit would cost more than the edit.
+  const retiredSet = new Set(snapshot.retiredBlockIds);
+  const reserved = new Set(snapshot.blocks.map(block => block.id));
+  /** Reserved = ever used by a block of this session (`reserved`), retired by an earlier edit (`retiredSet`), or taken earlier in this transaction. */
+  const isReserved = (blockId: string, pending: Set<string>): boolean => reserved.has(blockId) || retiredSet.has(blockId) || pending.has(blockId);
+  let pendingRetired: string[] = [];
+  const pendingRetiredSet = new Set<string>();
   // Only the last successful apply retains its exact payload. Earlier IDs stay consumed for this session.
   const seen = new Set<string>();
   const listeners = new Set<() => void>();
@@ -82,9 +89,12 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
     rememberVerified(snapshot);
     versions = nextVersions;
     for (const block of next.blocks) reserved.add(block.id);
-    for (const blockId of next.retiredBlockIds) reserved.add(blockId);
+    for (const blockId of pendingRetired) retiredSet.add(blockId);
+    pendingRetired = []; pendingRetiredSet.clear();
     revisions = freeze([...revisions, freeze(revision)].slice(-Math.max(1, historyLimit)));
-    return freeze({ ok: true, document: snapshot, revision: revisions[revisions.length - 1]! });
+    const used = snapshot.retiredBlockIds.length;
+    const warnings: EditorWarning[] = used >= RETIRED_WARNING ? [{ code: 'retired-ids-near-limit', message: `This document has reserved ${used} of ${RETIRED_LIMIT} deleted block IDs; edits that delete more blocks will be rejected at the limit.`, hint: RETIRED_LIMIT_HINT, used, limit: RETIRED_LIMIT }] : [];
+    return freeze({ ok: true, document: snapshot, revision: revisions[revisions.length - 1]!, ...(warnings.length ? { warnings } : {}) });
   }
   function blockAt(next: ResearchDocument, blockId: string, expectedVersion: number): Block {
     const block = next.blocks.find(entry => entry.id === blockId);
@@ -145,8 +155,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
     return found;
   }
   function removeBlocks(next: ResearchDocument, ids: Set<string>, highWater: Map<string, number>, at: string): void {
-    const retired = new Set(next.retiredBlockIds);
-    for (const block of next.blocks) if (ids.has(block.id)) { tick(block, highWater, at); if (!retired.has(block.id)) { retired.add(block.id); next.retiredBlockIds.push(block.id); } }
+    for (const block of next.blocks) if (ids.has(block.id)) { tick(block, highWater, at); if (!retiredSet.has(block.id) && !pendingRetiredSet.has(block.id)) { pendingRetiredSet.add(block.id); pendingRetired.push(block.id); } }
     next.blocks = next.blocks.filter(block => !ids.has(block.id));
   }
   function tick(block: Block, highWater: Map<string, number>, at: string): void {
@@ -158,7 +167,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
     switch (operation.type) {
       case 'insertBlock': {
         const input = operation.block;
-        if (pendingReserved.has(input.id) || next.blocks.some(block => block.id === input.id)) reject('duplicate', 'Block ID is already used or reserved.', input.id, 'Choose a fresh ID. IDs of deleted blocks stay reserved so old references cannot point at new content.');
+        if (isReserved(input.id, pendingReserved) || next.blocks.some(block => block.id === input.id)) reject('duplicate', 'Block ID is already used or reserved.', input.id, 'Choose a fresh ID. IDs of deleted blocks stay reserved so old references cannot point at new content.');
         const block: Block = { ...clone(input), version: 1, createdAt: at, updatedAt: at };
         put(next, block, operation.afterId); highWater.set(block.id, 1); pendingReserved.add(block.id); return;
       }
@@ -189,7 +198,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
         // The first block follows afterId; each later block follows the previous block with the same parent, or is appended to its parent.
         const lastByParent = new Map<string | null, string>();
         operation.blocks.forEach((input, index) => {
-          if (pendingReserved.has(input.id)) reject('duplicate', 'Block ID is already used or reserved.', input.id, 'Choose a fresh ID. IDs of deleted blocks stay reserved so old references cannot point at new content.');
+          if (isReserved(input.id, pendingReserved)) reject('duplicate', 'Block ID is already used or reserved.', input.id, 'Choose a fresh ID. IDs of deleted blocks stay reserved so old references cannot point at new content.');
           const block: Block = { ...clone(input), version: 1, createdAt: at, updatedAt: at };
           put(next, block, index === 0 ? operation.afterId : lastByParent.get(input.parentId));
           highWater.set(block.id, 1); pendingReserved.add(block.id); lastByParent.set(input.parentId, input.id);
@@ -206,7 +215,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
         const needed = order.map(block => block.id), neededSet = new Set(needed);
         const missing = needed.filter(blockId => !Object.hasOwn(operation.newIds, blockId)), unexpected = Object.keys(operation.newIds).filter(blockId => !neededSet.has(blockId));
         if (missing.length || unexpected.length) reject('validation', `newIds must map exactly the duplicated block and its ${needed.length - 1} descendant(s).`, original.id, `${missing.length ? `Missing: ${missing.join(', ')}. ` : ''}${unexpected.length ? `Not part of this subtree: ${unexpected.join(', ')}. ` : ''}Required old IDs: ${needed.join(', ')}.`);
-        for (const blockId of needed) if (pendingReserved.has(operation.newIds[blockId]!)) reject('duplicate', 'Block ID is already used or reserved.', operation.newIds[blockId], 'Choose a fresh ID for each copy. IDs of deleted blocks stay reserved.');
+        for (const blockId of needed) if (isReserved(operation.newIds[blockId]!, pendingReserved)) reject('duplicate', 'Block ID is already used or reserved.', operation.newIds[blockId], 'Choose a fresh ID for each copy. IDs of deleted blocks stay reserved.');
         order.forEach((source, index) => {
           const copy: Block = { ...clone(source), id: operation.newIds[source.id]!, parentId: index === 0 ? source.parentId : operation.newIds[source.parentId!]!, version: 1, createdAt: at, updatedAt: at };
           put(next, copy, index === 0 ? (operation.afterId === undefined ? original.id : operation.afterId) : undefined);
@@ -280,8 +289,10 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
       const at = clock();
       const next = workingCopy(snapshot);
       const highWater = new Map(versions);
-      const pendingReserved = new Set(reserved);
+      const pendingReserved = new Set<string>();
+      pendingRetired = []; pendingRetiredSet.clear();
       for (const operation of transaction.operations) applyOperation(next, operation, highWater, at, pendingReserved);
+      if (pendingRetired.length) next.retiredBlockIds = trustRetired([...snapshot.retiredBlockIds, ...pendingRetired]) as string[];
       next.revision = increment(snapshot.revision, 'Document'); next.updatedAt = at;
       // Every change to a block bumps its version, so a block still at its old version is the old (frozen, validated) block.
       const before = new Map(snapshot.blocks.map(block => [block.id, block]));
@@ -316,14 +327,16 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
       const highWater = new Map(versions);
       const currentById = new Map(snapshot.blocks.map(block => [block.id, block]));
       const targetIds = new Set(target.blocks.map(block => block.id));
-      const retired = new Set([...snapshot.retiredBlockIds, ...target.retiredBlockIds]);
+      pendingRetired = []; pendingRetiredSet.clear();
+      const retire = (blockId: string): void => { if (!retiredSet.has(blockId) && !pendingRetiredSet.has(blockId)) { pendingRetiredSet.add(blockId); pendingRetired.push(blockId); } };
+      if (target.retiredBlockIds !== snapshot.retiredBlockIds) for (const blockId of target.retiredBlockIds) retire(blockId);
       const siblingPredecessors = (document: ResearchDocument): Map<string, string | undefined> => {
         const predecessors = new Map<string, string | undefined>(); const previous = new Map<string | null, string>();
         for (const block of document.blocks) { predecessors.set(block.id, previous.get(block.parentId)); previous.set(block.parentId, block.id); }
         return predecessors;
       };
       const currentPredecessors = siblingPredecessors(snapshot); const targetPredecessors = siblingPredecessors(target);
-      for (const current of snapshot.blocks) if (!targetIds.has(current.id)) { highWater.set(current.id, increment(highWater.get(current.id) ?? current.version, `Block ${current.id}`)); retired.add(current.id); }
+      for (const current of snapshot.blocks) if (!targetIds.has(current.id)) { highWater.set(current.id, increment(highWater.get(current.id) ?? current.version, `Block ${current.id}`)); retire(current.id); }
       // History never copies old versions back: all restored blocks receive their current high-water version.
       for (const block of target.blocks) {
         const current = currentById.get(block.id);
@@ -333,7 +346,7 @@ export function createEditor(document: ResearchDocument, options: EditorOptions 
         if (!current || currentContent !== nextContent || reordered) tick(block, highWater, at);
         else { block.version = current.version; block.updatedAt = current.updatedAt; }
       }
-      target.retiredBlockIds = [...retired]; target.revision = increment(snapshot.revision, 'Document'); target.updatedAt = at;
+      target.retiredBlockIds = pendingRetired.length ? trustRetired([...snapshot.retiredBlockIds, ...pendingRetired]) as string[] : snapshot.retiredBlockIds as string[]; target.revision = increment(snapshot.revision, 'Document'); target.updatedAt = at;
       const final = validateDocument(target);
       if (!final.ok) return failure(final.issues);
       const revision: Revision = { number: target.revision, transactionId: `history:${kind}:${target.revision}`, actor: clone(request.value.actor), at, kind, operations: [] };

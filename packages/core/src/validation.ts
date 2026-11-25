@@ -368,12 +368,26 @@ function content(value: unknown, path: string): BlockContent {
  */
 const verifiedContent = new WeakMap<object, number>();
 const verifiedBlocks = new WeakMap<object, number>();
+/** Frozen retired-ID lists the editor has validated (or built from validated parts), with their serialized length. */
+const verifiedRetired = new WeakMap<object, number>();
+/** The most retired block IDs a document may hold (the schema's `maxItems`). */
+export const RETIRED_LIMIT = 100_000;
+/** From this many retired IDs on, a successful apply carries a warning, so a host can act before the hard limit rejects edits. */
+export const RETIRED_WARNING = 80_000;
+export const RETIRED_LIMIT_HINT = 'Deleted blocks keep their ID reserved forever so old references cannot point at new content, and a document can reserve at most 100000. Move or edit blocks instead of deleting and re-inserting them, or start a new document from the live blocks, which starts with an empty list.';
 /** Internal: records a deeply frozen, already validated document. Not part of the public API. */
 export function rememberVerified(document: ResearchDocument): void {
+  if (!verifiedRetired.has(document.retiredBlockIds)) verifiedRetired.set(document.retiredBlockIds, JSON.stringify(document.retiredBlockIds).length);
   for (const block of document.blocks) {
     if (!verifiedContent.has(block.content)) verifiedContent.set(block.content, JSON.stringify(block.content).length);
     if (!verifiedBlocks.has(block)) verifiedBlocks.set(block, JSON.stringify(block).length);
   }
+}
+/** Internal: freezes a retired-ID list the editor assembled from an already validated list and IDs of validated blocks, without duplicates. */
+export function trustRetired(ids: string[]): readonly string[] {
+  Object.freeze(ids);
+  verifiedRetired.set(ids, JSON.stringify(ids).length);
+  return ids;
 }
 function blockInput(value: unknown, path: string, persisted = false): BlockInput | Block {
   const v = object(value, path, ['id', 'parentId', 'content', 'citationIds', ...(persisted ? ['version', 'createdAt', 'updatedAt'] : [])]);
@@ -500,8 +514,11 @@ export function validateDocument(value: unknown): ValidationResult<ResearchDocum
       return parsed;
     });
     const citations = array(v.citations, 'document.citations', LIMITS.citations, citation);
-    const retiredBlockIds = array(v.retiredBlockIds, 'document.retiredBlockIds', 100_000, id);
-    unique(blocks.map(block => block.id), 'document.blocks'); unique(citations.map(item => item.id), 'document.citations'); unique(retiredBlockIds, 'document.retiredBlockIds');
+    // The same frozen list is shared by every snapshot until a block is deleted, so it is read once, not once per edit.
+    const knownRetired = Array.isArray(v.retiredBlockIds) && Object.isFrozen(v.retiredBlockIds) ? verifiedRetired.get(v.retiredBlockIds) : undefined;
+    if (Array.isArray(v.retiredBlockIds) && v.retiredBlockIds.length > RETIRED_LIMIT) fail(`Expected an array with at most ${RETIRED_LIMIT} entries.`, 'document.retiredBlockIds', RETIRED_LIMIT_HINT);
+    const retiredBlockIds = knownRetired !== undefined ? v.retiredBlockIds as string[] : array(v.retiredBlockIds, 'document.retiredBlockIds', RETIRED_LIMIT, id);
+    unique(blocks.map(block => block.id), 'document.blocks'); unique(citations.map(item => item.id), 'document.citations'); if (knownRetired === undefined) unique(retiredBlockIds, 'document.retiredBlockIds');
     const byId = new Map(blocks.map(block => [block.id, block]));
     const citationIds = new Set(citations.map(item => item.id));
     // Each ancestry chain is visited once, avoiding quadratic work on deeply nested sections.
@@ -532,7 +549,8 @@ export function validateDocument(value: unknown): ValidationResult<ResearchDocum
     if (Date.parse(result.createdAt) > Date.parse(result.updatedAt)) fail('Document update timestamp precedes creation.', 'document.updatedAt');
     for (const block of blocks) if (Date.parse(block.createdAt) > Date.parse(block.updatedAt) || Date.parse(block.updatedAt) > Date.parse(result.updatedAt)) fail('Block timestamps must follow creation and not exceed the document update timestamp.', `document.blocks.${block.id}.updatedAt`);
     // `size` already holds every block's length, so only the rest of the document is serialized here.
-    if (JSON.stringify({ ...result, blocks: [] }).length + size + Math.max(0, blocks.length - 1) > LIMITS.json) fail('Document exceeds the supported serialized size.', 'document');
+    const retiredSize = knownRetired ?? JSON.stringify(retiredBlockIds).length;
+    if (JSON.stringify({ ...result, blocks: [], retiredBlockIds: [] }).length - 2 + retiredSize + size + Math.max(0, blocks.length - 1) > LIMITS.json) fail('Document exceeds the supported serialized size.', 'document');
     return result;
   });
 }

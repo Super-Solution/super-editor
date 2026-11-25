@@ -14,7 +14,7 @@ import { isPromiseLike, openSnapshot, type AsyncReportService } from './store.js
 import { stats, type DocumentStats } from './stats.js';
 import { clipText } from './text.js';
 import { TEMPLATE_KINDS, createTemplate, listTemplates, templateTitle, type TemplateInfo, type TemplateKind } from './templates.js';
-import type { Actor, Block, BlockContent, BlockInput, BlockType, ChartSpec, EditorIssue, Operation, ResearchDocument, Transaction } from './types.js';
+import type { Actor, Block, BlockContent, BlockInput, BlockType, ChartSpec, EditorIssue, EditorWarning, Operation, ResearchDocument, Transaction } from './types.js';
 import { LIMITS, validateTransaction } from './validation.js';
 
 /**
@@ -51,7 +51,7 @@ export type TouchedBlock = { id: string; type: BlockType; version: number };
 export type AgentWriteSuccess = {
   ok: true; revision: number; summary: string;
   added: string[]; removed: string[]; changed: string[]; moved: string[];
-  blocks: TouchedBlock[]; truncated?: true; duplicate?: true; dryRun?: true; revisionAfter?: number;
+  blocks: TouchedBlock[]; truncated?: true; duplicate?: true; dryRun?: true; revisionAfter?: number; warnings?: EditorWarning[];
   [extra: string]: unknown;
 };
 /** Controls every write action accepts. */
@@ -217,6 +217,7 @@ function commit(ctx: Ctx, operations: Operation[], options: CommitOptions = {}):
     added: diff.added, removed: diff.removed, changed: diff.changed, moved: diff.moved,
     ...(diff.titleChanged ? { titleChanged: true } : {}), ...(diff.citations.added.length || diff.citations.removed.length || diff.citations.changed.length ? { citations: diff.citations } : {}),
     blocks: blocks.slice(0, TRANSPORT_LIMITS.resultBlocks), ...(blocks.length > TRANSPORT_LIMITS.resultBlocks ? { truncated: true as const } : {}),
+    ...(result.warnings?.length ? { warnings: result.warnings } : {}),
     ...options.extra,
   };
 }

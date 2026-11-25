@@ -45,6 +45,9 @@ func fail(message, path, hint string) {
 	panic(invalid{Issue{Code: "validation", Message: message, Path: path, Hint: hint}})
 }
 
+// retiredLimitHint tells a caller what to do at the cap on reserved (deleted) block IDs; it matches the TypeScript reference word for word.
+const retiredLimitHint = "Deleted blocks keep their ID reserved forever so old references cannot point at new content, and a document can reserve at most 100000. Move or edit blocks instead of deleting and re-inserting them, or start a new document from the live blocks, which starts with an empty list."
+
 // Limits are the explicit budgets of the reference.
 const (
 	limitBlocks             = 5_000
@@ -52,6 +55,7 @@ const (
 	limitOperations         = 256
 	limitCitations          = 2_000
 	limitText               = 100_000
+	limitRetired            = 100_000
 	limitChartPoints        = 20_000
 	limitChartMagnitude     = 1e15
 	limitJSON               = 8_000_000
@@ -1187,7 +1191,10 @@ func ValidateDocument(value any) Result {
 			return parsed
 		})
 		citations := array(v.Values["citations"], "document.citations", limitCitations, func(x any, p string) any { return citation(x, p) })
-		retired := array(v.Values["retiredBlockIds"], "document.retiredBlockIds", 100_000, idParser)
+		if list, ok := v.Values["retiredBlockIds"].([]any); ok && len(list) > limitRetired {
+			fail(fmt.Sprintf("Expected an array with at most %d entries.", limitRetired), "document.retiredBlockIds", retiredLimitHint)
+		}
+		retired := array(v.Values["retiredBlockIds"], "document.retiredBlockIds", limitRetired, idParser)
 		blockIDs := make([]string, len(blocks))
 		byID := make(map[string]record, len(blocks))
 		for i, b := range blocks {

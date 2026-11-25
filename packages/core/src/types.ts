@@ -111,8 +111,10 @@ export type Revision = {
   number: number; transactionId: string; actor: Actor; at: string;
   kind: 'apply' | 'undo' | 'redo'; operations: Operation[]; rebasedFrom?: number;
 };
+/** A successful edit that a host should still act on. `retired-ids-near-limit`: the document is close to the cap on reserved (deleted) block IDs. */
+export type EditorWarning = { code: 'retired-ids-near-limit'; message: string; hint: string; used: number; limit: number };
 export type ApplyResult =
-  | { ok: true; document: ResearchDocument; revision: Revision; duplicate?: true }
+  | { ok: true; document: ResearchDocument; revision: Revision; duplicate?: true; warnings?: EditorWarning[] }
   | { ok: false; issues: EditorIssue[]; currentRevision: number };
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; issues: EditorIssue[] };
 export type EditorOptions = { now?: () => string; historyLimit?: number };
