@@ -76,6 +76,8 @@ Behaviour worth knowing:
 
 Core extensions that make this possible: `ReportService.revisions?()`, `AGENT_ACTIONS`, `getAgentAction`, `runAgentAction`, `TRANSPORT_LIMITS`, the typed `AgentActionInputs` / `AgentActionOutputs` maps and the template functions.
 
+**Adding actions to a transport.** The shared table is fixed (it is what the Go and Python servers implement). A host that wants more passes an `actions` list to `createHttpHandler`, `createMcpDispatcher`, `runStdioServer(argv, io, { actions })` or `runCli(args, io, { actions })`: `[...AGENT_ACTIONS, ...formatActions(registry)]` adds `list_formats` and `export_document` (Markdown, HTML, text and Word, see [FORMATS.md](FORMATS.md#formats-over-http-mcp-and-the-cli)). An extra action is `{ name, title, description, access, destructive, idempotent, inputSchema, run }`; `run` may be asynchronous. The list is validated when the transport is created. A server that is not given the list is unchanged.
+
 ## HTTP
 
 `createHttpHandler(service, options)` returns `(request: Request) => Promise<Response>`. It binds no port and authenticates nobody. `service` is a `ReportService` or an `AsyncReportService` (`createStoreService(store)`, see [PERSISTENCE.md](PERSISTENCE.md)); over a store a lost compare-and-swap answers `409` `conflict` and writes nothing.

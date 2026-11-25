@@ -16,7 +16,7 @@ export const CONTENT_TYPES = {
   extended: 'application/vnd.openxmlformats-officedocument.extended-properties+xml',
 } as const;
 const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
-export const RELATIONSHIPS = { styles: `${REL}styles`, numbering: `${REL}numbering`, settings: `${REL}settings`, header: `${REL}header`, footer: `${REL}footer` } as const;
+export const RELATIONSHIPS = { styles: `${REL}styles`, numbering: `${REL}numbering`, settings: `${REL}settings`, header: `${REL}header`, footer: `${REL}footer`, image: `${REL}image` } as const;
 /** The Word names a document's content is mapped to. Everything the exporter writes with a style uses one of these. */
 export const STYLE = { normal: 'Normal', title: 'Title', quote: 'Quote', caption: 'Caption', code: 'CodeBlock', list: 'ListParagraph', tableText: 'TableText', link: 'Hyperlink', header: 'Header', footer: 'Footer', tableGrid: 'TableGrid', sources: 'SourceEntry' } as const;
 export const heading = (level: number): string => `Heading${level}`;

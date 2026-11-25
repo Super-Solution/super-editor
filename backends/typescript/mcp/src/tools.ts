@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import { AGENT_ACTIONS, emptyInputSchema, historyInputSchema, transactionInputSchema, type AgentAction } from '@supersolutions/super-editor-core';
+import { AGENT_ACTIONS, emptyInputSchema, historyInputSchema, transactionInputSchema, type TransportAction } from '@supersolutions/super-editor-core';
 
 export type McpToolAnnotations = {
   title: string;
@@ -27,19 +27,21 @@ const coreTools: McpTool[] = [
   tool('redo', 'Redo the last undone edit', 'Redo the last undone edit in this editing session. Needs the current expectedRevision.', historyInputSchema, { readOnly: false, destructive: true, idempotent: false }),
 ];
 
-export function toolFor(action: AgentAction): McpTool {
+export function toolFor(action: TransportAction): McpTool {
   return tool(action.name, action.title, action.description, action.inputSchema, { readOnly: action.access === 'read', destructive: action.destructive, idempotent: action.idempotent });
 }
 
 const readOnlyCore = new Set(['read_document']);
 /** Tool descriptors in a stable order: the Core tools, then the semantic tools reads first. */
-export function listTools(options: { readOnly?: boolean } = {}): McpTool[] {
-  const all = [...coreTools, ...AGENT_ACTIONS.map(toolFor)];
+export function listTools(options: { readOnly?: boolean; actions?: readonly TransportAction[] } = {}): McpTool[] {
+  const all = [...coreTools, ...(options.actions ?? AGENT_ACTIONS).map(toolFor)];
   return options.readOnly ? all.filter(entry => entry.annotations.readOnlyHint) : all;
 }
 export function isCoreTool(name: string): boolean { return coreTools.some(entry => entry.name === name); }
-export function isReadOnlyTool(name: string): boolean {
+/** The names of the four Core tools, which an action list may not reuse. */
+export const CORE_TOOL_NAMES: readonly string[] = coreTools.map(entry => entry.name);
+export function isReadOnlyTool(name: string, actions: readonly TransportAction[] = AGENT_ACTIONS): boolean {
   if (readOnlyCore.has(name)) return true;
-  const action = AGENT_ACTIONS.find(entry => entry.name === name);
+  const action = actions.find(entry => entry.name === name);
   return action?.access === 'read';
 }

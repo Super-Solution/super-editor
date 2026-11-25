@@ -3,8 +3,8 @@
 import { open, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import type { Actor, AgentActionResult, ReportService, ResearchDocument } from '@supersolutions/super-editor-core';
-import { AGENT_ACTIONS, TEMPLATE_KINDS, TRANSPORT_LIMITS, createDocument, createEditor, createReportService, createTemplate, getBlock, getAgentAction, isTemplateKind, listTemplates, runAgentAction, serializeDocument, templateTitle, withHints } from '@supersolutions/super-editor-core';
+import type { ActionTable, Actor, AgentActionResult, ReportService, ResearchDocument } from '@supersolutions/super-editor-core';
+import { TEMPLATE_KINDS, TRANSPORT_LIMITS, createDocument, createEditor, createReportService, createTemplate, getBlock, isTemplateKind, listTemplates, runAgentAction, runTransportAction, serializeDocument, templateTitle, withHints } from '@supersolutions/super-editor-core';
 import { formatFind, formatGet, formatOutline, formatRevisions, formatStats, formatTemplates, formatTools, formatValidate, formatWrite } from './format.js';
 import { InputError, appendHistory, decodeUtf8, historyExists, historyPath, loadDocument, persistAtomic, readHistory, readTextFile, withFileLock } from './files.js';
 
@@ -12,7 +12,8 @@ export type CliIo = { stdout(text: string): void; stderr(text: string): void; /*
 type OptionDef = { type: 'string' | 'boolean'; multiple?: boolean; short?: string };
 type Values = Record<string, string | boolean | (string | boolean)[] | undefined>;
 export type Outcome = { value: Record<string, unknown>; human: string; /** Printed as is instead of the JSON/human text unless `--json`. */ raw?: string };
-export type CommandContext = { file: string; rest: string[]; v: Values; io: CliIo; json: boolean; actor: Actor };
+/** `actions` is what `tools` lists and `call` runs: the shared `AGENT_ACTIONS` unless the host passed its own list to `runCli`. */
+export type CommandContext = { file: string; rest: string[]; v: Values; io: CliIo; json: boolean; actor: Actor; actions: ActionTable };
 export type Command = {
   name: string; usage: string; summary: string;
   /** The first argument is a document file. */
@@ -86,12 +87,13 @@ function controls(c: CommandContext): Record<string, unknown> {
 }
 
 /** Runs an action against the document file. Writes take the file lock and save atomically only when the revision moved. */
-async function runOnFile(c: CommandContext, action: string, input: Record<string, unknown>, writes: boolean): Promise<AgentActionResult> {
+async function runOnFile(c: CommandContext, action: string, input: Record<string, unknown>, writes: boolean, viaTable = false): Promise<AgentActionResult> {
   const execute = async (): Promise<AgentActionResult> => {
     const editor = createEditor(await loadDocument(c.file));
     const service = createReportService(editor);
     const before = service.read().revision;
-    const result = runAgentAction(service, action, input, { actor: c.actor });
+    // The commands wrap the shared actions (synchronous). `call` runs whatever the host's action list holds, which may be asynchronous.
+    const result = viaTable ? await runTransportAction(c.actions, service, action, input, { actor: c.actor }) : runAgentAction(service, action, input, { actor: c.actor });
     if (result.ok && service.read().revision !== before) {
       await persistAtomic(c.file, serializeDocument(service.read()));
       await appendHistory(c.file, service.revisions?.() ?? []);
@@ -165,12 +167,12 @@ export const COMMANDS: readonly Command[] = [
     run: async c => {
       const name = c.rest[0];
       if (name !== undefined) {
-        const action = getAgentAction(name);
+        const action = c.actions.get(name);
         if (!action) throw new InputError(`Unknown action "${name}". Run tools to list them.`);
         const value = { ok: true, name: action.name, title: action.title, description: action.description, access: action.access, destructive: action.destructive, idempotent: action.idempotent, inputSchema: action.inputSchema };
         return { value, human: `${JSON.stringify(value, null, 2)}\n` };
       }
-      const value = { ok: true, actions: AGENT_ACTIONS.map(action => ({ name: action.name, title: action.title, description: action.description, access: action.access, destructive: action.destructive, idempotent: action.idempotent, inputSchema: action.inputSchema })) };
+      const value = { ok: true, actions: c.actions.list.map(action => ({ name: action.name, title: action.title, description: action.description, access: action.access, destructive: action.destructive, idempotent: action.idempotent, inputSchema: action.inputSchema })) };
       return { value, human: formatTools(value) };
     },
   },
@@ -409,13 +411,13 @@ export const COMMANDS: readonly Command[] = [
     run: async c => {
       const name = c.rest[0];
       if (c.rest.length !== 1 || !name) throw new InputError('call takes a document path and one action name.');
-      const action = getAgentAction(name);
+      const action = c.actions.get(name);
       if (!action) throw new InputError(`Unknown action "${name}". Run tools to list them.`);
       const given = str(c, 'input');
       const input = given === undefined ? {} : given.trimStart().startsWith('{') ? (() => { try { return JSON.parse(given) as unknown; } catch { throw new InputError('--input is not valid JSON.'); } })() : await readJsonSource(c, given, 'Input file');
       if (input === null || typeof input !== 'object' || Array.isArray(input)) throw new InputError('The input must be a JSON object.');
       const merged = { ...(input as Record<string, unknown>), ...controls(c) };
-      const result = await runOnFile(c, name, merged, action.access === 'write');
+      const result = await runOnFile(c, name, merged, action.access === 'write', true);
       return { value: result as unknown as Record<string, unknown>, human: '', raw: `${JSON.stringify(result)}\n` };
     },
   },

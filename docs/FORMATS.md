@@ -43,6 +43,7 @@ One warning per affected feature, not one per block, so a long document gets a s
 | `feature-dropped` | every exporter, from its fidelity table | The feature is not in the output at all. |
 | `chart-rows-omitted` | Markdown, HTML, text and Word exporters | A chart's data table was cut to `chartRows` rows. |
 | `invalid-xml-characters` | Word exporter | Control characters Word files cannot hold were replaced by U+FFFD; `count` says how many. |
+| `image-not-embedded` | Word exporter, only when `resolveImage` is given | Images that stayed a link: the resolver returned nothing or failed, the bytes are not a PNG, JPEG or GIF (or unreadable), or a limit was reached. `count`, `blockIds` and a message that names the reasons. Replaces the general `feature-degraded` warning for `image`. |
 | `markdown-html-kept-as-text` | Markdown importer | A line that starts with an HTML tag or comment is kept as literal text. |
 | `markdown-setext-heading-kept-as-text` | Markdown importer | A heading underlined with `===` or `---` is not read as a heading. |
 | `markdown-heading-level-clamped` | Markdown importer | Headings deeper than level 3 become level 3. |
@@ -74,7 +75,7 @@ Plain paragraphs, headings, sections, lists, tables, code and quotes are not lis
 | `chart` | degraded (data table) | degraded (table in a figure) | degraded (data listing) | degraded (title and data table) |
 | `card` | degraded (alt text) | degraded (alt text in a figure) | degraded (alt text) | degraded (title and alt text) |
 | `embed` | degraded (link) | degraded (link) | degraded (title and URL) | degraded (link) |
-| `image` | carried | carried | degraded (`[Image: alt]`) | degraded (`[Image: alt]` and a link; **no picture is embedded**) |
+| `image` | carried | carried | degraded (`[Image: alt]`) | degraded (`[Image: alt]` and a link; a picture is embedded only when the host passes `resolveImage`) |
 | `callout` | degraded (GitHub alert) | carried | degraded (tone and title) | carried |
 | `metrics` | degraded (table) | carried | degraded (one line each) | degraded (table) |
 | `timestamp` | degraded (`label: time`) | carried | carried | degraded (`label: time`) |
@@ -83,6 +84,31 @@ Plain paragraphs, headings, sections, lists, tables, code and quotes are not lis
 | `page-format` | dropped | dropped | dropped | carried (paper size; fonts by option) |
 
 The tables themselves (`MARKDOWN_FIDELITY`, `HTML_FIDELITY`, `TEXT_FIDELITY`, `DOCX_FIDELITY`) are the source of truth and each has a test that compares it with what the output really contains. If this page and a table differ, the table wins; report the page.
+
+## Pictures: `resolveImage`
+
+```ts
+const result = await exportDocx(document, {
+  resolveImage: async ({ url, alt, blockId }) => await myCache.get(url),   // PNG, JPEG or GIF bytes, or null to leave a link
+});
+```
+
+The package **never fetches** an address: it comes from the document, and an agent can edit the document, so a resolver that fetches over the network is a server-side request forgery risk. The host decides: allow only trusted hosts, refuse private and loopback addresses, cap size and time, send no credentials. Each distinct address is asked for once, in document order, four at a time; the result does not depend on how fast the answers come back (same document and options, same bytes). A resolver that returns nothing, throws or rejects leaves that image a link and is never thrown out of the export; what it threw is not copied into the report. The bytes are checked by their header (type and pixel size, nothing is decoded) and limited: 500 pictures, 10 MB each, 64 MB in all, 30,000 pixels a side (`IMAGE_LIMITS`). A picture wider than the text is scaled down, never up, and keeps its alt text. Every image that stayed a link is reported in one `image-not-embedded` warning with the reasons and the block ids. A redline (`exportDocxRedline`, `exportProposalDocx`) refuses the option with a hint rather than ignoring it.
+
+A function cannot travel as JSON, so over HTTP, MCP and the CLI the host sets it once by registering a configured exporter: `registry.addExporter({ ...docxExporter, export: (doc, options) => exportDocx(doc, { ...options, resolveImage }) })`.
+
+## Formats over HTTP, MCP and the CLI
+
+`formatActions(registry)` returns two actions, `list_formats` (each format's MIME type, extension and what it carries or loses) and `export_document` (the document, or one block with its descendants, text as text and binary as base64 with the warnings). A transport serves them only when given the list, so the shared `AGENT_ACTIONS` and the Go and Python conformance are unchanged:
+
+```ts
+const actions = [...AGENT_ACTIONS, ...formatActions(registry)];
+createHttpHandler(service, { actions });                 // GET /actions, POST /actions/export_document, and the OpenAPI document
+createMcpDispatcher(service, { actions });               // tools list_formats and export_document (also createMcpStdioServer)
+await runCli(process.argv.slice(2), io, { actions });    // tools, call <file> export_document --input '{"format":"docx"}'
+```
+
+Both are read-only (a read-only server serves them), return the usual `{ ok: false, issues, currentRevision }` with a hint for every refusal (unknown format, unknown option, unknown block), and one call returns at most 8 MB (`FORMAT_EXPORT_BYTES`); export a section with `blockId` for more. A wrong list (a duplicate name, a name an MCP core tool already uses, an action without `run`) throws when the transport is created. The Go and Python servers do not serve these actions: exporters exist only in TypeScript.
 
 ## The registry
 
@@ -157,6 +183,6 @@ What is **not** verified, plainly:
 
 - **Microsoft Word itself was not available.** LibreOffice and python-docx are good evidence that the file is valid, but neither proves that Word shows it as intended or does not offer to "repair" it. Open an export in Word before relying on it.
 - **Tracked changes are a comparison, not a stored history.** `exportDocxRedline` and `exportProposalDocx` write them from two documents or from a reviewed proposal (see below); the editor's document itself has no revision history to write, and **comments do not exist in the document model**, so none are written. How Word shows the changes was checked in LibreOffice only, and Microsoft Word was not available.
-- **Pictures are not embedded.** `image` becomes alt text and a link, and a chart becomes its data table, because core holds no image bytes and fetching URLs is the host's decision. An image resolver option is the next step if hosts want pictures.
-- **No transport yet.** HTTP, MCP, the CLI and the chat plugin do not offer these formats; wiring them changes the shared action table and the Go and Python conformance and needs its own change.
+- **Pictures are embedded only from bytes the host provides.** `image` becomes alt text and a link unless `resolveImage` is given (below); a chart is always its data table. Only PNG, JPEG and GIF are embedded, SVG never. Not checked: how Word itself draws the pictures (python-docx finds them with their alt text and LibreOffice draws them), animated GIFs, CMYK or progressive JPEGs, and images inside a redline (not embedded there).
+- **The chat plugin does not offer these formats.** HTTP, MCP and the CLI do, through an opt-in action list (below); the chat plugin is a different surface and was not changed.
 - Fonts are named, not embedded: a reader without the named font substitutes one.

@@ -4,8 +4,8 @@
 import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { formatIssues, withHints } from '@supersolutions/super-editor-core';
-import type { EditorIssue } from '@supersolutions/super-editor-core';
+import { formatIssues, resolveActions, withHints } from '@supersolutions/super-editor-core';
+import type { ActionTable, EditorIssue, TransportAction } from '@supersolutions/super-editor-core';
 import { COMMANDS, defaultActor, parseCommand, type CliIo, type Command } from './commands.js';
 import { InputError, InvalidDocument, Refusal } from './files.js';
 
@@ -62,7 +62,7 @@ function exitCodeFor(issues: readonly EditorIssue[]): number {
 }
 
 /** Local runner also usable by tests and another trusted CLI host. */
-export async function runCli(args: string[], output: CliOutput = standardOutput): Promise<number> {
+export async function runCli(args: string[], output: CliOutput = standardOutput, options: { actions?: readonly TransportAction[] } = {}): Promise<number> {
   const name = args[0];
   if (args.length === 0 || (args.length === 1 && ['help', '--help', '-h'].includes(name ?? ''))) {
     output.stdout(CLI_HELP);
@@ -70,6 +70,9 @@ export async function runCli(args: string[], output: CliOutput = standardOutput)
   }
   const wantsJson = args.includes('--json');
   let command: Command | undefined;
+  let actions: ActionTable;
+  try { actions = resolveActions(options.actions); }
+  catch (error) { output.stderr(`${JSON.stringify({ ok: false, error: error instanceof Error ? error.message : 'Invalid actions.' })}\n`); return 2; }
   try {
     if (name === 'help') {
       const target = COMMANDS.find(entry => entry.name === args[1]);
@@ -91,7 +94,7 @@ export async function runCli(args: string[], output: CliOutput = standardOutput)
     }
     const actorValue = typeof values.actor === 'string' ? values.actor : process.env.SUPER_EDITOR_ACTOR;
     const json = values.json === true;
-    const outcome = await command.run({ file, rest, v: values, io: output, json, actor: defaultActor(actorValue) });
+    const outcome = await command.run({ file, rest, v: values, io: output, json, actor: defaultActor(actorValue), actions });
 
     if (outcome.value.ok === false) {
       const issues = withHints((outcome.value.issues ?? []) as EditorIssue[]);
