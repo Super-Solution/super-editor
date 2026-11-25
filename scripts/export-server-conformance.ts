@@ -228,7 +228,7 @@ async function walk(index: number, steps: number): Promise<void> {
     else if (kind === 1) await h.action('find_blocks', { ...(chance(2) ? { type: pick(['paragraph', 'heading', 'list', 'section', ['table', 'chart'], 'nope']) } : {}), ...(chance(2) ? { text: pick(WORDS) } : {}), ...(chance(4) ? { parentId: chance(2) ? null : block.id } : {}), ...(chance(5) ? { within: containers.length ? pick(containers).id : 'x' } : {}), ...(chance(3) ? { limit: 1 + rand(5), offset: rand(3) } : {}), ...(chance(4) ? { include: 'content' } : {}) });
     else if (kind === 2) await h.action('get_block', { blockId: id(block) });
     else if (kind === 3) await h.action(pick(['document_stats', 'list_templates']), {});
-    else if (kind === 4) await h.action(pick(['export_markdown', 'export_html', 'export_text']), { ...(chance(3) ? { blockId: id(block) } : {}), ...(chance(3) ? { standalone: chance(2) } : {}) });
+    else if (kind === 4) await h.action(pick(['export_markdown', 'export_html', 'export_text']), { ...(chance(3) ? { blockId: id(block) } : {}), ...(chance(3) ? { standalone: chance(2) } : {}), ...(chance(3) ? { withIds: chance(2) } : {}) });
     else if (kind === 5) await h.action('list_revisions', chance(2) ? { limit: 1 + rand(5), offset: rand(3) } : {});
     else if (kind === 6) await h.action('validate_transaction', { transaction: { id: tx(), actor: { id: 'v', kind: 'agent' }, baseRevision: h.service.read().revision + (chance(5) ? 1 : 0), operations: [chance(2) ? op.setTitle(sentence()) : op.updateBlock(id(block), version(block), CONTENTS() as never)] } });
     else if (kind === 7 || kind === 8) await h.action('insert_blocks', chance(3) ? { blocks: [{ id: `new-${++prefixCounter}`, content: CONTENTS(), ...parent() }], ...after(), ...controls() } : { markdown: markdownText(), ...(chance(3) ? { idPrefix: `ip${++prefixCounter}` } : {}), ...parent(), ...after(), ...controls() });
@@ -275,7 +275,7 @@ async function inputs(): Promise<void> {
   const h = new Harness('inputs', mainDocument());
   const seeds: Record<string, unknown[]> = {
     get_outline: [{ maxDepth: 2 }], find_blocks: [{ type: 'paragraph', text: 'alpha', limit: 3 }, { ids: ['p1'], include: 'content' }, { parentId: null, within: 's1' }], get_block: [{ blockId: 'p1' }], document_stats: [{}],
-    export_markdown: [{ blockId: 's1' }], export_html: [{ standalone: true }], export_text: [{}], list_revisions: [{ limit: 5, offset: 0 }], list_templates: [{}],
+    export_markdown: [{ blockId: 's1' }, { withIds: true }, { withIds: true, blockId: 's1' }, { withIds: 'yes' }], export_html: [{ standalone: true }], export_text: [{}], list_revisions: [{ limit: 5, offset: 0 }], list_templates: [{}],
     validate_transaction: [{ transaction: { id: 'v1', actor: { id: 'a', kind: 'agent' }, baseRevision: 1, operations: [op.setTitle('T')] } }],
     insert_blocks: [{ markdown: '# H\n\ntext', afterId: null, idPrefix: 'mm' }, { blocks: [{ id: 'nb', content: { type: 'divider' }, citationIds: ['c1'] }] }],
     update_block_text: [{ blockId: 'p2', expectedVersion: 1, text: 'new text', format: 'plain' }], update_block: [{ blockId: 'p2', expectedVersion: 1, content: { type: 'paragraph', runs: [{ text: 'x' }] }, citationIds: ['c1'] }],

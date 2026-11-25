@@ -114,6 +114,7 @@ test('the reference reproduces every render case', () => {
     const doc = c.document;
     assert.equal(toMarkdown(doc), c.markdown, `document ${index} markdown`);
     assert.equal(toMarkdown(doc, { title: false, chartRows: 2 }), c.markdownBare, `document ${index} markdownBare`);
+    assert.equal(toMarkdown(doc, { withIds: true }), c.markdownWithIds, `document ${index} markdownWithIds`);
     assert.equal(toHTML(doc), c.html, `document ${index} html`);
     assert.equal(toHTML(doc, { title: false, chartRows: 2 }), c.htmlBare, `document ${index} htmlBare`);
     assert.equal(toHTML(doc, { standalone: true }), c.htmlStandalone, `document ${index} htmlStandalone`);

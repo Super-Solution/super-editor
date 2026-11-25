@@ -574,11 +574,12 @@ func findIntInput(c *ctx, key string, fallback int) int {
 	return fallback
 }
 
-func exportHandler(format string, render func(doc record, title, standalone bool) string) handler {
+func exportHandler(format string, render func(doc record, title, standalone, withIDs bool) string) handler {
 	return func(c *ctx) record {
 		blockID, has := c.str("blockId")
 		standalone, _ := c.boolean("standalone")
-		body := render(subDocument(c.doc, blockID, has), !has, standalone)
+		withIDs, _ := c.boolean("withIds")
+		body := render(subDocument(c.doc, blockID, has), !has, standalone, withIDs)
 		return record{"ok": true, "revision": recNum(c.doc, "revision"), "format": format, "characters": utf16Len(body), "text": body}
 	}
 }
@@ -713,13 +714,13 @@ func init() {
 		return out
 	}
 
-	handlers["export_markdown"] = exportHandler("markdown", func(doc record, title, _ bool) string {
-		return render.ToMarkdown(doc, render.MarkdownOptions{NoTitle: !title})
+	handlers["export_markdown"] = exportHandler("markdown", func(doc record, title, _, withIDs bool) string {
+		return render.ToMarkdown(doc, render.MarkdownOptions{NoTitle: !title, WithIDs: withIDs})
 	})
-	handlers["export_html"] = exportHandler("html", func(doc record, title, standalone bool) string {
+	handlers["export_html"] = exportHandler("html", func(doc record, title, standalone, _ bool) string {
 		return render.ToHTML(doc, render.HTMLOptions{NoTitle: !title, Standalone: standalone})
 	})
-	handlers["export_text"] = exportHandler("text", func(doc record, title, _ bool) string {
+	handlers["export_text"] = exportHandler("text", func(doc record, title, _, _ bool) string {
 		return render.ToPlainText(doc, render.TextOptions{NoTitle: !title})
 	})
 

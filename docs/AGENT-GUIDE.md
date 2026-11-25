@@ -73,7 +73,8 @@ const found = await client.actions.find_blocks({ text: 'revenue', type: 'paragra
 ## The editing loop
 
 1. **Look cheaply.** `get_outline` shows sections and headings. `document_stats` shows size. Avoid `read_document` on large documents.
-2. **Find what you will change.** `find_blocks` returns `{ id, type, version, parentId, text }` summaries. Filter by `type`, `text`, `within` (a section), `parentId`, `citationId` or `ids`.
+2. **Read the prose** when you need the words, not only the structure: `export_markdown({ withIds: true })` returns the whole document as Markdown with each block preceded by `<!-- id=BLOCK_ID v=VERSION -->`, and `blockId` limits it to one section (read a long document section by section after `get_outline`). One call gives you the ids and versions you edit with. The comments are for reading: do not save or re-import the view. (Over HTTP this is `POST /actions/export_markdown`; the `GET /export.md` route has no such option.)
+   **Find what you will change.** `find_blocks` returns `{ id, type, version, parentId, text }` summaries. Filter by `type`, `text`, `within` (a section), `parentId`, `citationId` or `ids`.
 3. **Make one narrow edit** with the version from step 2.
 4. **Use the result.** Every edit returns `blocks: [{ id, type, version }]` for what it touched, so you can chain another edit on those blocks without reading again.
 
@@ -98,6 +99,7 @@ add_citation({ title: "ACME annual report", url: "https://example.com/10k",
 | Change content | `update_block_text`, `update_block`, `replace_text`, `set_title`, `move_blocks` |
 | Remove content | `delete_blocks` |
 | Check before committing | `dryRun: true` on any write, `validate_transaction` |
+| Read the prose with ids | `export_markdown` with `withIds: true` (and `blockId` for one section) |
 | Get it out | `export_markdown`, `export_html`, `export_text` |
 | Full control | `apply_transaction`, `undo`, `redo`, `read_document` |
 | Context | `list_revisions`, `list_templates` |

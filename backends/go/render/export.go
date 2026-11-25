@@ -287,6 +287,8 @@ func annotationLine(spec record) string {
 type MarkdownOptions struct {
 	NoTitle   bool
 	ChartRows int // 0 means the default, 100
+	// WithIDs precedes every block with "<!-- id=ID v=VERSION -->" (a reading view for an editing agent, not an exchange format).
+	WithIDs bool
 }
 
 var alerts = map[string]string{"info": "NOTE", "success": "TIP", "note": "IMPORTANT", "warning": "WARNING", "danger": "CAUTION"}
@@ -438,6 +440,7 @@ func ToMarkdown(doc record, o MarkdownOptions) string {
 	var render func(b record, depth int)
 	render = func(b record, depth int) {
 		c := contentOf(b)
+		start := len(parts)
 		switch c["type"] {
 		case "section":
 			parts = append(parts, strings.Repeat("#", min(6, 2+depth))+" "+EscapeHeadingText(line(str(c, "title"))))
@@ -550,6 +553,14 @@ func ToMarkdown(doc record, o MarkdownOptions) string {
 				refs[i] = "[^" + id + "]"
 			}
 			parts = append(parts, "Sources: "+strings.Join(refs, " "))
+		}
+		if o.WithIDs {
+			mark := "<!-- id=" + idOf(b) + " v=" + num(b["version"]) + " -->"
+			if len(parts) > start {
+				parts[start] = mark + "\n" + parts[start]
+			} else {
+				parts = append(parts, mark)
+			}
 		}
 		next := depth
 		if c["type"] == "section" {

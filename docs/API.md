@@ -43,7 +43,7 @@ Some actions add fields: `blockId` (`add_chart`), `citationId` (`add_citation`),
 | `find_blocks` | read | type, text, parentId, within, ids, citationId, limit, offset, include |
 | `get_block` | read | **blockId** |
 | `document_stats` | read | (none) |
-| `export_markdown` | read | blockId |
+| `export_markdown` | read | blockId, withIds |
 | `export_html` | read | blockId, standalone |
 | `export_text` | read | blockId |
 | `list_revisions` | read | limit, offset |
@@ -70,7 +70,7 @@ Behaviour worth knowing:
 - **`insert_blocks`** takes `markdown` (converted to blocks with fresh IDs unless `idPrefix` is given) or `blocks` (`{ id, content, parentId?, citationIds? }[]`, parents first). Large inserts are split into 500-block batches inside one transaction.
 - **`import_markdown`** `mode: "replace"` deletes every existing block first and imports the markdown as the new body; `setTitle` takes the title from a leading `# Title` line.
 - **`add_citation`** with `blockId` also attaches the citation to the block's `citationIds`; `marker: true` appends an inline marker to paragraph, quote or callout text.
-- **Exports** return `{ format, characters, text }`. `blockId` exports one block with its descendants. HTML is escaped static markup; `standalone: true` is a full page with a small stylesheet.
+- **Exports** return `{ format, characters, text }`. `blockId` exports one block with its descendants. HTML is escaped static markup; `standalone: true` is a full page with a small stylesheet. `export_markdown` with `withIds: true` precedes every block with `<!-- id=BLOCK_ID v=VERSION -->` (the id and version the edit actions need), including blocks that print nothing; it is a reading view, not an exchange format (`toMarkdown(document, { withIds: true })` in code). Only the action has the option: `GET /export.md` does not.
 - **`list_revisions`** returns the revisions of the current editing session (the service's `revisions()`), newest first.
 - **`validate_transaction`** applies a Core transaction to a scratch copy and returns what would change, or the issues. Nothing is saved.
 

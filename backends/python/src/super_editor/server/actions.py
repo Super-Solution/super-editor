@@ -461,11 +461,12 @@ def _sub_document(doc: Record, block_id: str | None) -> Record:
 Handler = Callable[[_Ctx], Record]
 
 
-def _export(format_name: str, render: Callable[[Record, bool, bool], str]) -> Handler:
+def _export(format_name: str, render: Callable[[Record, bool, bool, bool], str]) -> Handler:
     def handler(c: _Ctx) -> Record:
         block_id = c.get_str("blockId")
         standalone = bool(c.get_bool("standalone"))
-        body = render(_sub_document(c.doc, block_id), block_id is None, standalone)
+        with_ids = bool(c.get_bool("withIds"))
+        body = render(_sub_document(c.doc, block_id), block_id is None, standalone, with_ids)
         return {
             "ok": True,
             "revision": c.doc["revision"],
@@ -706,13 +707,17 @@ def _replace_text(c: _Ctx) -> Record:  # noqa: C901
         direction = (
             "More places match than you expected: narrow the search with blockId or within, or make find longer."
             if total > want
-            else "Fewer places match than you expected: the text may have been edited, or caseSensitive may be excluding some."
+            else (
+                "Fewer places match than you expected: the text may have been edited, "
+                "or caseSensitive may be excluding some."
+            )
         )
         reject(
             "conflict",
             f'Expected {want} replacement{_plural(want)}, but "{_preview(find)}" would be replaced {total} '
             f"time{_plural(total)}{scope} in {blocks} block{_plural(blocks)}. Nothing was changed.",
-            f"{direction} Run with dryRun: true to preview, then retry with expectedMatches: {total} if that is what you want.",
+            f"{direction} Run with dryRun: true to preview, "
+            f"then retry with expectedMatches: {total} if that is what you want.",
             path="input.expectedMatches",
         )
 
@@ -938,9 +943,9 @@ HANDLERS: dict[str, Handler] = {
     "find_blocks": _find_blocks,
     "get_block": _get_block,
     "document_stats": _document_stats,
-    "export_markdown": _export("markdown", lambda d, title, _s: to_markdown(d, title=title)),
-    "export_html": _export("html", lambda d, title, standalone: to_html(d, title=title, standalone=standalone)),
-    "export_text": _export("text", lambda d, title, _s: to_plain_text(d, title=title)),
+    "export_markdown": _export("markdown", lambda d, title, _s, ids: to_markdown(d, title=title, with_ids=ids)),
+    "export_html": _export("html", lambda d, title, standalone, _i: to_html(d, title=title, standalone=standalone)),
+    "export_text": _export("text", lambda d, title, _s, _i: to_plain_text(d, title=title)),
     "list_revisions": _list_revisions,
     "list_templates": lambda c: {
         "ok": True,

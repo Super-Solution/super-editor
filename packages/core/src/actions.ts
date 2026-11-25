@@ -64,7 +64,7 @@ export type AgentActionInputs = {
   find_blocks: { type?: BlockType | BlockType[]; text?: string; parentId?: string | null; within?: string; ids?: string[]; citationId?: string; limit?: number; offset?: number; include?: 'summary' | 'content' };
   get_block: { blockId: string };
   document_stats: Record<string, never>;
-  export_markdown: { blockId?: string };
+  export_markdown: { blockId?: string; withIds?: boolean };
   export_html: { blockId?: string; standalone?: boolean };
   export_text: { blockId?: string };
   list_revisions: { limit?: number; offset?: number };
@@ -291,14 +291,14 @@ function subDocument(doc: ResearchDocument, blockId: string | undefined): Resear
   const root = need(doc, blockId);
   return { ...doc, blocks: [{ ...root, parentId: null }, ...descendantsOf(doc, blockId)] };
 }
-function exportAction(name: string, title: string, format: 'markdown' | 'html' | 'text', render: (doc: ResearchDocument, includeTitle: boolean, standalone: boolean) => string, extra: string, extraProperties: Record<string, Schema> = {}): AgentAction {
+function exportAction(name: string, title: string, format: 'markdown' | 'html' | 'text', render: (doc: ResearchDocument, includeTitle: boolean, standalone: boolean, withIds: boolean) => string, extra: string, extraProperties: Record<string, Schema> = {}): AgentAction {
   return define({
     name, title, access: 'read', destructive: false, idempotent: true, textField: 'text',
     description: `Export the document (or one section) as ${extra}. Read-only. Returns { text, format, characters }.`,
     inputSchema: object({ blockId: { ...idS, description: 'Export only this block and its descendants.' }, ...extraProperties }),
     handler: ctx => {
       const blockId = str(ctx, 'blockId');
-      const body = render(subDocument(ctx.doc, blockId), blockId === undefined, bool(ctx, 'standalone') === true);
+      const body = render(subDocument(ctx.doc, blockId), blockId === undefined, bool(ctx, 'standalone') === true, bool(ctx, 'withIds') === true);
       return { ok: true, revision: ctx.doc.revision, format, characters: body.length, text: body };
     },
   });
@@ -413,7 +413,7 @@ const documentStatsAction = define({
   handler: ctx => ({ ok: true, revision: ctx.doc.revision, title: ctx.doc.title, updatedAt: ctx.doc.updatedAt, ...stats(ctx.doc) }),
 });
 
-const exportMarkdownAction = exportAction('export_markdown', 'Export markdown', 'markdown', (doc, title) => toMarkdown(doc, { title }), 'Markdown (charts become data tables, callouts GitHub alerts, citations footnotes)');
+const exportMarkdownAction = exportAction('export_markdown', 'Export markdown', 'markdown', (doc, title, _standalone, withIds) => toMarkdown(doc, { title, withIds }), 'Markdown (charts become data tables, callouts GitHub alerts, citations footnotes). The cheapest way to read prose: pass withIds: true to get every block preceded by <!-- id=BLOCK_ID v=VERSION --> (the id and version that update_block, update_block_text, move_blocks and delete_blocks need), and blockId to read one section at a time', { withIds: { type: 'boolean', description: 'Precede every block with <!-- id=BLOCK_ID v=VERSION -->, so one read gives you the ids and versions to edit with. Not for saving or importing: the comments stay as text if imported.' } });
 const exportHtmlAction = exportAction('export_html', 'Export HTML', 'html', (doc, title, standalone) => toHTML(doc, { title, standalone }), 'escaped static HTML (no scripts, iframes or raw HTML pass-through)', { standalone: { type: 'boolean', description: 'Return a complete page with a small stylesheet instead of an <article> fragment.' } });
 const exportTextAction = exportAction('export_text', 'Export plain text', 'text', (doc, title) => toPlainText(doc, { title }), 'plain text');
 

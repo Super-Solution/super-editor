@@ -191,7 +191,7 @@ const SELECTORS: BlockSelector[] = [
 ];
 const documentCases = documents.map(document => ({
   document,
-  markdown: toMarkdown(document), markdownBare: toMarkdown(document, { title: false, chartRows: 2 }),
+  markdown: toMarkdown(document), markdownBare: toMarkdown(document, { title: false, chartRows: 2 }), markdownWithIds: toMarkdown(document, { withIds: true }),
   html: toHTML(document), htmlBare: toHTML(document, { title: false, chartRows: 2 }), htmlStandalone: toHTML(document, { standalone: true }),
   text: toPlainText(document), textBare: toPlainText(document, { title: false, chartRows: 1 }),
   stats: stats(document), outline: getOutline(document),

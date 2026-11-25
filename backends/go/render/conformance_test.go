@@ -39,6 +39,7 @@ type fixture struct {
 		Document       map[string]any `json:"document"`
 		Markdown       string         `json:"markdown"`
 		MarkdownBare   string         `json:"markdownBare"`
+		MarkdownIDs    string         `json:"markdownWithIds"`
 		HTML           string         `json:"html"`
 		HTMLBare       string         `json:"htmlBare"`
 		HTMLStandalone string         `json:"htmlStandalone"`
@@ -179,6 +180,7 @@ func TestConformance(t *testing.T) {
 		}
 		check("markdown", ToMarkdown(d, MarkdownOptions{}), c.Markdown)
 		check("markdownBare", ToMarkdown(d, MarkdownOptions{NoTitle: true, ChartRows: 2}), c.MarkdownBare)
+		check("markdownWithIds", ToMarkdown(d, MarkdownOptions{WithIDs: true}), c.MarkdownIDs)
 		check("html", ToHTML(d, HTMLOptions{}), c.HTML)
 		check("htmlBare", ToHTML(d, HTMLOptions{NoTitle: true, ChartRows: 2}), c.HTMLBare)
 		check("htmlStandalone", ToHTML(d, HTMLOptions{Standalone: true}), c.HTMLStandalone)

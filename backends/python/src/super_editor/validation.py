@@ -128,7 +128,9 @@ class Invalid(Exception):
 
 RETIRED_LIMIT = 100_000
 RETIRED_LIMIT_HINT = (
-    "Deleted blocks keep their ID reserved forever so old references cannot point at new content, and a document can reserve at most 100000. Move or edit blocks instead of deleting and re-inserting them, or start a new document from the live blocks, which starts with an empty list."
+    "Deleted blocks keep their ID reserved forever so old references cannot point at new content, and a "
+    "document can reserve at most 100000. Move or edit blocks instead of deleting and re-inserting them, "
+    "or start a new document from the live blocks, which starts with an empty list."
 )
 """What to do at the cap on reserved (deleted) block IDs; matches the TypeScript reference word for word."""
 
@@ -1362,7 +1364,11 @@ def validate_document(value: Any) -> dict[str, Any]:  # noqa: C901
         blocks = _array(v["blocks"], "document.blocks", int(LIMITS["blocks"]), parse_block)
         citations = _array(v["citations"], "document.citations", int(LIMITS["citations"]), _citation)
         if isinstance(v["retiredBlockIds"], list) and len(v["retiredBlockIds"]) > RETIRED_LIMIT:
-            _fail(f"Expected an array with at most {RETIRED_LIMIT} entries.", "document.retiredBlockIds", RETIRED_LIMIT_HINT)
+            _fail(
+                f"Expected an array with at most {RETIRED_LIMIT} entries.",
+                "document.retiredBlockIds",
+                RETIRED_LIMIT_HINT,
+            )
         retired = _array(v["retiredBlockIds"], "document.retiredBlockIds", RETIRED_LIMIT, _id)
         _unique([b["id"] for b in blocks], "document.blocks")
         _unique([c["id"] for c in citations], "document.citations")
