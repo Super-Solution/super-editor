@@ -16,6 +16,10 @@ A minor release when it ships: new optional fields and actions, nothing existing
 - **Docs cannot drift silently.** `tests/docs.test.ts` and `npm run release:check` compare the README with the code: its `Version` line against `package.json` and every manifest, its package table and folder layout against the release contract, and its "not implemented" sentence against the exporters that ship (the README still said 0.3.0 and "no Word export"). The agent guide must name every block type.
 - `npm run bench:size` (`benchmarks/size.mjs`) reports the minified and gzip size of each entry point.
 
+### A guard against a replace that touches more than you meant
+
+- **`replace_text` takes `expectedMatches` and always reports `replacements`.** The number of replacements you expect (1 means "change exactly one place"); a different count fails with `conflict` at `input.expectedMatches`, changes nothing, and says the real count and what to do. The result now carries `replacements` (and still `matchedBlocks` without `blockId`), dry runs included. It is an action option, not an operation field, so documents and transactions are unchanged; MCP, HTTP and the CLI (`replace --expect <n>`) get it from the shared action table. Cannot be combined with `conflictPolicy: "rebase-safe"` (the count is only true for the revision it was made on); a stale `expectedVersion` is still a `conflict` on the block. Go and Python servers have the same behaviour, pinned by the regenerated `conformance/server.v1.json`.
+
 ### Long-lived documents: reserved IDs
 
 - **An edit no longer reads every deleted ID.** The `retiredBlockIds` list is shared between snapshots and validated once, not once per edit: a one-block edit in a document that reserves 99,500 deleted IDs takes 2 ms (median) instead of 51 ms (1.3 ms with none), the 500-block delete 9 ms instead of 87 ms. `benchmarks/apply.ts` measures it, `tests/performance.test.ts` guards it, and `tests/retired-ids.test.ts` pins that a reserved ID is still never reused, also across undo and redo.

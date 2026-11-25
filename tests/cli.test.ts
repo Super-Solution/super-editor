@@ -207,6 +207,11 @@ test('insert, import, replace, move and delete work through files, stdin and gua
     const replaced = await run(['replace', file, '--find', 'march', '--replace', 'April', '--json']);
     assert.equal(replaced.code, 0, replaced.err);
     assert.equal(replaced.json().matchedBlocks, 1);
+    assert.equal(replaced.json().replacements, 1);
+    const miscounted = await run(['replace', file, '--find', 'April', '--replace', 'May', '--expect', '2']);
+    assert.equal(miscounted.code, 3, miscounted.err);
+    assert.match(miscounted.err, /Expected 2 replacements/); assert.match(miscounted.err, /Nothing was changed/);
+    assert.equal((await run(['replace', file, '--find', 'April', '--replace', 'April', '--expect', 'two'])).code, 2);
     assert.equal((await run(['replace', file, '--find', 'April', '--replace', 'May', '--case-sensitive', '--first', '--within', 'sec'])).code, 4);
     assert.equal((await run(['replace', file, '--find', 'nothing like this', '--replace', 'x'])).code, 4);
     assert.equal((await run(['replace', file, '--find', 'x'])).code, 2);

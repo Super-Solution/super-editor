@@ -33,7 +33,7 @@ export function formatGet(result: Result): string {
 
 export function formatWrite(result: Result): string {
   const blocks = (list(result.blocks) as { id: string; version: number }[]).map(block => `${block.id}@${block.version}`);
-  const extras = ['blockId', 'citationId', 'idPrefix', 'matchedBlocks', 'mode'].filter(key => result[key] !== undefined).map(key => `${key}: ${text(result[key])}`);
+  const extras = ['blockId', 'citationId', 'idPrefix', 'replacements', 'matchedBlocks', 'mode'].filter(key => result[key] !== undefined).map(key => `${key}: ${text(result[key])}`);
   const head = result.dryRun ? `dry run (nothing saved): would reach revision ${text(result.revisionAfter)}` : result.duplicate ? `already applied (revision ${text(result.revision)})` : `ok, revision ${text(result.revision)}`;
   return [`${head}: ${text(result.summary)}`, blocks.length ? `blocks: ${blocks.join(' ')}${result.truncated ? ' …' : ''}` : '', list(result.removed).length ? `removed: ${list(result.removed).slice(0, 20).join(' ')}${list(result.removed).length > 20 ? ' …' : ''}` : '', ...extras].filter(Boolean).join('\n') + '\n';
 }

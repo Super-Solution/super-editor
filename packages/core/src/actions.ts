@@ -12,7 +12,7 @@ import { transactionSchema } from './schemas.js';
 import { createReportService, type ReportService } from './service.js';
 import { isPromiseLike, openSnapshot, type AsyncReportService } from './store.js';
 import { stats, type DocumentStats } from './stats.js';
-import { clipText } from './text.js';
+import { clipText, replaceInContent } from './text.js';
 import { TEMPLATE_KINDS, createTemplate, listTemplates, templateTitle, type TemplateInfo, type TemplateKind } from './templates.js';
 import type { Actor, Block, BlockContent, BlockInput, BlockType, ChartSpec, EditorIssue, EditorWarning, Operation, ResearchDocument, Transaction } from './types.js';
 import { LIMITS, validateTransaction } from './validation.js';
@@ -73,7 +73,7 @@ export type AgentActionInputs = {
   insert_blocks: WriteControls & { afterId?: string | null; parentId?: string | null; idPrefix?: string } & ({ markdown: string; blocks?: never } | { blocks: BlockDraft[]; markdown?: never });
   update_block_text: WriteControls & { blockId: string; expectedVersion: number; text: string; format?: 'markdown' | 'plain'; conflictPolicy?: 'reject' | 'rebase-safe' };
   update_block: WriteControls & { blockId: string; expectedVersion: number; content: BlockContent; citationIds?: string[]; conflictPolicy?: 'reject' | 'rebase-safe' };
-  replace_text: WriteControls & { find: string; replace: string; blockId?: string; expectedVersion?: number; within?: string; all?: boolean; caseSensitive?: boolean; conflictPolicy?: 'reject' | 'rebase-safe' };
+  replace_text: WriteControls & { find: string; replace: string; blockId?: string; expectedVersion?: number; within?: string; all?: boolean; caseSensitive?: boolean; expectedMatches?: number; conflictPolicy?: 'reject' | 'rebase-safe' };
   move_blocks: WriteControls & { blocks: BlockRef[]; parentId: string | null; afterId?: string | null };
   delete_blocks: WriteControls & { blocks: BlockRef[] };
   add_chart: WriteControls & { spec: ChartSpec; afterId?: string | null; parentId?: string | null; id?: string; citationIds?: string[] };
@@ -95,7 +95,7 @@ export type AgentActionOutputs = {
   list_templates: { ok: true; revision: number; templates: TemplateInfo[] };
   validate_transaction: { ok: true; valid: true; revision: number; revisionAfter: number; added: string[]; removed: string[]; changed: string[]; moved: string[] };
   insert_blocks: AgentWriteSuccess; update_block_text: AgentWriteSuccess; update_block: AgentWriteSuccess; move_blocks: AgentWriteSuccess; delete_blocks: AgentWriteSuccess; set_title: AgentWriteSuccess;
-  replace_text: AgentWriteSuccess & { matchedBlocks?: number };
+  replace_text: AgentWriteSuccess & { replacements: number; matchedBlocks?: number };
   add_chart: AgentWriteSuccess & { blockId: string };
   add_citation: AgentWriteSuccess & { citationId: string };
   insert_template: AgentWriteSuccess & { idPrefix: string; rootIds: string[] };
@@ -503,20 +503,34 @@ const updateBlockAction = define({
 
 const replaceTextAction = define({
   name: 'replace_text', title: 'Replace text', access: 'write', destructive: true, idempotent: false,
-  description: 'Find and replace text while keeping formatting (matches may span inline runs; the replacement takes the formatting where the match starts). With blockId it edits one block and needs the version you last read. Without blockId it edits every block that contains the text, using the current versions, optionally limited to a container with within. Case-insensitive unless caseSensitive. Replaces every occurrence unless all is false. Fails with not-found when nothing matches.',
+  description: 'Find and replace text while keeping formatting (matches may span inline runs; the replacement takes the formatting where the match starts). With blockId it edits one block and needs the version you last read. Without blockId it edits every block that contains the text, using the current versions, optionally limited to a container with within. Case-insensitive unless caseSensitive. Replaces every occurrence unless all is false. Fails with not-found when nothing matches. The result says how many replacements were made (replacements). Send expectedMatches (the number of replacements you expect, for example 1 to change exactly one place) to be refused, with nothing changed, when the text occurs a different number of times; dryRun shows the count first.',
   inputSchema: object({
     find: { type: 'string', minLength: 1, maxLength: LIMITS.searchText }, replace: text(LIMITS.text, 'May be empty to delete the text.'),
     blockId: idS, expectedVersion: versionS, within: { ...idS, description: 'Without blockId: only blocks inside this container.' },
-    all: { type: 'boolean', description: 'Default true.' }, caseSensitive: { type: 'boolean', description: 'Default false.' }, conflictPolicy: conflictPolicyS, ...write,
+    all: { type: 'boolean', description: 'Default true.' }, caseSensitive: { type: 'boolean', description: 'Default false.' },
+    expectedMatches: { type: 'integer', minimum: 1, maximum: 1_000_000, description: 'Refuse the edit (conflict, nothing changed) unless exactly this many replacements would be made. With all false each block counts once.' },
+    conflictPolicy: conflictPolicyS, ...write,
   }, ['find', 'replace']),
   handler: ctx => {
     const find = str(ctx, 'find')!, replace = str(ctx, 'replace')!;
     const options = { all: bool(ctx, 'all') ?? true, ...(bool(ctx, 'caseSensitive') === undefined ? {} : { caseSensitive: bool(ctx, 'caseSensitive')! }) };
+    const expected = int(ctx, 'expectedMatches');
+    // The count is only true for the revision it was made on, so a rebase over a newer one could change it.
+    if (expected !== undefined && ctx.input.conflictPolicy === 'rebase-safe') reject('validation', 'expectedMatches cannot be combined with conflictPolicy "rebase-safe".', 'The count is checked against the document as it is now. Drop conflictPolicy (and send expectedRevision to guard the revision you read), or drop expectedMatches.', { path: 'input.expectedMatches' });
+    const countIn = (block: Block): number => replaceInContent(block.content, { find, replace, ...options })?.count ?? 0;
+    const guard = (total: number, blocks: number): void => {
+      if (expected === undefined || total === expected) return;
+      reject('conflict', `Expected ${expected} replacement${expected === 1 ? '' : 's'}, but "${preview(find)}" would be replaced ${total} time${total === 1 ? '' : 's'}${options.all ? '' : ' (all is false: one per block)'} in ${blocks} block${blocks === 1 ? '' : 's'}. Nothing was changed.`,
+        `${total > expected ? 'More places match than you expected: narrow the search with blockId or within, or make find longer.' : 'Fewer places match than you expected: the text may have been edited, or caseSensitive may be excluding some.'} Run with dryRun: true to preview, then retry with expectedMatches: ${total} if that is what you want.`, { path: 'input.expectedMatches' });
+    };
     const blockId = str(ctx, 'blockId');
     if (blockId !== undefined) {
       if (int(ctx, 'expectedVersion') === undefined) reject('validation', 'expectedVersion is required when blockId is given.', 'Read the block with get_block and send its version.', { path: 'input.expectedVersion', blockId });
-      need(ctx.doc, blockId);
-      return commit(ctx, [{ type: 'replaceText', blockId, expectedVersion: int(ctx, 'expectedVersion')!, find, replace, ...options }]);
+      const block = need(ctx.doc, blockId);
+      // Zero matches, a block without text and a stale version keep their own, more specific errors from the editor.
+      const total = countIn(block);
+      if (total > 0 && block.version === int(ctx, 'expectedVersion')) guard(total, 1);
+      return commit(ctx, [{ type: 'replaceText', blockId, expectedVersion: int(ctx, 'expectedVersion')!, find, replace, ...options }], { extra: { replacements: total } });
     }
     if (has(ctx, 'expectedVersion')) reject('validation', 'expectedVersion only applies together with blockId.', 'Remove expectedVersion, or add blockId to edit a single block.', { path: 'input.expectedVersion' });
     const within = str(ctx, 'within');
@@ -524,7 +538,10 @@ const replaceTextAction = define({
     const candidates = (within === undefined ? ctx.doc.blocks : descendantsOf(ctx.doc, within)).filter(block => hasText(block, find, options.caseSensitive ?? false));
     if (candidates.length === 0) reject('not-found', `No block contains "${preview(find)}".`, `Matching ${options.caseSensitive ? 'is' : 'is not'} case-sensitive. Use find_blocks with text to locate the wording first.`, { path: 'input.find' });
     if (candidates.length > LIMITS.operations) reject('validation', `${candidates.length} blocks match; one call can edit at most ${LIMITS.operations}.`, 'Narrow the search with within or blockId.', { path: 'input.find' });
-    return commit(ctx, candidates.map(block => ({ type: 'replaceText' as const, blockId: block.id, expectedVersion: block.version, find, replace, ...options })), { extra: { matchedBlocks: candidates.length } });
+    const total = candidates.reduce((sum, block) => sum + countIn(block), 0);
+    guard(total, candidates.length);
+    // Each block is edited at the version this count was made on, so a block that changed in between is refused, not overwritten.
+    return commit(ctx, candidates.map(block => ({ type: 'replaceText' as const, blockId: block.id, expectedVersion: block.version, find, replace, ...options })), { extra: { replacements: total, matchedBlocks: candidates.length } });
   },
 });
 

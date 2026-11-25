@@ -12,7 +12,7 @@ from typing import Any
 
 from .._common import js_number, line
 from ..documents import diff_documents, summarize_revision
-from ..editor import Editor, with_hints
+from ..editor import Editor, count_replacements, with_hints
 from ..export import to_markdown
 from ..html_export import to_html
 from ..inline import JS_SPACE, js_trim, parse_inline
@@ -100,6 +100,11 @@ def _blocks(doc: Mapping[str, Any]) -> list[Record]:
 
 def _content(block: Record) -> Record:
     return block["content"]  # type: ignore[no-any-return]
+
+
+def _plural(n: int) -> str:
+    """The "s" of "1 block" / "2 blocks"."""
+    return "" if n == 1 else "s"
 
 
 def _need(doc: Mapping[str, Any], block_id: str, label: str) -> Record:
@@ -679,6 +684,38 @@ def _replace_text(c: _Ctx) -> Record:  # noqa: C901
             op["caseSensitive"] = case_sensitive
         return op
 
+    expected = c.get_num("expectedMatches")
+    # The count is only true for the revision it was made on, so a rebase over a newer one could change it.
+    if expected is not None and c.inp.get("conflictPolicy") == "rebase-safe":
+        reject(
+            "validation",
+            'expectedMatches cannot be combined with conflictPolicy "rebase-safe".',
+            "The count is checked against the document as it is now. Drop conflictPolicy (and send expectedRevision "
+            "to guard the revision you read), or drop expectedMatches.",
+            path="input.expectedMatches",
+        )
+
+    def count_in(block: Record) -> int:
+        return count_replacements(block.get("content") or {}, find, all_matches, bool(case_sensitive))
+
+    def guard(total: int, blocks: int) -> None:
+        if expected is None or total == expected:
+            return
+        want = int(expected)
+        scope = "" if all_matches else " (all is false: one per block)"
+        direction = (
+            "More places match than you expected: narrow the search with blockId or within, or make find longer."
+            if total > want
+            else "Fewer places match than you expected: the text may have been edited, or caseSensitive may be excluding some."
+        )
+        reject(
+            "conflict",
+            f'Expected {want} replacement{_plural(want)}, but "{_preview(find)}" would be replaced {total} '
+            f"time{_plural(total)}{scope} in {blocks} block{_plural(blocks)}. Nothing was changed.",
+            f"{direction} Run with dryRun: true to preview, then retry with expectedMatches: {total} if that is what you want.",
+            path="input.expectedMatches",
+        )
+
     block_id = c.get_str("blockId")
     if block_id is not None:
         version = c.get_num("expectedVersion")
@@ -690,11 +727,15 @@ def _replace_text(c: _Ctx) -> Record:  # noqa: C901
                 path="input.expectedVersion",
                 blockId=block_id,
             )
-        _need(c.doc, block_id, "Block")
+        block = _need(c.doc, block_id, "Block")
+        # Zero matches, a block without text and a stale version keep their own, more specific errors from the editor.
+        total = count_in(block)
+        if total > 0 and block.get("version") == version:
+            guard(total, 1)
         op = options(
             {"type": "replaceText", "blockId": block_id, "expectedVersion": version, "find": find, "replace": replace}
         )
-        return _commit(c, [op])
+        return _commit(c, [op], extra={"replacements": total})
     if c.has("expectedVersion"):
         reject(
             "validation",
@@ -723,6 +764,8 @@ def _replace_text(c: _Ctx) -> Record:  # noqa: C901
             "Narrow the search with within or blockId.",
             path="input.find",
         )
+    total = sum(count_in(b) for b in candidates)
+    guard(total, len(candidates))
     ops = [
         options(
             {
@@ -735,7 +778,7 @@ def _replace_text(c: _Ctx) -> Record:  # noqa: C901
         )
         for b in candidates
     ]
-    return _commit(c, ops, extra={"matchedBlocks": len(candidates)})
+    return _commit(c, ops, extra={"replacements": total, "matchedBlocks": len(candidates)})
 
 
 def _move_blocks(c: _Ctx) -> Record:

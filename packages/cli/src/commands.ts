@@ -283,16 +283,16 @@ export const COMMANDS: readonly Command[] = [
     },
   },
   {
-    name: 'replace', usage: 'replace <document.json> --find <text> --replace <text> [--block <id>@<version>] [--within <id>] [--first] [--case-sensitive]', summary: 'Find and replace text, keeping formatting', file: true,
-    options: { find: { type: 'string' }, replace: { type: 'string' }, block: { type: 'string' }, within: { type: 'string' }, first: { type: 'boolean' }, 'case-sensitive': { type: 'boolean' }, unguarded: { type: 'boolean' }, ...GUARD },
-    notes: [...GUARD_NOTES, 'Without --block every block that contains the text is edited using current versions. Replaces all occurrences unless --first.'],
+    name: 'replace', usage: 'replace <document.json> --find <text> --replace <text> [--block <id>@<version>] [--within <id>] [--first] [--case-sensitive] [--expect <n>]', summary: 'Find and replace text, keeping formatting', file: true,
+    options: { find: { type: 'string' }, replace: { type: 'string' }, block: { type: 'string' }, within: { type: 'string' }, first: { type: 'boolean' }, 'case-sensitive': { type: 'boolean' }, expect: { type: 'string' }, unguarded: { type: 'boolean' }, ...GUARD },
+    notes: [...GUARD_NOTES, 'Without --block every block that contains the text is edited using current versions. Replaces all occurrences unless --first.', '--expect <n>  refuse (nothing saved) unless exactly n replacements would be made; the result always says how many were'],
     run: async c => {
       if (c.rest.length) throw new InputError('replace takes only the document path and its options.');
       const find = str(c, 'find'), replace = str(c, 'replace');
       if (find === undefined || replace === undefined) throw new InputError('replace requires --find <text> and --replace <text> (the replacement may be empty).');
       const block = str(c, 'block');
       const ref = block === undefined ? undefined : await blockRef(c, block);
-      return viaAction(c, 'replace_text', { find, replace, ...(ref ?? {}), ...(str(c, 'within') === undefined ? {} : { within: str(c, 'within') }), ...(flag(c, 'first') ? { all: false } : {}), ...(flag(c, 'case-sensitive') ? { caseSensitive: true } : {}), ...controls(c) }, formatWrite);
+      return viaAction(c, 'replace_text', { find, replace, ...(ref ?? {}), ...(str(c, 'within') === undefined ? {} : { within: str(c, 'within') }), ...(flag(c, 'first') ? { all: false } : {}), ...(flag(c, 'case-sensitive') ? { caseSensitive: true } : {}), ...(int(c, 'expect') === undefined ? {} : { expectedMatches: int(c, 'expect') }), ...controls(c) }, formatWrite);
     },
   },
   {

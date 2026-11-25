@@ -195,6 +195,40 @@ test('replace_text edits one guarded block or every matching block, and explains
   fails(run(service, 'replace_text', { find: 'Sample', replace: 'x', within: 'ghost' }), 'not-found');
 });
 
+test('replace_text reports how many replacements it made and refuses an edit that would not match expectedMatches', () => {
+  const service = createReportService(createEditor(createDocument({ id: 'expect', title: 'Expect' }, { now: clock }), { now: clock }));
+  ok(run(service, 'insert_blocks', { blocks: [paragraph('a', 'Revenue grew 12%. Revenue is up.'), paragraph('b', 'Revenue fell.'), paragraph('c', 'Costs only.')] }));
+  const before = JSON.stringify(service.read());
+
+  const preview = ok(run(service, 'replace_text', { find: 'revenue', replace: 'Sales', dryRun: true }));
+  assert.equal(preview.replacements, 3); assert.equal(preview.matchedBlocks, 2); assert.equal(preview.dryRun, true);
+  assert.equal(JSON.stringify(service.read()), before, 'a dry run changes nothing');
+
+  const tooMany = fails(run(service, 'replace_text', { find: 'revenue', replace: 'Sales', expectedMatches: 1 }), 'conflict');
+  assert.equal(tooMany.path, 'input.expectedMatches'); assert.match(tooMany.message, /Expected 1 replacement, but "revenue" would be replaced 3 times in 2 blocks\. Nothing was changed/);
+  assert.match(tooMany.hint!, /narrow the search with blockId or within/); assert.match(tooMany.hint!, /expectedMatches: 3/);
+  const tooFew = fails(run(service, 'replace_text', { find: 'revenue', replace: 'Sales', expectedMatches: 4 }), 'conflict');
+  assert.match(tooFew.hint!, /Fewer places match/);
+  assert.equal(JSON.stringify(service.read()), before, 'a refused edit changes nothing');
+
+  const single = fails(run(service, 'replace_text', { blockId: 'a', expectedVersion: 1, find: 'revenue', replace: 'Sales', expectedMatches: 1 }), 'conflict');
+  assert.match(single.message, /would be replaced 2 times in 1 block/);
+  const firstOnly = ok(run(service, 'replace_text', { find: 'revenue', replace: 'Sales', all: false, expectedMatches: 2 }));
+  assert.equal(firstOnly.replacements, 2, 'with all false each block counts once');
+  assert.match(JSON.stringify(service.read().blocks.find(block => block.id === 'a')!.content), /Sales grew 12%\. Revenue is up\./);
+
+  const exact = ok(run(service, 'replace_text', { blockId: 'a', expectedVersion: versionOf(service, 'a'), find: 'revenue', replace: 'Turnover', expectedMatches: 1 }));
+  assert.equal(exact.replacements, 1);
+  const everywhere = ok(run(service, 'replace_text', { find: 'Sales', replace: 'Income' }));
+  assert.equal(everywhere.replacements, 2); assert.equal(everywhere.matchedBlocks, 2);
+
+  fails(run(service, 'replace_text', { find: 'Income', replace: 'x', expectedMatches: 2, conflictPolicy: 'rebase-safe' }), 'validation');
+  fails(run(service, 'replace_text', { find: 'Income', replace: 'x', expectedMatches: 0 }), 'validation');
+  fails(run(service, 'replace_text', { find: 'nowhere', replace: 'x', expectedMatches: 1 }), 'not-found');
+  const stale = fails(run(service, 'replace_text', { blockId: 'a', expectedVersion: 1, find: 'Income', replace: 'x', expectedMatches: 5 }), 'conflict');
+  assert.match(stale.message, /Block changed/, 'a stale version is reported as such, not as a miscount');
+});
+
 test('move_blocks and delete_blocks need versions, keep subtrees together and retire deleted IDs', () => {
   const service = seeded();
   const moved = ok(run(service, 'move_blocks', { blocks: [{ blockId: 'macro-trend', expectedVersion: 1 }, { blockId: 'macro-heading', expectedVersion: 1 }], parentId: 'portfolio', afterId: 'portfolio-heading' }));

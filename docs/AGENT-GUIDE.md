@@ -207,7 +207,7 @@ The Core `LIMITS` object and `TRANSPORT_LIMITS` export every number. A call over
 
 **Draft an equity report.** `insert_template({ kind: "equity", subject: "ACME", setTitle: true })`, then `get_outline`, then per section `find_blocks({ within })` and `update_block_text` / `update_block`, `add_chart` for each placeholder, `add_citation` with `marker`, `delete_blocks` for the placeholder notes, `export_markdown` to read it back.
 
-**Fix a number everywhere.** `replace_text({ find: "12.4%", replace: "12.8%" })` edits every block containing it. Add `within` to limit it to one section, `dryRun: true` to see which blocks match.
+**Fix a number everywhere.** `replace_text({ find: "12.4%", replace: "12.8%" })` edits every block containing it. Add `within` to limit it to one section, `dryRun: true` to see which blocks match and how many `replacements` it would make. Add `expectedMatches` (and `expectedRevision`) to be refused, with nothing changed, if the number is not the one you meant: `expectedMatches: 1` for a figure that should appear once.
 
 **Reorder sections.** `move_blocks({ blocks: [{ blockId, expectedVersion }], parentId: null, afterId })`. Children move with their section.
 

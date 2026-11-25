@@ -169,6 +169,14 @@ func (r *replacer) strings(items []any) []any {
 	return out
 }
 
+// CountReplacements is how many replacements replace_text would make in a block's content (0 for a block without text).
+func CountReplacements(content map[string]any, find string, all, caseSensitive bool) int {
+	if _, n, ok := replaceInContent(content, find, "", all, caseSensitive); ok {
+		return n
+	}
+	return 0
+}
+
 // replaceInContent returns the new content and the number of replacements, or ok=false for blocks without text.
 func replaceInContent(content record, find, replace string, all, caseSensitive bool) (record, int, bool) {
 	r := newReplacer(find, replace, all, caseSensitive)

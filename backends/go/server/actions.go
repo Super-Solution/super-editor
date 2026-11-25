@@ -811,13 +811,43 @@ func init() {
 			}
 			return op
 		}
+		expected, hasExpected := c.num("expectedMatches")
+		// The count is only true for the revision it was made on, so a rebase over a newer one could change it.
+		if hasExpected && c.in.Values["conflictPolicy"] == "rebase-safe" {
+			reject("validation", `expectedMatches cannot be combined with conflictPolicy "rebase-safe".`, "The count is checked against the document as it is now. Drop conflictPolicy (and send expectedRevision to guard the revision you read), or drop expectedMatches.", editor.Issue{Path: "input.expectedMatches"})
+		}
+		countIn := func(b record) int {
+			content, _ := b["content"].(record)
+			return editor.CountReplacements(content, find, all, caseSensitive)
+		}
+		guard := func(total, blocks int) {
+			if !hasExpected || float64(total) == expected {
+				return
+			}
+			want := int(expected)
+			scope := ""
+			if !all {
+				scope = " (all is false: one per block)"
+			}
+			direction := "Fewer places match than you expected: the text may have been edited, or caseSensitive may be excluding some."
+			if total > want {
+				direction = "More places match than you expected: narrow the search with blockId or within, or make find longer."
+			}
+			reject("conflict", fmt.Sprintf("Expected %d replacement%s, but %s would be replaced %d time%s%s in %d block%s. Nothing was changed.", want, plural(want), dq(preview(find)), total, plural(total), scope, blocks, plural(blocks)),
+				fmt.Sprintf("%s Run with dryRun: true to preview, then retry with expectedMatches: %d if that is what you want.", direction, total), editor.Issue{Path: "input.expectedMatches"})
+		}
 		if blockID, ok := c.str("blockId"); ok {
 			version, hasVersion := c.num("expectedVersion")
 			if !hasVersion {
 				reject("validation", "expectedVersion is required when blockId is given.", "Read the block with get_block and send its version.", editor.Issue{Path: "input.expectedVersion", BlockID: blockID})
 			}
-			need(c.doc, blockID, "Block")
-			return commit(c, []any{options(record{"type": "replaceText", "blockId": blockID, "expectedVersion": version, "find": find, "replace": replace})}, commitOptions{})
+			block := need(c.doc, blockID, "Block")
+			// Zero matches, a block without text and a stale version keep their own, more specific errors from the editor.
+			total := countIn(block)
+			if total > 0 && recNum(block, "version") == version {
+				guard(total, 1)
+			}
+			return commit(c, []any{options(record{"type": "replaceText", "blockId": blockID, "expectedVersion": version, "find": find, "replace": replace})}, commitOptions{extra: record{"replacements": float64(total)}})
 		}
 		if c.has("expectedVersion") {
 			reject("validation", "expectedVersion only applies together with blockId.", "Remove expectedVersion, or add blockId to edit a single block.", editor.Issue{Path: "input.expectedVersion"})
@@ -843,11 +873,16 @@ func init() {
 		if len(candidates) > limit("operations") {
 			reject("validation", fmt.Sprintf("%d blocks match; one call can edit at most %d.", len(candidates), limit("operations")), "Narrow the search with within or blockId.", editor.Issue{Path: "input.find"})
 		}
+		total := 0
+		for _, b := range candidates {
+			total += countIn(b)
+		}
+		guard(total, len(candidates))
 		ops := make([]any, len(candidates))
 		for i, b := range candidates {
 			ops[i] = options(record{"type": "replaceText", "blockId": b["id"], "expectedVersion": b["version"], "find": find, "replace": replace})
 		}
-		return commit(c, ops, commitOptions{extra: record{"matchedBlocks": float64(len(candidates))}})
+		return commit(c, ops, commitOptions{extra: record{"replacements": float64(total), "matchedBlocks": float64(len(candidates))}})
 	}
 
 	handlers["move_blocks"] = func(c *ctx) record {
@@ -1121,3 +1156,11 @@ var _ = math.Inf
 
 // dq quotes a value the way the reference writes it in messages: in double quotes, nothing escaped.
 func dq(s string) string { return `"` + s + `"` }
+
+// plural is the "s" of "1 block" / "2 blocks".
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}

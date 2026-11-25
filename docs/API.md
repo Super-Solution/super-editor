@@ -17,7 +17,7 @@ Contents: [Conventions](#conventions) · [Actions](#actions) · [HTTP](#http) ·
   duplicate?: true }                         // an identical retry: nothing was applied again
 ```
 
-Some actions add fields: `blockId` (`add_chart`), `citationId` (`add_citation`), `idPrefix` and `rootIds` (`insert_template`), `matchedBlocks` (`replace_text` without `blockId`), `mode` (`import_markdown`).
+Some actions add fields: `blockId` (`add_chart`), `citationId` (`add_citation`), `idPrefix` and `rootIds` (`insert_template`), `replacements` (`replace_text`: how many replacements were made) and `matchedBlocks` (`replace_text` without `blockId`), `mode` (`import_markdown`).
 
 **Failure.** Every failure, from every transport, is:
 
@@ -52,7 +52,7 @@ Some actions add fields: `blockId` (`add_chart`), `citationId` (`add_citation`),
 | `insert_blocks` | write | markdown or blocks, afterId, parentId, idPrefix |
 | `update_block_text` | write, destructive | **blockId**, **expectedVersion**, **text**, format, conflictPolicy |
 | `update_block` | write, destructive | **blockId**, **expectedVersion**, **content**, citationIds, conflictPolicy |
-| `replace_text` | write, destructive | **find**, **replace**, blockId, expectedVersion, within, all, caseSensitive, conflictPolicy |
+| `replace_text` | write, destructive | **find**, **replace**, blockId, expectedVersion, within, all, caseSensitive, expectedMatches, conflictPolicy |
 | `move_blocks` | write | **blocks** (`{ blockId, expectedVersion }[]`), **parentId**, afterId |
 | `delete_blocks` | write, destructive | **blocks** |
 | `add_chart` | write | **spec**, afterId, parentId, id, citationIds |
@@ -66,7 +66,7 @@ Behaviour worth knowing:
 - **Placement.** `afterId` is a sibling in the destination: a block ID inserts after it, `null` inserts first, omitting it appends to the end of `parentId` (the document root unless given). Markdown blocks go to `parentId`; blocks you send carry their own `parentId`.
 - **`find_blocks`** returns `{ total, offset, count, truncated?, blocks }` in reading order. `include: "content"` returns full blocks. `text` matches case-insensitively against the block's visible text (title, paragraph text, list items, table cells, chart title and caption, image alt).
 - **`update_block_text`** works on paragraph, heading, quote, callout, code, list (one item per line; `checked` and `indent` are kept by position), section and toggle. Inline markdown is parsed for paragraph, quote and callout unless `format` is `plain`. Other types return a `validation` issue that points to `replace_text` and `update_block`.
-- **`replace_text`** replaces every occurrence unless `all: false`, case-insensitively unless `caseSensitive`. Matches may span formatting runs; the replacement takes the formatting where the match starts. With `blockId` it edits that block (needs `expectedVersion`); without it, every block containing the text (using current versions), limited by `within`; at most 256 blocks per call. No match is a `not-found`.
+- **`replace_text`** replaces every occurrence unless `all: false`, case-insensitively unless `caseSensitive`. Matches may span formatting runs; the replacement takes the formatting where the match starts. With `blockId` it edits that block (needs `expectedVersion`); without it, every block containing the text (using current versions), limited by `within`; at most 256 blocks per call. No match is a `not-found`. The result always carries `replacements`, the number of places replaced. **`expectedMatches`** (an integer of at least 1) is the number of replacements you expect: when the text would be replaced a different number of times the call fails with `conflict` at `input.expectedMatches`, nothing is changed, and the message and hint give the real count (`expectedMatches: 1` means "change exactly one place"; with `all: false` each block counts once). `dryRun: true` returns the same counts first. The count is checked against the document as it is now, so it cannot be combined with `conflictPolicy: "rebase-safe"` (`validation`); a stale `expectedVersion` is still reported as a `conflict` on the block, not as a miscount. For the form without `blockId`, which edits each block at the version it was counted at, send `expectedRevision` as well to also refuse a document that changed since you last read it.
 - **`insert_blocks`** takes `markdown` (converted to blocks with fresh IDs unless `idPrefix` is given) or `blocks` (`{ id, content, parentId?, citationIds? }[]`, parents first). Large inserts are split into 500-block batches inside one transaction.
 - **`import_markdown`** `mode: "replace"` deletes every existing block first and imports the markdown as the new body; `setTitle` takes the title from a leading `# Title` line.
 - **`add_citation`** with `blockId` also attaches the citation to the block's `citationIds`; `marker: true` appends an inline marker to paragraph, quote or callout text.
