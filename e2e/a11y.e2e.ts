@@ -118,6 +118,25 @@ test('the document can be entered, read, edited and left with the keyboard alone
   } finally { await close(); }
 });
 
+for (const width of [320, 360, 390]) {
+  test(`the selection toolbar stays on screen at ${width}px wide and the page does not crash`, async (t) => {
+    if (!browser) return t.skip('no Chromium');
+    const { page, errors, close } = await open(width, 844);
+    try {
+      await tabToSurface(page);
+      await page.keyboard.press('ArrowDown');
+      await page.locator('.se-selection-toolbar').waitFor();
+      // The toolbar is as wide as the phone; it must slide back into view (a half-pixel feedback in the helper that did this once
+      // blanked the whole page with "maximum update depth exceeded" at exactly this width).
+      await page.waitForTimeout(300);
+      const box = (await page.locator('.se-selection-toolbar').boundingBox())!;
+      assert.ok(box.x >= 0 && box.x + box.width <= width, `toolbar spans ${Math.round(box.x)} to ${Math.round(box.x + box.width)} on a ${width}px screen`);
+      assert.equal(await page.locator('.se-surface').count(), 1, 'the editor is still on the page');
+      assert.deepEqual(errors, []);
+    } finally { await close(); }
+  });
+}
+
 test('Enter on a block with no text says so instead of doing nothing; Enter on a fresh surface starts the first block', async (t) => {
   if (!browser) return t.skip('no Chromium');
   const { page, errors, close } = await open();

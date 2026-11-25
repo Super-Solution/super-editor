@@ -23,7 +23,9 @@ export function useKeepInViewport(ref: RefObject<HTMLElement | null>, active: bo
     const bottom = rect.bottom + last.current.y, top = rect.top + last.current.y, right = rect.right + last.current.x, left = rect.left + last.current.x;
     const overY = bottom - (window.innerHeight - 8), overX = right - (window.innerWidth - 8);
     const next = { y: overY > 0 ? Math.min(overY, Math.max(0, top - 8)) : 0, x: overX > 0 ? Math.min(overX, Math.max(0, left - 8)) : 0 };
-    if (next.x !== last.current.x || next.y !== last.current.y) { last.current = next; setShift(next); }
+    // A shift is only changed by half a pixel or more: a popup whose width depends on where it sits would otherwise chase a fraction of a pixel forever
+    // (React's "maximum update depth exceeded", which blanked the page next to the right edge of a phone).
+    if (Math.abs(next.x - last.current.x) >= 0.5 || Math.abs(next.y - last.current.y) >= 0.5) { last.current = next; setShift(next); }
   });
   return active ? shift : { x: 0, y: 0 };
 }
