@@ -13,6 +13,11 @@ import type { EditorIssue } from './types.js';
  * exactly as before. An extra action (a format export, a host's own read) differs only in that `run` may be asynchronous.
  */
 export type TransportAction = Omit<AgentAction, 'run'> & {
+  /**
+   * For a `write` action that never changes the document (it only records into a store the host owns, like `propose_transaction`):
+   * true lets a read-only HTTP endpoint or MCP server serve it. Default false.
+   */
+  readOnlyOk?: boolean;
   run(service: ReportService, input: unknown, context?: AgentActionContext): AgentActionResult | Promise<AgentActionResult>;
 };
 /** The actions a transport serves, in order, with lookup by name. */
@@ -36,6 +41,7 @@ export function resolveActions(actions?: readonly TransportAction[], reserved: r
     if (reserved.includes(action.name)) throw new TypeError(`"${action.name}" is the name of a tool this transport already has; choose another name.`);
     if (typeof action.run !== 'function') throw new TypeError(`${at} ("${action.name}") needs a run(service, input, context) function.`);
     if (action.access !== 'read' && action.access !== 'write') throw new TypeError(`${at} ("${action.name}").access must be "read" or "write".`);
+    if (action.readOnlyOk !== undefined && (typeof action.readOnlyOk !== 'boolean' || (action.readOnlyOk && action.access !== 'write'))) throw new TypeError(`${at} ("${action.name}").readOnlyOk must be a boolean and only means something on a write action.`);
     if (typeof action.destructive !== 'boolean' || typeof action.idempotent !== 'boolean') throw new TypeError(`${at} ("${action.name}") needs boolean destructive and idempotent flags.`);
     if (typeof action.title !== 'string' || typeof action.description !== 'string' || action.description.length === 0) throw new TypeError(`${at} ("${action.name}") needs a title and a description written for a model.`);
     if (typeof action.inputSchema !== 'object' || action.inputSchema === null || action.inputSchema.type !== 'object') throw new TypeError(`${at} ("${action.name}").inputSchema must be a JSON Schema with type "object".`);

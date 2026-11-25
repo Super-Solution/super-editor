@@ -34,8 +34,9 @@ export function toolFor(action: TransportAction): McpTool {
 const readOnlyCore = new Set(['read_document']);
 /** Tool descriptors in a stable order: the Core tools, then the semantic tools reads first. */
 export function listTools(options: { readOnly?: boolean; actions?: readonly TransportAction[] } = {}): McpTool[] {
-  const all = [...coreTools, ...(options.actions ?? AGENT_ACTIONS).map(toolFor)];
-  return options.readOnly ? all.filter(entry => entry.annotations.readOnlyHint) : all;
+  const actions: readonly TransportAction[] = options.actions ?? AGENT_ACTIONS, all = [...coreTools, ...actions.map(toolFor)];
+  const served = new Set(actions.filter(action => action.readOnlyOk === true).map(action => action.name));
+  return options.readOnly ? all.filter(entry => entry.annotations.readOnlyHint || served.has(entry.name)) : all;
 }
 export function isCoreTool(name: string): boolean { return coreTools.some(entry => entry.name === name); }
 /** The names of the four Core tools, which an action list may not reuse. */
@@ -43,5 +44,5 @@ export const CORE_TOOL_NAMES: readonly string[] = coreTools.map(entry => entry.n
 export function isReadOnlyTool(name: string, actions: readonly TransportAction[] = AGENT_ACTIONS): boolean {
   if (readOnlyCore.has(name)) return true;
   const action = actions.find(entry => entry.name === name);
-  return action?.access === 'read';
+  return action?.access === 'read' || action?.readOnlyOk === true;
 }

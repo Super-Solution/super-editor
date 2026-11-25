@@ -263,7 +263,7 @@ export const ROUTES: readonly RouteDefinition[] = Object.freeze([
       const name = context.params.name ?? '';
       const action = context.actions.get(name);
       if (!action) return failureResponse(context.service, [{ code: 'not-found', message: `Unknown action "${name}".`, hint: `GET /actions lists them: ${context.actions.names().join(', ')}.` }], 404);
-      if (context.options.readOnly && action.access === 'write') return failureResponse(context.service, [{ code: 'validation', message: `This endpoint is read-only; "${name}" can change the document.`, hint: 'Use a read action, or ask the operator for a writable endpoint.' }], 403);
+      if (context.options.readOnly && action.access === 'write' && action.readOnlyOk !== true) return failureResponse(context.service, [{ code: 'validation', message: `This endpoint is read-only; "${name}" can change the document.`, hint: 'Use a read action, or ask the operator for a writable endpoint.' }], 403);
       const body = await context.body();
       if (body === null || typeof body !== 'object' || Array.isArray(body)) throw problem(400, 'Expected a JSON object with the action input.', undefined, 'body');
       const { actor, ...input } = body as Record<string, unknown>;

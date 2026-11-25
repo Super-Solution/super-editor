@@ -78,6 +78,16 @@ Core extensions that make this possible: `ReportService.revisions?()`, `AGENT_AC
 
 **Adding actions to a transport.** The shared table is fixed (it is what the Go and Python servers implement). A host that wants more passes an `actions` list to `createHttpHandler`, `createMcpDispatcher`, `runStdioServer(argv, io, { actions })` or `runCli(args, io, { actions })`: `[...AGENT_ACTIONS, ...formatActions(registry)]` adds `list_formats` and `export_document` (Markdown, HTML, text and Word, see [FORMATS.md](FORMATS.md#formats-over-http-mcp-and-the-cli)). An extra action is `{ name, title, description, access, destructive, idempotent, inputSchema, run }`; `run` may be asynchronous. The list is validated when the transport is created. A server that is not given the list is unchanged.
 
+**Proposals.** `proposalActions(createProposalBox(service))` adds `propose_transaction`, `list_proposals` and `resolve_proposal`: an agent's transaction waits, unapplied, until a person accepts it. The box is held next to the service (in memory), not in the document, so nothing in the document format, the schemas or the Go and Python ports changes.
+
+| Action | Access | Input | Notes |
+| --- | --- | --- | --- |
+| `propose_transaction` | write, but served on read-only endpoints (`readOnlyOk`) | **transaction**, `note` | Checked like an edit; invalid or stale is refused. Same transaction id and content returns the same proposal (`duplicate: true`) |
+| `list_proposals` | read | `proposalId`, `state`, `detail`, `limit`, `offset` | Pending ones carry `review`: `ready`, `stale` or `invalid`, recomputed against the current document |
+| `resolve_proposal` | write, destructive, never on a read-only endpoint | **proposalId**, **decision** (`accept` or `reject`), `expectedRevision` (required to accept), `reason` | Only a person: the call's actor must pass `canResolve` (default `kind: "human"`), else a `validation` issue with `path: "actor"`. Accept applies the proposal's transaction through the service (guards and compare-and-swap included), recorded under the proposal's author |
+
+**Who is a person.** An actor's `kind` is provenance, not authentication. Over MCP the server's own `actor` decides (an agent cannot claim otherwise: an `actor` argument is refused); over HTTP the `actor` option wins over any `actor` in the body, so set it from your sign-in: without it every caller is `http-client:agent` and nobody can resolve. A host with its own rules passes `canResolve`. Limits: 100 waiting (`maxPending`, refused with a hint when full), 200 resolved remembered (`maxResolved`, older ones forgotten). Not done: accepting part of a transaction, word-level diffs, persistence across restarts, the Go and Python servers.
+
 ## HTTP
 
 `createHttpHandler(service, options)` returns `(request: Request) => Promise<Response>`. It binds no port and authenticates nobody. `service` is a `ReportService` or an `AsyncReportService` (`createStoreService(store)`, see [PERSISTENCE.md](PERSISTENCE.md)); over a store a lost compare-and-swap answers `409` `conflict` and writes nothing.
