@@ -64,6 +64,8 @@ kbd { padding: 0 .3rem; border: 1px solid var(--se-border); border-radius: var(-
 .page[data-page="A4"] { max-width: 210mm; }
 .page[data-page="letter"] { max-width: 8.5in; }
 .page .super-editor { padding: 0; background: transparent; }
+/* The page's side padding belongs to the editing surface, so the block gutter (+ and drag handle) has room beside the text instead of on top of it. */
+.page .se-surface { margin-inline: calc(var(--se-pad-x) * -1); padding-inline: var(--se-pad-x); }
 .page .super-editor-document { max-width: none; padding: 0; background: transparent; }
 .page .se-controls { margin: 0 0 1rem; font-size: 13px; }
 .page .se-controls select { min-height: 2rem; padding: .25rem .5rem; border-color: var(--se-border-strong); border-radius: var(--se-radius-sm); }
@@ -75,7 +77,7 @@ kbd { padding: 0 .3rem; border: 1px solid var(--se-border); border-radius: var(-
 .find-dock { position: sticky; top: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: flex-end; height: 0; padding: 0 .75rem; pointer-events: none; }
 .find-dock > * { margin-top: .6rem; pointer-events: auto; }
 .find-dock .se-find { grid-template-columns: minmax(0, 1fr); } /* lets the input row shrink on very narrow screens */
-.status { grid-area: status; }
+.status-landmark { grid-area: status; min-width: 0; }
 .status.se-status-bar { padding: .3rem .4rem; border-top: 0; background: transparent; }
 .se-toasts { padding-bottom: 2.75rem; }
 
@@ -192,7 +194,7 @@ kbd { padding: 0 .3rem; border: 1px solid var(--se-border); border-radius: var(-
 @media print {
   html, body { background: #fff; }
   .app { display: block; height: auto; padding: 0; }
-  .bar, .rail, .panel, .status, .scrim, .skip-link, .find-dock, .page .se-doc-actions, .page .se-doc-meta .se-badge { display: none !important; }
+  .bar, .rail, .panel, .status, .status-landmark, .scrim, .skip-link, .find-dock, .page .se-doc-actions, .page .se-doc-meta .se-badge { display: none !important; }
   .center { overflow: visible; border: 0; border-radius: 0; background: #fff; }
   .page { max-width: none; padding: 0; }
 }

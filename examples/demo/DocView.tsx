@@ -100,6 +100,8 @@ export function DocView({ doc, theme, density, parts, onParts, tab, onTab, panel
       </div>
     </aside>
 
-    <StatusBar className="status" document={report} save={{ state: save.state, ...(save.savedAt ? { savedAt: save.savedAt } : {}) }} />
+    <footer className="status-landmark">
+      <StatusBar className="status" document={report} save={{ state: save.state, ...(save.savedAt ? { savedAt: save.savedAt } : {}) }} />
+    </footer>
   </>;
 }

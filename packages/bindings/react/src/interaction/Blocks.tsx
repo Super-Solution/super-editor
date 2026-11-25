@@ -53,7 +53,7 @@ function ToggleHead({ block, editing }: { block: Block; editing: boolean }): Rea
   return <div className="se-toggle-head" data-open={String(content.open)}>
     <button type="button" className="se-toggle-handle" data-se-no-edit aria-expanded={content.open} aria-label={content.open ? labels.toggleClose : labels.toggleOpen} disabled={readOnly}
       onMouseDown={keepFocus} onClick={() => interaction.commands.setOpen(block.id, !content.open)}><span className="se-toggle-caret" aria-hidden="true">{'▸'}</span></button>
-    {editing ? <EditableField blockId={block.id} field="main" mode="plain" tag="span" className="se-toggle-name" placeholder={labels.placeholderToggle} alwaysPlaceholder />
+    {editing ? <EditableField blockId={block.id} field="main" mode="plain" tag="span" className="se-toggle-name" placeholder={labels.placeholderToggle} label={labels.fieldToggle} alwaysPlaceholder />
       : <span className="se-toggle-name" tabIndex={readOnly ? undefined : 0}
         // Tabbing onto the title (but not clicking it) starts editing, so keyboard users get the same path as the mouse.
         onFocus={(event) => { let visible = false; try { visible = event.currentTarget.matches(':focus-visible'); } catch { /* unsupported selector */ } if (visible && !readOnly) interaction.edit.start(block.id, { caret: 'end' }); }}>
@@ -68,8 +68,8 @@ function EditableList({ block, content }: { block: Block; content: ListContent }
   const items = content.items.map((item, index) => <li key={index} className={todo ? 'se-todo-item' : undefined} data-checked={todo ? String(checked[index]) : undefined} style={indent[index] ? { marginLeft: `${indent[index]! * 1.5}rem` } : undefined}>
     {todo ? <span className="se-todo-label">
       <input className="se-todo-box" type="checkbox" checked={checked[index]} aria-label={labels.toggleTodo(item)} onMouseDown={keepFocus} onChange={(event) => interaction.commands.setChecked(block.id, index, event.target.checked)} />
-      <EditableField blockId={block.id} field={itemField(index)} mode="plain" tag="span" className="se-todo-text" placeholder={labels.placeholderListItem} alwaysPlaceholder={content.items.length === 1} />
-    </span> : <EditableField blockId={block.id} field={itemField(index)} mode="plain" tag="span" className="se-list-text" placeholder={labels.placeholderListItem} alwaysPlaceholder={content.items.length === 1} />}
+      <EditableField blockId={block.id} field={itemField(index)} mode="plain" tag="span" className="se-todo-text" placeholder={labels.placeholderListItem} label={labels.fieldListItem} alwaysPlaceholder={content.items.length === 1} />
+    </span> : <EditableField blockId={block.id} field={itemField(index)} mode="plain" tag="span" className="se-list-text" placeholder={labels.placeholderListItem} label={labels.fieldListItem} alwaysPlaceholder={content.items.length === 1} />}
   </li>);
   return content.ordered ? <ol className={`se-list se-list-${style}`}>{items}</ol> : <ul className={`se-list se-list-${style}`}>{items}</ul>;
 }
@@ -97,8 +97,8 @@ function EditableTable({ block, content }: { block: Block; content: TableContent
     <div className="se-table-wrap">
       <table className="se-table">
         {content.caption ? <caption>{content.caption}</caption> : null}
-        <thead><tr>{content.columns.map((_column, col) => <th key={col} scope="col" className={align(col)}><EditableField blockId={block.id} field={cellField(-1, col)} mode="plain" tag="div" className="se-cell" placeholder={labels.placeholderCell} /></th>)}</tr></thead>
-        <tbody>{content.rows.map((row, r) => <tr key={r}>{row.map((_cell, col) => <td key={col} className={align(col)}><EditableField blockId={block.id} field={cellField(r, col)} mode="plain" tag="div" className="se-cell" placeholder={labels.placeholderCell} /></td>)}</tr>)}</tbody>
+        <thead><tr>{content.columns.map((_column, col) => <th key={col} scope="col" className={align(col)}><EditableField blockId={block.id} field={cellField(-1, col)} mode="plain" tag="div" className="se-cell" placeholder={labels.placeholderCell} label={labels.fieldHeaderCell(col + 1)} /></th>)}</tr></thead>
+        <tbody>{content.rows.map((row, r) => <tr key={r}>{row.map((_cell, col) => <td key={col} className={align(col)}><EditableField blockId={block.id} field={cellField(r, col)} mode="plain" tag="div" className="se-cell" placeholder={labels.placeholderCell} label={labels.fieldCell(r + 1, col + 1)} /></td>)}</tr>)}</tbody>
       </table>
     </div>
   </div>;
@@ -112,7 +112,7 @@ function CodeEditable({ block, content }: { block: Block; content: Extract<Block
         onBlur={(event) => { if (event.target.value !== content.language) interaction.commands.setCodeLanguage(block.id, event.target.value); }}
         onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); (event.target as HTMLInputElement).blur(); } }} />
     </div>
-    <pre><EditableField blockId={block.id} field="main" mode="plain" tag="code" className="se-code-text" placeholder={labels.placeholderCode} /></pre>
+    <pre><EditableField blockId={block.id} field="main" mode="plain" tag="code" className="se-code-text" placeholder={labels.placeholderCode} label={labels.fieldCode} /></pre>
   </div>;
 }
 
@@ -121,18 +121,18 @@ export function EditableBlock({ block }: { block: Block }): ReactNode {
   const interaction = useInteraction(), labels = useInteractionLabels();
   const content = useVisibleContent(interaction, block);
   switch (content.type) {
-    case 'paragraph': return <EditableField blockId={block.id} field="main" mode="rich" tag="p" className="se-paragraph" placeholder={labels.placeholderParagraph} />;
-    case 'heading': return <EditableField blockId={block.id} field="main" mode="plain" tag={content.level === 1 ? 'h1' : content.level === 2 ? 'h2' : 'h3'} className="se-heading" placeholder={`${labels.placeholderHeading} ${content.level}`} alwaysPlaceholder />;
-    case 'section': return <EditableField blockId={block.id} field="main" mode="plain" tag="h2" id={`${block.id}-title`} className="se-section-title" placeholder={labels.placeholderSection} alwaysPlaceholder />;
+    case 'paragraph': return <EditableField blockId={block.id} field="main" mode="rich" tag="p" className="se-paragraph" placeholder={labels.placeholderParagraph} label={labels.fieldParagraph} />;
+    case 'heading': return <EditableField blockId={block.id} field="main" mode="plain" tag={content.level === 1 ? 'h1' : content.level === 2 ? 'h2' : 'h3'} className="se-heading" placeholder={`${labels.placeholderHeading} ${content.level}`} label={`${labels.placeholderHeading} ${content.level}`} alwaysPlaceholder />;
+    case 'section': return <EditableField blockId={block.id} field="main" mode="plain" tag="h2" id={`${block.id}-title`} className="se-section-title" placeholder={labels.placeholderSection} label={labels.placeholderSection} alwaysPlaceholder />;
     case 'quote': return <blockquote className="se-quote">
-      <EditableField blockId={block.id} field="main" mode="rich" tag="p" placeholder={labels.placeholderQuote} alwaysPlaceholder />
+      <EditableField blockId={block.id} field="main" mode="rich" tag="p" placeholder={labels.placeholderQuote} label={labels.fieldQuote} alwaysPlaceholder />
       {content.attribution ? <footer>{'— '}<cite>{content.attribution}</cite></footer> : null}
     </blockquote>;
     case 'callout': return <div className="se-callout" data-tone={content.tone} role="note">
       <svg className="se-callout-icon" viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={TONE_ICONS[content.tone]} /></svg>
       <div className="se-callout-body">
         {content.title ? <strong className="se-callout-title">{content.title}</strong> : null}
-        <EditableField blockId={block.id} field="main" mode="rich" tag="p" placeholder={labels.placeholderCallout} alwaysPlaceholder />
+        <EditableField blockId={block.id} field="main" mode="rich" tag="p" placeholder={labels.placeholderCallout} label={labels.fieldCallout} alwaysPlaceholder />
       </div>
     </div>;
     case 'code': return <CodeEditable block={block} content={content} />;

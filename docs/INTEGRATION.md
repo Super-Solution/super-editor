@@ -68,4 +68,4 @@ A single-block edit does not scale with document size: `apply` keeps validated b
 
 ## Tests
 
-`npm test` runs the unit and jsdom suites. `npm run test:e2e` runs real-browser tests (Chromium through Playwright): typing, bold, the slash menu, HTML paste, container-query layout, theme bridging and a console-error check.
+`npm test` runs the unit and jsdom suites. `npm run test:e2e` runs real-browser tests (Chromium through Playwright): typing, bold, the slash menu, HTML paste, container-query layout, theme bridging, a console-error check, and the accessibility suite (axe, keyboard-only, input-method composition, right-to-left text; see [ACCESSIBILITY.md](ACCESSIBILITY.md)). Set `SUPER_EDITOR_CHROMIUM=/path/to/chrome` to use a browser you already have instead of Playwright's download.

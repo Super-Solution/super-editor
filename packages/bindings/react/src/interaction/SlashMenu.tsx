@@ -28,7 +28,7 @@ export function SlashMenu({ interaction: explicit }: { interaction?: Interaction
   if (!state || !rect) return null;
   const groups = groupSlashItems(state.items);
   let index = -1;
-  return <div ref={ref} id={slashListId(interaction)} className="se-popup se-slash" data-se-popup role="listbox" aria-label={labels.slashMenu}
+  return <div ref={ref} id={slashListId(interaction)} className="se-popup se-slash" data-se-popup role="listbox" tabIndex={-1} aria-label={labels.slashMenu}
     style={{ left: rect.left, top: rect.bottom + 4, transform: shiftTransform(shift) }} onMouseDown={keepFocus}>
     {groups.length === 0 ? <div className="se-popup-empty" role="presentation">{labels.slashEmpty}</div> : groups.map((group) => <div role="group" aria-label={interaction.t(group.group)} key={group.group + group.items[0]!.id}>
       <div className="se-popup-heading" role="presentation">{interaction.t(group.group)}</div>

@@ -2,6 +2,19 @@
 
 All notable changes to the ten `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
+## Unreleased
+
+A minor release when it ships: new optional fields and actions, nothing existing changes. Document format unchanged (`schemaVersion: 1`). Not published.
+
+### Accessibility, found by axe and by keyboard
+
+- **The `/` menu is an ARIA 1.2 editable combobox.** While it is open the editing field becomes the `combobox` that owns it (`aria-expanded` is not allowed on a `textbox`, which axe reported as critical) and goes back to a `textbox` when it closes. Headings keep their heading semantics while edited; every other field has a name (`fieldParagraph`, `fieldListItem`, `fieldCell(row, column)`, … in `interactionLabels`) and `aria-placeholder`.
+- **A keyboard user can get in.** Down (or Enter) on the focused document surface starts at the first block, a visually hidden live region says "Heading selected: …", and Enter on a block with no text (an embed, an image) says so instead of doing nothing. New: `interaction.selection.first()`, `interaction.openSelected()`, the shortcut ids `selection.begin` and `selection.beginEdit`, labels `blockSelected` and `surfaceHint`.
+- Toasts are no longer list items (axe `aria-allowed-role`), the slash menu and the shortcut dialog body are keyboard-focusable scroll regions, the shortcut dialog no longer adds a second banner and contentinfo landmark, and text takes the direction of its own script (`unicode-bidi: plaintext` on rendered blocks, `dir="auto"` on editable fields).
+- **Tests and docs.** `e2e/a11y.e2e.ts`: axe-core 4.14.0 (devDependency only, exact pin, MPL-2.0, no dependencies, no install scripts) in nine states at 1280 and 390 px in light and dark, a keyboard-only flow, IME composition through the DevTools protocol and right-to-left text. `e2e/helpers.ts` takes `SUPER_EDITOR_CHROMIUM` (use an installed browser) and `SUPER_EDITOR_E2E_SANDBOX=1`. New [ACCESSIBILITY.md](docs/ACCESSIBILITY.md) lists what is checked and, plainly, what is not (no real screen reader, no real IME, one browser engine, no VPAT).
+- The workspace demo gives the block gutter room beside the text instead of on top of it, and puts the status bar in a landmark.
+- `npm run bench:size` (`benchmarks/size.mjs`) reports the minified and gzip size of each entry point.
+
 ## 0.7.0
 
 A minor release: two new packages and new exports; nothing existing changes. Document format unchanged (`schemaVersion: 1`).

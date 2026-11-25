@@ -125,7 +125,10 @@ test('the "/" menu is an ARIA listbox bound to the field, filters, runs and inse
     await typeInto(env, field, '/', 1, '/');
     const list = q(env, '[role="listbox"]')!;
     assert.ok(list);
+    assert.equal(field.getAttribute('role'), 'combobox', 'the field is the menu\'s combobox while it is open (aria-expanded is not allowed on a textbox)');
     assert.equal(field.getAttribute('aria-expanded'), 'true');
+    assert.equal(field.getAttribute('aria-autocomplete'), 'list');
+    assert.equal(field.getAttribute('aria-label'), 'Paragraph', 'it keeps its name');
     assert.equal(field.getAttribute('aria-controls'), list.id);
     assert.ok(list.querySelectorAll('[role="option"]').length > 20);
     assert.equal(list.querySelector('[aria-selected="true"]')!.id, field.getAttribute('aria-activedescendant'));
@@ -138,6 +141,7 @@ test('the "/" menu is an ARIA listbox bound to the field, filters, runs and inse
     assert.deepEqual(block.content, { type: 'callout', tone: 'success', runs: [] });
     assert.equal(q(env, '[role="listbox"]'), null);
     assert.equal(q(env, '[data-se-editable]')?.hasAttribute('aria-controls') ?? false, false, 'the combobox wiring is removed when the menu closes');
+    assert.notEqual(q(env, '[data-se-editable]')?.getAttribute('role'), 'combobox');
     await env.unmount();
   });
 });
@@ -299,6 +303,46 @@ test('block selection: toolbar with count and actions, Delete shows an Undo toas
     const undo = [...toast.querySelectorAll('button')].find((button) => button.textContent === 'Undo')!;
     await act(async () => { undo.click(); });
     assert.deepEqual(editor.getSnapshot().blocks.map((block) => block.id), ['a', 'b', 'c']);
+    await env.unmount();
+  });
+});
+
+test('a keyboard user enters the document from the surface, hears the selected block and gets a spoken reason when it cannot be edited', async () => {
+  await withDom(async (env) => {
+    const editor = seed([b.heading('h', 2, 'Heading'), b.divider('d'), b.paragraph('p', 'alpha beta')]);
+    await env.render(<ReportEditor editor={editor} renderControls={false} />);
+    const surface = q(env, '.se-surface')!;
+    const hint = env.doc.getElementById(surface.getAttribute('aria-describedby')!)!;
+    assert.match(hint.textContent!, /Down or Enter/);
+    const status = q(env, '.se-surface > .se-sr[role="status"]')!;
+    assert.equal(status.textContent, '');
+    await press(env, surface, 'ArrowDown');
+    assert.equal(status.textContent, 'Heading selected: Heading');
+    await press(env, surface, 'ArrowDown');
+    assert.equal(status.textContent, 'Divider selected');
+    await press(env, surface, 'Enter');
+    assert.match(qd(env, '.se-toast')!.textContent!, /no text to edit/);
+    assert.equal(q(env, '[data-se-editable]'), null);
+    await press(env, surface, 'ArrowDown');
+    await press(env, surface, 'Enter');
+    assert.equal(q(env, '[data-se-editable]')!.getAttribute('aria-label'), 'Paragraph');
+    // A button inside the document keeps Enter for itself.
+    await env.unmount();
+  });
+});
+
+test('toasts are not list items: each is its own status or alert region', async () => {
+  await withDom(async (env) => {
+    const editor = seed([b.paragraph('a', 'one')]);
+    await env.render(<ReportEditor editor={editor} renderControls={false} />);
+    await act(async () => { editor.getSnapshot(); });
+    const surface = q(env, '.se-surface')!;
+    await press(env, surface, 'ArrowDown'); await press(env, surface, 'Backspace');
+    const toast = qd(env, '.se-toast')!;
+    assert.ok(toast);
+    assert.equal(toast.tagName, 'DIV');
+    assert.ok(['status', 'alert'].includes(toast.getAttribute('role')!));
+    assert.equal(toast.closest('ul, ol'), null, 'a list may only hold list items');
     await env.unmount();
   });
 });

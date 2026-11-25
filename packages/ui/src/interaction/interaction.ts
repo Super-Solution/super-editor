@@ -106,10 +106,14 @@ export interface Interaction {
   escape(): boolean;
   openHelp(): void; closeHelp(): void; toggleHelp(): void;
   openChartEditor(blockId: string): void; closeChartEditor(): void;
+  /** Enter on a selected block: edits its text, opens a chart's settings, or says (as feedback) that there is nothing to edit. Returns whether it acted. */
+  openSelected(): boolean;
   readonly selection: {
     select(id: string, mode?: 'replace' | 'toggle' | 'extend'): void;
     set(ids: readonly string[]): void;
     selectAll(): void; clear(): void;
+    /** Selects the first block you can see. The keyboard way into a document that has just received focus. Returns whether there was one. */
+    first(): boolean;
     /** Arrow keys over the selection; `extend` is Shift+Arrow. */
     move(delta: -1 | 1, extend?: boolean): void;
     ids(): string[];
@@ -282,6 +286,7 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     },
     set(ids) { setSelection(selectMany(order(), ids.filter((id) => !!blockOf(id)))); },
     selectAll() { setSelection(selectAllBlocks(order())); },
+    first() { const [id] = order(); if (!id) return false; setSelection(selectOnly(id)); return true; },
     clear() { store.set({ selection: emptySelection }); },
     move(delta, extend = false) { store.set({ selection: moveSelectionFocus(store.get().selection, order(), delta, extend) }); },
     ids: () => [...store.get().selection.ids],
@@ -1076,6 +1081,14 @@ export function createInteraction(editor: Editor, options: InteractionOptions = 
     openHelp() { store.set({ help: true }); }, closeHelp() { store.set({ help: false }); }, toggleHelp() { store.set({ help: !store.get().help }); },
     openChartEditor(blockId) { if (blockOf(blockId)?.content.type === 'chart') store.set({ chartEditor: blockId, menu: null }); },
     closeChartEditor() { store.set({ chartEditor: null }); },
+    openSelected() {
+      const [id] = store.get().selection.ids, block = id ? blockOf(id) : undefined;
+      if (!block) return false;
+      if (block.content.type === 'chart') { if (!writable()) return true; api.openChartEditor(block.id); return true; }
+      if (isEditableType(block.content.type)) { api.edit.start(block.id, { caret: 'end' }); return true; }
+      notify({ kind: 'info', message: 'This block has no text to edit. Use the arrow keys to move on, or the block menu for more.', blockIds: [block.id] });
+      return true;
+    },
     selection, edit, format, commands, slash, drag, menu, clipboard,
     shortcuts: Object.assign(registry, { handleKeyDown(event: KeyEventLike): boolean { return registry.handle(event, { interaction: api, state: store.get() }); } }),
     destroy() { deactivate(); destroyed = true; handles.clear(); feedbackListeners.clear(); },

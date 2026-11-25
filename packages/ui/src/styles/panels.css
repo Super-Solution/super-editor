@@ -80,7 +80,7 @@
 .se-toasts[data-position="top-right"] { right: 0; top: 0; }
 .se-toasts[data-position="top-left"] { left: 0; top: 0; }
 .se-toasts[data-position="bottom-center"] { left: 50%; bottom: 0; transform: translateX(-50%); }
-.se-toasts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.se-toast-list { display: grid; gap: .5rem; }
 .se-toast {
   --tone: var(--se-tone-note); position: relative; display: flex; align-items: center; gap: .65rem; width: min(26rem, calc(100vw - 2rem)); box-sizing: border-box; padding: .65rem .75rem; pointer-events: auto;
   border: 1px solid var(--se-border); border-radius: var(--se-radius-lg); background: var(--se-surface); box-shadow: var(--se-shadow);

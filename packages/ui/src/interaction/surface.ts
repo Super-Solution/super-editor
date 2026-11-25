@@ -89,6 +89,8 @@ export function attachInteraction(root: HTMLElement, interaction: Interaction, o
 
   // ---- document and state changes ----------------------------------------------------------------------------------
   disposers.push(interaction.editor.subscribe(invalidate));
+  root.setAttribute('data-se-surface', '');
+  disposers.push(() => root.removeAttribute('data-se-surface'));
   const syncAttributes = (): void => {
     const state = interaction.getState();
     root.toggleAttribute('data-se-dragging', !!state.drag);

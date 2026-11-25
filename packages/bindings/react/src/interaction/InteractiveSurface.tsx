@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
+'use client';
+import { useId } from 'react';
 import type { ReactNode } from 'react';
 import type { Interaction, SurfaceOptions } from '@supersolutions/super-editor-ui';
 import { BlockActionMenu } from './BlockActionMenu.js';
 import { ChartEditor, ShortcutHelp } from './Dialogs.js';
 import { BlockGutter, BlockOutline, DropIndicator, SelectionOverlay } from './Gutter.js';
-import { ConflictNotice } from './Notices.js';
+import { ConflictNotice, SelectionAnnouncer } from './Notices.js';
 import { SlashMenu } from './SlashMenu.js';
 import { FormattingToolbar, LinkEditor, SelectionToolbar, UrlPrompt } from './Toolbars.js';
 import { InteractionContext, InteractionLabelsContext, SurfaceContext, useInteraction } from './context.js';
@@ -39,10 +41,12 @@ export type InteractiveSurfaceProps = InteractionParts & {
 export function InteractiveSurface(props: InteractiveSurfaceProps): ReactNode {
   const interaction = useInteraction(props.interaction);
   const { ref, binding } = useSurfaceBinding(interaction, props.surface);
-  const labels = mergeInteractionLabels(props.labels);
+  const labels = mergeInteractionLabels(props.labels), hintId = useId();
   const on = (flag: boolean | undefined): boolean => flag !== false;
   const surface = <InteractionContext.Provider value={interaction}><InteractionLabelsContext.Provider value={labels}><SurfaceContext.Provider value={binding}>
-    <div ref={ref} className={`se-surface${props.className ? ` ${props.className}` : ''}`} tabIndex={0} role="group" aria-label={labels.surface}>
+    <div ref={ref} className={`se-surface${props.className ? ` ${props.className}` : ''}`} tabIndex={0} role="group" aria-label={labels.surface} aria-describedby={hintId}>
+      <span id={hintId} className="se-sr">{labels.surfaceHint}</span>
+      <SelectionAnnouncer />
       {on(props.conflictNotice) ? <ConflictNotice /> : null}
       {props.children}
       {binding ? <div className="se-overlays">
