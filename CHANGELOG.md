@@ -2,9 +2,9 @@
 
 All notable changes to the ten `@supersolutions/super-editor-*` packages (released together, same version). The document format stays `schemaVersion: 1`.
 
-## Unreleased
+## 0.8.0
 
-A minor release when it ships: new optional fields and actions, nothing existing changes. Document format unchanged (`schemaVersion: 1`). Not published.
+A minor release: new optional fields, actions and exports; nothing existing changes (a transport that is not given the new action lists behaves as before). Document format unchanged (`schemaVersion: 1`).
 
 ### Accessibility, found by axe and by keyboard
 

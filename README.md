@@ -19,7 +19,7 @@ backends/go, backends/python  the full core, read side and HTTP server in Go and
 
 ## Status and licensing
 
-Version `0.7.0`. The repository history and version numbers were reset on 2026-11-07; earlier prerelease versions on npm are superseded. `npm run release:check` and the docs tests fail if this number drifts from `package.json`.
+Version `0.8.0`. The repository history and version numbers were reset on 2026-11-07; earlier prerelease versions on npm are superseded. `npm run release:check` and the docs tests fail if this number drifts from `package.json`.
 
 Super Editor is **dual-licensed** by SUPER SOLUTION LABS INC:
 
