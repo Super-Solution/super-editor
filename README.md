@@ -19,7 +19,7 @@ backends/go, backends/python  the full core, read side and HTTP server in Go and
 
 ## Status and licensing
 
-Version `0.3.0`. The repository history and version numbers were reset on 2026-11-07; earlier prerelease versions on npm are superseded.
+Version `0.8.0`. The repository history and version numbers were reset on 2026-11-07; earlier prerelease versions on npm are superseded. `npm run release:check` and the docs tests fail if this number drifts from `package.json`.
 
 Super Editor is **dual-licensed** by SUPER SOLUTION LABS INC:
 
@@ -67,7 +67,7 @@ Open the localhost URL printed by Vite. The React demo is a small workspace buil
 
 Core imports no DOM, React, HTTP, or filesystem APIs. UI and React submit the same validated transactions as API, MCP and CLI. Build emits ESM and declarations into each package's `dist/`; public exports use built files, with TypeScript source paths only in the workspace compiler. `npm run release:check` packs and inspects all ten artifacts and tests them in a separate consumer installation. No credentials are needed for this verification.
 
-See [formats (export, import, loss reports, Word)](docs/FORMATS.md), [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), [persistence (database-backed documents)](docs/PERSISTENCE.md), [integration (Next.js, theming, i18n, pasting, proposal review, web component)](docs/INTEGRATION.md), [security and host responsibilities](docs/SECURITY.md), and [provider verification](docs/PROVIDER-VERIFICATION.md). A working report fixture is in [examples/report.ts](examples/report.ts); [examples/headless.ts](examples/headless.ts) demonstrates a rejected stale agent edit.
+See [formats (export, import, loss reports, Word)](docs/FORMATS.md), [API contract](docs/API-CONTRACT.md), [architecture](docs/ARCHITECTURE.md), [persistence (database-backed documents)](docs/PERSISTENCE.md), [integration (Next.js, theming, i18n, pasting, proposal review, web component)](docs/INTEGRATION.md), [accessibility (what is checked and what is not)](docs/ACCESSIBILITY.md), [security and host responsibilities](docs/SECURITY.md), and [provider verification](docs/PROVIDER-VERIFICATION.md), and [open decisions](docs/OPEN-DECISIONS.md) (what the owner has yet to decide). A working report fixture is in [examples/report.ts](examples/report.ts); [examples/headless.ts](examples/headless.ts) demonstrates a rejected stale agent edit.
 
 Machine-readable discovery schemas are in [schemas/document-v1.schema.json](schemas/document-v1.schema.json) and [schemas/transaction-v1.schema.json](schemas/transaction-v1.schema.json). Core runtime validation additionally enforces semantic guards such as parent/citation references, ordering, versions, timestamps, and numeric budgets. Serialized fixtures live in `examples/fixtures/`.
 
@@ -102,4 +102,4 @@ else console.log(result.issues);
 
 Each batch commits all operations or none. Stable block IDs and expected block versions allow precise incremental updates. Stale transactions reject by default; explicitly opted-in safe rebasing applies only to updates of unchanged blocks. A conflicting human edit is retained. Re-read the affected block and submit a new proposal for review.
 
-Undo/redo and transaction retry records are bounded session state. JSON exports include the validated document and reserved block IDs; they do not include persisted audit/undo history. HTTP/MCP are adapters for host applications, not authenticated hosted services or a full MCP session implementation. This slice does not implement Word-compatible rich text/import/export, CRDT/OT collaboration, multi-user presence, pagination fidelity, or persistent collaborative storage.
+Undo/redo and transaction retry records are bounded session state. JSON exports include the validated document and reserved block IDs; they do not include persisted audit/undo history. HTTP/MCP are adapters for host applications, not authenticated hosted services or a full MCP session implementation. Word export exists (`-docx`, with tracked changes from a proposal) and says what it cannot carry, but this slice does not implement Word import, layout-faithful Word output, comments or suggestions in the document, CRDT/OT collaboration, multi-user presence, pagination fidelity, or persistent collaborative storage.

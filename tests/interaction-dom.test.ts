@@ -134,7 +134,8 @@ test('editable plain fields (heading) and virtual-keyboard Enter via beforeinput
   p.root.append(el);
   p.interaction.edit.start('h', { caret: 'end' });
   attachEditable(el, { interaction: p.interaction, blockId: 'h', field: 'main', mode: 'plain' });
-  assert.equal(el.getAttribute('aria-multiline'), 'false');
+  // A heading keeps its own semantics instead of becoming a textbox; text runs in its own direction.
+  assert.equal(el.getAttribute('role'), null); assert.equal(el.getAttribute('aria-multiline'), null); assert.equal(el.getAttribute('dir'), 'auto');
   const before = new p.window.Event('beforeinput', { bubbles: true, cancelable: true });
   Object.defineProperty(before, 'inputType', { value: 'insertParagraph' });
   el.dispatchEvent(before);

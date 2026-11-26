@@ -2,7 +2,7 @@
 // Copyright 2026 SUPER SOLUTION LABS INC
 /** Headless interaction layer: selection, drag and drop, slash menu, shortcuts, input rules, clipboard and in-place editing. */
 export { createInteraction, compatibleChartKinds } from './interaction.js';
-export { translator, type InteractionMessages, type Translate } from './messages.js';
+export { counted, translator, type InteractionMessages, type MessageParams, type Translate } from './messages.js';
 export type { DataTransferLike, EditableHandle, Interaction, InteractionOptions, MenuAction, ShortcutContext, UploadedImage } from './interaction.js';
 export type { BlockMenuState, DragState, EditingState, InteractionState, PromptState, SlashState, SyncRequest, TextSelectionState } from './state.js';
 export type { Box, Caret, ConflictInfo, FeedbackEvent, FeedbackKind, FieldKey, Platform, Placement } from './types.js';
@@ -38,4 +38,4 @@ export { listChecked, listIndent, listNumbers, listSetChecked, listSetIndent, li
 export { patchChartSpec } from './chart-edit.js';
 export type { ChartPatch } from './chart-edit.js';
 export { depthOf as blockDepth, descendantsOf as blockDescendants, rootsOf as blockRoots, visibleOrder as visibleBlocks } from './tree.js';
-export { htmlToBlocks, type HtmlPasteOptions } from './html-paste.js';
+export { htmlToBlocks, type HtmlPasteOptions, type PasteWarning, type PasteWarningCode } from './html-paste.js';

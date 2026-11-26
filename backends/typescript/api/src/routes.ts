@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import type { Actor, AgentActionResult, ReportService, TemplateKind } from '@supersolutions/super-editor-core';
-import { AGENT_ACTIONS, TEMPLATE_KINDS, TRANSPORT_LIMITS, createTemplate, documentSchema, getAgentAction, isTemplateKind, runAgentAction, templateTitle, transactionSchema } from '@supersolutions/super-editor-core';
+import type { ActionTable, Actor, AgentActionResult, ReportService, TemplateKind, TransportAction } from '@supersolutions/super-editor-core';
+import { AGENT_ACTIONS, TEMPLATE_KINDS, TRANSPORT_LIMITS, createTemplate, documentSchema, isTemplateKind, resolveActions, runAgentAction, runTransportAction, templateTitle, transactionSchema } from '@supersolutions/super-editor-core';
 import { HttpProblem, failureResponse, jsonResponse, problem, statusForIssues, textResponse } from './respond.js';
 
 export type HttpHandlerOptions = {
@@ -20,6 +20,13 @@ export type HttpHandlerOptions = {
   basePath?: string;
   /** Clock for timestamps the actions create (citation `accessedAt`). */
   now?: () => string;
+  /**
+   * The actions served at `GET /actions`, `POST /actions/{name}` and in the OpenAPI document. Default: the shared `AGENT_ACTIONS`. To add
+   * the format exporters of a registry without touching the shared table: `actions: [...AGENT_ACTIONS, ...formatActions(registry)]`.
+   * Names must be unique snake_case; a wrong list throws when the handler is created. The typed routes (`/blocks`, `/outline`, …) stay
+   * the shared ones. An extra action that reads the document needs no other setup; it runs on the same request-local copy as any route.
+   */
+  actions?: readonly TransportAction[];
 };
 export type CorsOptions = {
   /** `'*'` or the exact origins allowed, for example `['https://app.example.com']`. */
@@ -32,7 +39,7 @@ export type CorsOptions = {
 
 export type QueryParam = { name: string; field: string; type: 'string' | 'integer' | 'boolean' | 'list'; description: string; enum?: readonly string[]; nullable?: boolean };
 export type RouteContext = {
-  service: ReportService; request: Request; url: URL; params: Record<string, string>; options: HttpHandlerOptions;
+  service: ReportService; request: Request; url: URL; params: Record<string, string>; options: HttpHandlerOptions; actions: ActionTable;
   actor(supplied?: unknown): Actor; body(): Promise<unknown>; text(): Promise<string>;
 };
 export type RouteDefinition = {
@@ -250,17 +257,18 @@ export const ROUTES: readonly RouteDefinition[] = Object.freeze([
       } catch (error) { throw problem(400, error instanceof TypeError ? error.message : 'Invalid template options.'); }
     } },
   { method: 'GET', path: '/actions', operationId: 'list_actions', summary: 'List the semantic actions', description: 'Every action with its description and JSON Schema input. Call one with POST /actions/{name}.', tag: 'meta', write: false, response: { mediaType: 'application/json', schema: 'ActionsResult', description: 'The actions.' },
-    run: context => jsonResponse({ ok: true, revision: context.service.read().revision, actions: AGENT_ACTIONS.map(action => ({ name: action.name, title: action.title, description: action.description, access: action.access, destructive: action.destructive, idempotent: action.idempotent, inputSchema: action.inputSchema })) }) },
+    run: context => jsonResponse({ ok: true, revision: context.service.read().revision, actions: context.actions.list.map(action => ({ name: action.name, title: action.title, description: action.description, access: action.access, destructive: action.destructive, idempotent: action.idempotent, inputSchema: action.inputSchema })) }) },
   { method: 'POST', path: '/actions/{name}', operationId: 'run_action', summary: 'Run an action by name', description: 'Run any semantic action (see GET /actions). The JSON body is the action input; an optional top-level "actor" names the author. Each action also has its own entry in the OpenAPI document.', tag: 'edit', write: false /* checked per action */, body: 'json', response: { mediaType: 'application/json', schema: 'ActionResult', description: 'The action result.' },
     run: async context => {
       const name = context.params.name ?? '';
-      const action = getAgentAction(name);
-      if (!action) return failureResponse(context.service, [{ code: 'not-found', message: `Unknown action "${name}".`, hint: `GET /actions lists them: ${AGENT_ACTIONS.map(entry => entry.name).join(', ')}.` }], 404);
-      if (context.options.readOnly && action.access === 'write') return failureResponse(context.service, [{ code: 'validation', message: `This endpoint is read-only; "${name}" can change the document.`, hint: 'Use a read action, or ask the operator for a writable endpoint.' }], 403);
+      const action = context.actions.get(name);
+      if (!action) return failureResponse(context.service, [{ code: 'not-found', message: `Unknown action "${name}".`, hint: `GET /actions lists them: ${context.actions.names().join(', ')}.` }], 404);
+      if (context.options.readOnly && action.access === 'write' && action.readOnlyOk !== true) return failureResponse(context.service, [{ code: 'validation', message: `This endpoint is read-only; "${name}" can change the document.`, hint: 'Use a read action, or ask the operator for a writable endpoint.' }], 403);
       const body = await context.body();
       if (body === null || typeof body !== 'object' || Array.isArray(body)) throw problem(400, 'Expected a JSON object with the action input.', undefined, 'body');
       const { actor, ...input } = body as Record<string, unknown>;
-      return writeRoute(context, name, input, actor);
+      const result = await runTransportAction(context.actions, context.service, name, input, actionContext(context, actor));
+      return respondAction(context, result);
     } },
   { method: 'GET', path: '/openapi.json', operationId: 'openapi', summary: 'OpenAPI document', description: 'This API as an OpenAPI 3.1 document, generated from the live route and action tables.', tag: 'meta', write: false, response: { mediaType: 'application/json', schema: 'Any', description: 'The OpenAPI document.' }, run: () => { throw new Error('replaced by the handler'); } },
   { method: 'GET', path: '/schemas/document.json', operationId: 'document_schema', summary: 'Document JSON Schema', description: 'JSON Schema 2020-12 for the document.', tag: 'meta', write: false, response: { mediaType: 'application/schema+json', schema: 'Any', description: 'The schema.' }, run: () => jsonResponse(documentSchema) },
@@ -298,11 +306,11 @@ export function matchRoute(method: string, pathname: string): { match: Match } |
   return allow.length ? { allow } : null;
 }
 
-export function createContext(service: ReportService, request: Request, url: URL, params: Record<string, string>, options: HttpHandlerOptions, limit: number): RouteContext {
+export function createContext(service: ReportService, request: Request, url: URL, params: Record<string, string>, options: HttpHandlerOptions, limit: number, actions: ActionTable = resolveActions()): RouteContext {
   let bytes: Promise<Uint8Array> | undefined;
   const raw = (): Promise<Uint8Array> => bytes ??= readBytes(request, limit);
   return {
-    service, request, url, params, options,
+    service, request, url, params, options, actions,
     actor: supplied => {
       if (options.actor !== undefined) return typeof options.actor === 'function' ? options.actor(request) : options.actor;
       return supplied === undefined ? DEFAULT_ACTOR : readActor(supplied, 'body.actor');

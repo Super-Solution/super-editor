@@ -29,11 +29,29 @@ export function attachEditable(element: HTMLElement, options: EditableOptions): 
   const doc = element.ownerDocument;
   let composing = false, suppressFocus = false, lastData: string | null = null, appliedSync = interaction.getState().sync?.seq ?? 0, appliedFocus = -1, destroyed = false;
   const citationOptions = options.citationLabel ? { citationLabel: options.citationLabel } : {};
-  element.setAttribute('contenteditable', 'true'); element.setAttribute('tabindex', '-1'); element.setAttribute('role', 'textbox'); element.setAttribute('aria-multiline', mode === 'rich' ? 'true' : 'false');
+  // A heading keeps its own semantics (its text is its name); every other field is a textbox that needs a name. While the slash menu
+  // is open the field is the menu's combobox instead (see `applyState`), which is where aria-expanded and its friends belong.
+  const heading = /^H[1-6]$/.test(element.tagName);
+  element.setAttribute('contenteditable', 'true'); element.setAttribute('tabindex', '-1');
   element.setAttribute('spellcheck', 'true'); element.setAttribute('data-se-editable', ''); element.setAttribute('data-field', field); element.setAttribute('data-se-block-id', blockId);
+  // Text runs in the direction of its own script, so Arabic or Hebrew in a left-to-right page edits the way it reads.
+  element.setAttribute('dir', 'auto');
   if (options.placeholder) element.setAttribute('data-placeholder', options.placeholder);
-  if (options.label) element.setAttribute('aria-label', options.label);
-  element.setAttribute('aria-readonly', 'false');
+  let asCombobox = false;
+  const applyRole = (): void => {
+    if (asCombobox) {
+      element.setAttribute('role', 'combobox'); element.removeAttribute('aria-multiline'); element.removeAttribute('aria-placeholder'); element.setAttribute('aria-autocomplete', 'list');
+      element.setAttribute('aria-readonly', 'false');
+      if (options.label) element.setAttribute('aria-label', options.label);
+      return;
+    }
+    element.removeAttribute('aria-autocomplete');
+    if (heading) { for (const name of ['role', 'aria-multiline', 'aria-label', 'aria-placeholder', 'aria-readonly']) element.removeAttribute(name); return; }
+    element.setAttribute('role', 'textbox'); element.setAttribute('aria-multiline', mode === 'rich' ? 'true' : 'false'); element.setAttribute('aria-readonly', 'false');
+    if (options.label) element.setAttribute('aria-label', options.label);
+    if (options.placeholder) element.setAttribute('aria-placeholder', options.placeholder);
+  };
+  applyRole();
 
   const content = () => interaction.edit.draftContent(blockId);
   const markEmpty = (): void => { element.setAttribute('data-empty', textLength(element) === 0 ? 'true' : 'false'); };
@@ -124,13 +142,15 @@ export function attachEditable(element: HTMLElement, options: EditableOptions): 
         else if (request.field === null && focused()) { const length = textLength(element); setSelectionOffsets(element, Math.min(request.start, length), Math.min(request.end, length)); }
       }
     }
-    // The field is the combobox of an open slash menu: point assistive technology at the listbox and its highlighted option.
+    // The field is the combobox of an open slash menu (ARIA 1.2 editable combobox): point assistive technology at the listbox and its highlighted option.
     const slash = state.slash;
     if (slash && slash.blockId === blockId && slash.field === field) {
       const active = slash.items[slash.activeIndex];
+      if (!asCombobox) { asCombobox = true; applyRole(); }
       element.setAttribute('aria-haspopup', 'listbox'); element.setAttribute('aria-expanded', 'true'); element.setAttribute('aria-controls', `${interaction.id}-slash`);
       if (active) element.setAttribute('aria-activedescendant', `${interaction.id}-slash-${active.id}`); else element.removeAttribute('aria-activedescendant');
-    } else if (element.hasAttribute('aria-controls')) {
+    } else if (asCombobox || element.hasAttribute('aria-controls')) {
+      asCombobox = false; applyRole();
       for (const name of ['aria-haspopup', 'aria-expanded', 'aria-controls', 'aria-activedescendant']) element.removeAttribute(name);
     }
     const editing = state.editing;

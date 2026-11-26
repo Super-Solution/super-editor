@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import { AGENT_ACTIONS, emptyInputSchema, historyInputSchema, transactionInputSchema, type AgentAction } from '@supersolutions/super-editor-core';
+import { AGENT_ACTIONS, emptyInputSchema, historyInputSchema, transactionInputSchema, type TransportAction } from '@supersolutions/super-editor-core';
 
 export type McpToolAnnotations = {
   title: string;
@@ -21,25 +21,28 @@ function tool(name: string, title: string, description: string, inputSchema: Rec
 
 /** The original four tools. They take and return raw Core objects and stay available for full control. */
 const coreTools: McpTool[] = [
-  tool('read_document', 'Read the whole document', 'Read the entire versioned document: every block with its version, the citations and the revision. Large documents are expensive: prefer get_outline, find_blocks and get_block, and re-read before proposing guarded edits. Read-only.', emptyInputSchema, { readOnly: true, destructive: false, idempotent: true }),
+  tool('read_document', 'Read the whole document', 'Read the entire versioned document: every block with its version, the citations and the revision. Large documents are expensive: prefer get_outline, then export_markdown with withIds: true (add blockId to read one section) for prose with the id and version of every block, find_blocks and get_block, and re-read before proposing guarded edits. Read-only.', emptyInputSchema, { readOnly: true, destructive: false, idempotent: true }),
   tool('apply_transaction', 'Apply a Core transaction', 'Apply an atomic Core transaction with full control: every operation type, one revision, all or nothing. Use stable IDs, baseRevision and expectedVersion for updates. Rejected edits change nothing and say why in issues[].hint. Prefer the narrower tools (insert_blocks, update_block_text, replace_text, move_blocks, delete_blocks, add_chart, add_citation) when they fit.', transactionInputSchema, { readOnly: false, destructive: true, idempotent: false }),
   tool('undo', 'Undo the last edit', 'Undo the latest edit made in this editing session. Needs the current expectedRevision. History is not saved with the file, so a restarted server has nothing to undo.', historyInputSchema, { readOnly: false, destructive: true, idempotent: false }),
   tool('redo', 'Redo the last undone edit', 'Redo the last undone edit in this editing session. Needs the current expectedRevision.', historyInputSchema, { readOnly: false, destructive: true, idempotent: false }),
 ];
 
-export function toolFor(action: AgentAction): McpTool {
+export function toolFor(action: TransportAction): McpTool {
   return tool(action.name, action.title, action.description, action.inputSchema, { readOnly: action.access === 'read', destructive: action.destructive, idempotent: action.idempotent });
 }
 
 const readOnlyCore = new Set(['read_document']);
 /** Tool descriptors in a stable order: the Core tools, then the semantic tools reads first. */
-export function listTools(options: { readOnly?: boolean } = {}): McpTool[] {
-  const all = [...coreTools, ...AGENT_ACTIONS.map(toolFor)];
-  return options.readOnly ? all.filter(entry => entry.annotations.readOnlyHint) : all;
+export function listTools(options: { readOnly?: boolean; actions?: readonly TransportAction[] } = {}): McpTool[] {
+  const actions: readonly TransportAction[] = options.actions ?? AGENT_ACTIONS, all = [...coreTools, ...actions.map(toolFor)];
+  const served = new Set(actions.filter(action => action.readOnlyOk === true).map(action => action.name));
+  return options.readOnly ? all.filter(entry => entry.annotations.readOnlyHint || served.has(entry.name)) : all;
 }
 export function isCoreTool(name: string): boolean { return coreTools.some(entry => entry.name === name); }
-export function isReadOnlyTool(name: string): boolean {
+/** The names of the four Core tools, which an action list may not reuse. */
+export const CORE_TOOL_NAMES: readonly string[] = coreTools.map(entry => entry.name);
+export function isReadOnlyTool(name: string, actions: readonly TransportAction[] = AGENT_ACTIONS): boolean {
   if (readOnlyCore.has(name)) return true;
-  const action = AGENT_ACTIONS.find(entry => entry.name === name);
-  return action?.access === 'read';
+  const action = actions.find(entry => entry.name === name);
+  return action?.access === 'read' || action?.readOnlyOk === true;
 }

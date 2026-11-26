@@ -46,15 +46,15 @@ export function ShortcutHelp({ interaction: explicit }: { interaction?: Interact
   // data-se-owner: focus moving into the dialog is not "leaving the editor" (the dialog is no longer inside the surface element).
   return <OverlayPortal><div className="se-dialog-backdrop" data-se-popup data-se-owner={interaction.id} onMouseDown={(event) => { if (event.target === event.currentTarget) interaction.closeHelp(); }}>
     <div ref={dialog} className="se-popup se-dialog se-shortcuts" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
-      <header className="se-dialog-header"><h2 id={titleId}>{labels.shortcutHelp}</h2>
-        <button ref={close} type="button" className="se-button" onClick={() => interaction.closeHelp()} aria-label={labels.shortcutHelpClose}><span aria-hidden="true">{'×'}</span></button></header>
-      <div className="se-dialog-body">
+      <div className="se-dialog-header"><h2 id={titleId}>{labels.shortcutHelp}</h2>
+        <button ref={close} type="button" className="se-button" onClick={() => interaction.closeHelp()} aria-label={labels.shortcutHelpClose}><span aria-hidden="true">{'×'}</span></button></div>
+      <div className="se-dialog-body" tabIndex={0}>
         {groupShortcuts(interaction.shortcuts.list()).map((group) => <section key={group.group} className="se-shortcut-group"><h3>{interaction.t(group.group)}</h3>
           <dl>{group.items.map((entry) => <div key={entry.id} className="se-shortcut-row"><dt>{interaction.t(entry.description)}</dt><dd>{entry.display.map((keys, index) => <kbd key={index}>{keys}</kbd>)}</dd></div>)}</dl></section>)}
         <section className="se-shortcut-group"><h3>{labels.markdownShortcuts}</h3>
           <dl>{INPUT_RULE_DOCS.map((rule) => <div key={rule.rule} className="se-shortcut-row"><dt>{interaction.t(rule.result)}</dt><dd><kbd>{rule.example}</kbd></dd></div>)}</dl></section>
       </div>
-      <footer className="se-dialog-footer">{labels.shortcutHelpHint}</footer>
+      <div className="se-dialog-footer">{labels.shortcutHelpHint}</div>
     </div>
   </div></OverlayPortal>;
 }

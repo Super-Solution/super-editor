@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import { AGENT_ACTIONS, BLOCK_TYPES, TEMPLATE_KINDS, documentSchema, transactionSchema, type AgentAction } from '@supersolutions/super-editor-core';
+import { AGENT_ACTIONS, BLOCK_TYPES, TEMPLATE_KINDS, documentSchema, transactionSchema, type TransportAction } from '@supersolutions/super-editor-core';
 import { ROUTES, type QueryParam, type RouteDefinition } from './routes.js';
 
 type Schema = Record<string, unknown>;
 export type OpenApiOptions = {
+  /** The actions served under /actions/{name}. Default: the shared `AGENT_ACTIONS`. */
+  actions?: readonly TransportAction[];
   title?: string;
   /** Version of the API description (not of the npm package). Default "1.0.0". */
   version?: string;
@@ -43,6 +45,7 @@ function resultSchemas(): Record<string, Schema> {
     Failure: { type: 'object', required: ['ok', 'issues', 'currentRevision'], properties: { ok: { const: false }, issues: { type: 'array', items: ref('EditorIssue') }, currentRevision: int } },
     ApplyResult: { oneOf: [{ type: 'object', required: ['ok', 'document', 'revision'], properties: { ok: { const: true }, document: ref('Document'), revision: { type: 'object' }, duplicate: { const: true } } }, ref('Failure')] },
     BlockBrief: brief,
+    ExtraActionResult: { type: 'object', required: ['ok', 'revision'], properties: { ok: { const: true }, revision: int }, additionalProperties: true, description: 'The result of an action a host added: ok, the revision it read, and the action\'s own fields (see its description).' },
     WriteResult: { type: 'object', required: ['ok', 'revision', 'summary', 'added', 'removed', 'changed', 'moved', 'blocks'], properties: writeProperties, additionalProperties: true, description: 'Compact result of an edit. Some actions add fields (blockId, citationId, idPrefix, matchedBlocks, mode).' },
     OutlineResult: { type: 'object', required: ['ok', 'revision', 'title', 'blockCount', 'outline'], properties: { ok: { const: true }, revision: int, title: str, blockCount: int, outline: { type: 'array', items: { type: 'object', required: ['id', 'type', 'title', 'level', 'children'], properties: { id: str, type: { enum: ['section', 'heading'] }, title: str, level: int, children: { type: 'array', items: { type: 'object' } } } } } } },
     FindBlocksResult: { type: 'object', required: ['ok', 'revision', 'total', 'offset', 'count', 'blocks'], properties: { ok: { const: true }, revision: int, total: int, offset: int, count: int, truncated: { const: true }, blocks: { type: 'array', items: { oneOf: [ref('BlockBrief'), { type: 'object' }] } } } },
@@ -92,8 +95,9 @@ function operation(route: RouteDefinition, extra: Schema = {}): Schema {
 }
 const jsonBody = (schema: Schema, description: string): Schema => ({ requestBody: { required: true, description, content: { 'application/json': { schema } } } });
 
-function actionOperation(action: AgentAction): Schema {
-  const response = RESPONSE_FOR_ACTION[action.name] ?? 'WriteResult';
+function actionOperation(action: TransportAction): Schema {
+  // An action of the shared table that has no entry is a write result; one a host added is described only as far as it is known.
+  const response = RESPONSE_FOR_ACTION[action.name] ?? (AGENT_ACTIONS.some(shared => shared.name === action.name) || action.access === 'write' ? 'WriteResult' : 'ExtraActionResult');
   return {
     operationId: `action_${action.name}`, summary: action.title, description: `${action.description}\n\nSend the action input as the JSON body, plus an optional "actor". MCP tool of the same name: ${action.name}.`,
     tags: [action.access === 'read' ? 'read' : 'edit'], 'x-access': action.access, 'x-destructive': action.destructive, 'x-idempotent': action.idempotent,
@@ -105,6 +109,9 @@ function actionOperation(action: AgentAction): Schema {
 /** The OpenAPI 3.1 description of the HTTP API, generated from the same route and action tables the handler serves. */
 export function createOpenApiDocument(options: OpenApiOptions = {}): Record<string, unknown> {
   const schemas: Record<string, Schema> = resultSchemas();
+  // Only described when a host added an action that uses it, so the default document stays exactly what the Go and Python servers serve.
+  const shared = new Set(AGENT_ACTIONS.map(action => action.name));
+  if (!(options.actions ?? []).some(action => !shared.has(action.name) && action.access === 'read' && !RESPONSE_FOR_ACTION[action.name])) delete schemas.ExtraActionResult;
   hoist('Document', documentSchema, schemas);
   hoist('Transaction', transactionSchema, schemas);
   const history: Schema = { type: 'object', required: ['actor', 'expectedRevision'], additionalProperties: false, properties: { actor: ref('Actor'), expectedRevision: int } };
@@ -119,7 +126,7 @@ export function createOpenApiDocument(options: OpenApiOptions = {}): Record<stri
     else if (route.path === '/import/markdown') extra = { requestBody: { required: true, content: { 'application/json': { schema: ref('Action.import_markdown') }, 'text/markdown': { schema: { type: 'string' } } } } };
     add(route.path, route.method.toLowerCase(), operation(route, extra));
   }
-  for (const action of AGENT_ACTIONS) {
+  for (const action of options.actions ?? AGENT_ACTIONS) {
     const properties = { ...(action.inputSchema.properties as Record<string, unknown>), actor: ref('Actor') };
     hoist(`Action.${action.name}`, { ...action.inputSchema, properties }, schemas);
     add(`/actions/${action.name}`, 'post', actionOperation(action));

@@ -127,12 +127,14 @@ export function SelectionToolbar({ interaction: explicit }: { interaction?: Inte
   const roots = blockRoots(document, ids);
   const rect = useBlockRect(!hidden ? roots[0] ?? null : null);
   const ref = useRef<HTMLDivElement>(null);
+  // Like the slash and block menus: slide back into view when the block sits near the right edge (on a phone the toolbar is as wide as the screen).
+  const shift = useKeepInViewport(ref, !hidden && roots.length > 0 && rect !== null);
   if (hidden || !roots.length || !rect) return null;
   const blocks = roots.map((id) => document.blocks.find((block) => block.id === id)!).filter(Boolean);
   const targets = TURN_INTO_TARGETS.filter((entry) => blocks.every((block) => canTurnInto(block.content, entry.id, document.blocks.some((child) => child.parentId === block.id))));
   const top = rect.top - 44 < 0 ? rect.bottom + 6 : rect.top - 44;
   const action = (label: string, glyph: string, run: () => void, danger = false): ReactNode => <button type="button" className={`se-tool${danger ? ' se-tool-danger' : ''}`} aria-label={label} title={label} onClick={run}><span aria-hidden="true">{glyph}</span></button>;
-  return <div ref={ref} className="se-popup se-toolbar se-selection-toolbar" data-se-popup role="toolbar" aria-label={labels.selectionToolbar} style={{ left: rect.left, top }}>
+  return <div ref={ref} className="se-popup se-toolbar se-selection-toolbar" data-se-popup role="toolbar" aria-label={labels.selectionToolbar} style={{ left: rect.left, top, transform: shiftTransform(shift) }}>
     <span className="se-toolbar-count" role="status">{labels.blocksSelected(roots.length)}</span>
     {targets.length ? <select className="se-turn-into" aria-label={labels.turnInto} value="" onChange={(event) => { if (event.target.value) interaction.commands.turnInto(event.target.value as TurnIntoTarget, roots); }}>
       <option value="">{labels.turnInto}</option>{targets.map((entry) => <option key={entry.id} value={entry.id}>{interaction.t(entry.label)}</option>)}

@@ -953,3 +953,44 @@ test('headless layer survives document changes from other writers (selection, ho
   interaction.destroy();
   assert.equal(interaction.edit.start('p1'), false, 'destroyed layers do nothing');
 });
+
+test('keyboard entry: Down or Enter on the focused surface starts at the first block, but never on a button inside it', () => {
+  const surface = { hasAttribute: (name: string) => name === 'data-se-surface' };
+  const button = { hasAttribute: () => false };
+  const aimed = (value: string, target: unknown) => ({ ...key(value), target });
+  {
+    const { interaction } = harness(doc());
+    const press = aimed('ArrowDown', button);
+    assert.equal(interaction.shortcuts.handleKeyDown(press), false, 'a button inside the document keeps its own keys');
+    assert.deepEqual(interaction.selection.ids(), []);
+    assert.equal(interaction.shortcuts.handleKeyDown(aimed('ArrowDown', surface)), true);
+    assert.deepEqual(interaction.selection.ids(), ['s1']);
+    assert.equal(interaction.shortcuts.handleKeyDown(aimed('ArrowDown', surface)), true, 'now it moves the selection');
+    assert.deepEqual(interaction.selection.ids(), ['p1']);
+  }
+  {
+    const { interaction } = harness(doc());
+    assert.equal(interaction.shortcuts.handleKeyDown(aimed('Enter', button)), false);
+    assert.equal(interaction.shortcuts.handleKeyDown(aimed('Enter', surface)), true);
+    assert.equal(interaction.getState().editing?.blockId, 's1', 'Enter on a fresh surface edits the first block');
+  }
+  {
+    const { interaction } = harness([]);
+    assert.equal(interaction.selection.first(), false, 'an empty document has no first block');
+  }
+});
+
+test('Enter on a selected block that has no text to edit says so; a chart opens its settings', () => {
+  const { interaction, feedback } = harness([b.paragraph('p', 'text'), b.divider('d'), b.chart('c', { kind: 'line', title: 'T', labels: ['a', 'b'], series: [{ name: 's', values: [1, 2] }] })]);
+  interaction.selection.select('d');
+  assert.equal(interaction.shortcuts.handleKeyDown(key('Enter')), true);
+  assert.equal(interaction.getState().editing, null);
+  assert.deepEqual(feedback.map((event) => [event.kind, event.blockIds]), [['info', ['d']]]);
+  assert.match(feedback[0]!.message, /no text to edit/);
+  interaction.selection.select('c');
+  interaction.shortcuts.handleKeyDown(key('Enter'));
+  assert.equal(interaction.getState().chartEditor, 'c');
+  interaction.selection.select('p');
+  interaction.shortcuts.handleKeyDown(key('Enter'));
+  assert.equal(interaction.getState().editing?.blockId, 'p');
+});

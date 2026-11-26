@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
-import type { Actor } from '@supersolutions/super-editor-core';
+import type { Actor, TransportAction } from '@supersolutions/super-editor-core';
 import { TEMPLATE_KINDS, TRANSPORT_LIMITS, createDocument, createEditor, createTemplate, isTemplateKind, templateTitle } from '@supersolutions/super-editor-core';
 import { createMcpDispatcher } from './dispatcher.js';
 import { FileProblem, createFileService, writeDocumentFile } from './file-store.js';
@@ -59,7 +59,7 @@ function packageVersion(): string {
  * Runs the server until `stdin` ends. Messages are newline-delimited JSON-RPC (the MCP stdio transport); requests are
  * handled one at a time, in order. Returns the process exit code.
  */
-export async function runStdioServer(argv: string[], io: StdioIo = { stdin: process.stdin, stdout: process.stdout, stderr: process.stderr }): Promise<number> {
+export async function runStdioServer(argv: string[], io: StdioIo = { stdin: process.stdin, stdout: process.stdout, stderr: process.stderr }, options: { actions?: readonly TransportAction[] } = {}): Promise<number> {
   let parsed: ReturnType<typeof parseOptions>;
   try { parsed = parseOptions(argv); }
   catch (error) {
@@ -103,7 +103,7 @@ Run super-editor-mcp --help.
       io.stderr.write(`Created ${file}\n`);
     }
     const service = createFileService(file);
-    dispatch = createMcpDispatcher(service, { actor, readOnly, serverInfo: { name: 'super-editor', title: 'Super Editor', version: packageVersion() } });
+    dispatch = createMcpDispatcher(service, { actor, readOnly, ...(options.actions ? { actions: options.actions } : {}), serverInfo: { name: 'super-editor', title: 'Super Editor', version: packageVersion() } });
     io.stderr.write(`super-editor-mcp serving ${file} as ${actor.id}:${actor.kind}${readOnly ? ' (read-only)' : ''}\n`);
   } catch (error) {
     io.stderr.write(`${error instanceof Error ? error.message : 'Could not start.'}\n`);

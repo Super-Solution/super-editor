@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import { isPromiseLike, openSnapshot, type AsyncReportService, type ReportService } from '@supersolutions/super-editor-core';
+import { isPromiseLike, openSnapshot, resolveActions, type AsyncReportService, type ReportService } from '@supersolutions/super-editor-core';
 import { createOpenApiDocument } from './openapi.js';
 import { HttpProblem, failureResponse, jsonResponse, statusForIssues } from './respond.js';
 import { HTTP_LIMITS, createContext, matchRoute, type CorsOptions, type HttpHandlerOptions } from './routes.js';
@@ -37,6 +37,8 @@ function allowedOrigin(cors: CorsOptions | undefined, origin: string | null): st
  */
 export function createHttpHandler(service: ReportService | AsyncReportService, options: HttpHandlerOptions = {}) {
   const maxBodyBytes = validateOptions(options);
+  // Checked here, so a wrong action list fails when the handler is created and not on the first request.
+  const actions = resolveActions(options.actions);
   let openapi: unknown;
 
   const currentRevision = async (): Promise<number> => {
@@ -92,13 +94,13 @@ export function createHttpHandler(service: ReportService | AsyncReportService, o
       const url = new URL(request.url);
       let response: Response;
       if (route.operationId === 'openapi') {
-        openapi ??= createOpenApiDocument({ ...(options.basePath ? { servers: [{ url: options.basePath }] } : {}) });
+        openapi ??= createOpenApiDocument({ actions: actions.list, ...(options.basePath ? { servers: [{ url: options.basePath }] } : {}) });
         response = jsonResponse(openapi);
       } else {
         // One read decides which kind of service this is: a thenable means a store, which runs on a request-local copy.
         const first = service.read();
         const snapshot = isPromiseLike(first) ? await openSnapshot(service as AsyncReportService, { document: (await first) as Awaited<ReturnType<AsyncReportService['read']>>, ...(route.operationId === 'list_revisions' || params.name === 'list_revisions' ? { revisions: true } : {}) }) : undefined;
-        const context = createContext(snapshot ? snapshot.service : service as ReportService, request, url, params, options, maxBodyBytes);
+        const context = createContext(snapshot ? snapshot.service : service as ReportService, request, url, params, options, maxBodyBytes, actions);
         response = await route.run(context);
         if (snapshot && snapshot.pending().length > 0) {
           const failure = await snapshot.flush();

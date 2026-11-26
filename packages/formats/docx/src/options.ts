@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import { LIMITS, type EditorIssue } from '@supersolutions/super-editor-core';
+import type { ResolveImage } from './images.js';
 
 export type HeaderFooter = string | { text: string; align?: 'left' | 'center' | 'right' };
 export type DocxLabels = {
@@ -36,12 +37,18 @@ export type DocxOptions = {
   chartRows?: number;
   /** Deflate the parts. Default true. */
   compress?: boolean;
+  /**
+   * Turns an image block's address into PNG, JPEG or GIF bytes so the picture is embedded in the file. Without it an image is written as
+   * "[Image: alt text]" and a link. The package never fetches the address itself; see `ResolveImage` for what a resolver must guard. A
+   * function cannot travel as JSON, so over HTTP, MCP and the CLI the host sets it by registering a configured exporter.
+   */
+  resolveImage?: ResolveImage;
 };
 
 export const DEFAULT_LABELS: DocxLabels = { sources: 'Sources', accessed: 'accessed', published: 'published', image: 'Image', metric: 'Metric', value: 'Value', change: 'Change', note: 'Note', moreRows: '… {count} more rows omitted' };
 export const DEFAULT_FONTS = { sans: 'Calibri', serif: 'Times New Roman', mono: 'Consolas' } as const;
 export const DEFAULT_MARGIN_MM = 25.4;
-const TOP = ['title', 'author', 'language', 'eastAsiaLanguage', 'fonts', 'page', 'header', 'footer', 'labels', 'chartRows', 'compress'];
+const TOP = ['title', 'author', 'language', 'eastAsiaLanguage', 'fonts', 'page', 'header', 'footer', 'labels', 'chartRows', 'compress', 'resolveImage'];
 const LANGUAGE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/;
 
 const issue = (path: string, message: string, hint: string): EditorIssue => ({ code: 'validation', path, message, hint });
@@ -71,6 +78,7 @@ export function optionIssues(options: unknown, extraNames: readonly string[] = [
   if (!names(options, 'options', [...TOP, ...extraNames], out)) return out;
   if ('title' in options && typeof options.title !== 'boolean') out.push(issue('options.title', 'Expected true or false.', 'Pass a boolean or omit it.'));
   if ('compress' in options && typeof options.compress !== 'boolean') out.push(issue('options.compress', 'Expected true or false.', 'Pass a boolean or omit it.'));
+  if ('resolveImage' in options && options.resolveImage !== undefined && typeof options.resolveImage !== 'function') out.push(issue('options.resolveImage', 'Expected a function that returns image bytes.', 'Pass resolveImage in code, or omit it. It cannot be sent as JSON.'));
   if ('author' in options) text(options.author, 'options.author', 200, out);
   if ('language' in options) text(options.language, 'options.language', 35, out, LANGUAGE);
   if ('eastAsiaLanguage' in options) text(options.eastAsiaLanguage, 'options.eastAsiaLanguage', 35, out, LANGUAGE);

@@ -3,7 +3,9 @@
 import { isContainerType } from '@supersolutions/super-editor-core';
 import type { BlockContent, BlockInput, Operation, ResearchDocument } from '@supersolutions/super-editor-core';
 import type { Caret, FieldKey, Placement } from './types.js';
-import { canTurnInto, convertContent, targetOf } from './convert.js';
+import { counted } from './messages.js';
+import type { MessageParams } from './messages.js';
+import { TURN_INTO_TARGETS, canTurnInto, convertContent, targetOf } from './convert.js';
 import type { TurnIntoTarget } from './convert.js';
 import { isNoopPlacement } from './drop.js';
 import { descendantsOf, hasChildren, rootsOf, treeOf, visibleOrder } from './tree.js';
@@ -20,13 +22,18 @@ export type Plan = {
   select?: string[];
   /** Block to place the caret in afterwards. */
   edit?: EditTarget;
+  /** English template of the notice (`'Deleted {count} blocks'`); `summaryParams` fills it and a host's `messages` can translate it. */
   summary: string;
+  summaryParams?: MessageParams;
+  /** Names in `summaryParams` whose value is itself an English message (a block kind's label) and is translated before it is filled in. */
+  translateParams?: readonly string[];
   /** For deletions: where focus should go. */
   focus?: string | null;
 };
 export type PlanResult = Plan | { error: string } | null;
 export type IdFactory = (prefix: string) => string;
-export const plural = (count: number, noun: string): string => `${count} ${noun}${count === 1 ? '' : 's'}`;
+/** The notice for an action on `count` blocks: the template for exactly one block, or for several, with `{count}` filled in. */
+const blocksSummary = (count: number, one: string, other: string, extra: MessageParams = {}): Pick<Plan, 'summary' | 'summaryParams'> => ({ summary: counted(count, one, other), summaryParams: { count, ...extra } });
 const refs = (doc: ResearchDocument, ids: readonly string[]): { blockId: string; expectedVersion: number }[] => {
   const { byId } = treeOf(doc);
   return ids.map((blockId) => ({ blockId, expectedVersion: byId.get(blockId)!.version }));
@@ -42,7 +49,7 @@ export function planDelete(doc: ResearchDocument, ids: readonly string[]): PlanR
   let focus: string | null = null;
   for (let at = first - 1; at >= 0 && focus === null; at--) if (!doomed.has(order[at]!.id)) focus = order[at]!.id;
   for (let at = first + 1; at < order.length && focus === null; at++) if (!doomed.has(order[at]!.id)) focus = order[at]!.id;
-  return { operations: [{ type: 'deleteBlocks', blocks: refs(doc, roots) }], focus, summary: `Deleted ${plural(roots.length, 'block')}` };
+  return { operations: [{ type: 'deleteBlocks', blocks: refs(doc, roots) }], focus, ...blocksSummary(roots.length, 'Deleted {count} block', 'Deleted {count} blocks') };
 }
 
 export function planDuplicate(doc: ResearchDocument, ids: readonly string[], createId: IdFactory): PlanResult {
@@ -59,14 +66,14 @@ export function planDuplicate(doc: ResearchDocument, ids: readonly string[], cre
     operations.push({ type: 'duplicateBlock', blockId: root, expectedVersion: tree.byId.get(root)!.version, newIds, ...(afterId === undefined ? {} : { afterId }) });
     copies.push(newIds[root]!);
   }
-  return { operations, select: copies, summary: `Duplicated ${plural(roots.length, 'block')}` };
+  return { operations, select: copies, ...blocksSummary(roots.length, 'Duplicated {count} block', 'Duplicated {count} blocks') };
 }
 
 export function planMove(doc: ResearchDocument, ids: readonly string[], placement: Placement): PlanResult {
   const roots = rootsOf(doc, ids);
   if (!roots.length) return null;
   if (isNoopPlacement(doc, roots, placement)) return null;
-  return { operations: [{ type: 'moveBlocks', blocks: refs(doc, roots), parentId: placement.parentId, afterId: placement.afterId }], select: roots, summary: `Moved ${plural(roots.length, 'block')}` };
+  return { operations: [{ type: 'moveBlocks', blocks: refs(doc, roots), parentId: placement.parentId, afterId: placement.afterId }], select: roots, ...blocksSummary(roots.length, 'Moved {count} block', 'Moved {count} blocks') };
 }
 
 /** Keyboard move (Alt+Shift+Up/Down): swaps with the neighbouring sibling, or leaves the container at its first/last position. */
@@ -114,12 +121,12 @@ export function planTurnInto(doc: ResearchDocument, ids: readonly string[], targ
     }
   }
   if (!operations.length) return roots.some((id) => targetOf(tree.byId.get(id)!.content) === target) ? null : { error: 'These blocks cannot be turned into that type.' };
-  return { operations, select, summary: `Turned ${plural(changed, 'block')} into ${target}` };
+  return { operations, select, ...blocksSummary(changed, 'Turned {count} block into {type}', 'Turned {count} blocks into {type}', { type: TURN_INTO_TARGETS.find((entry) => entry.id === target)?.label ?? target }), translateParams: ['type'] };
 }
 
 /** Inserts blocks as siblings after `afterId` (or first among `parentId`'s children when null). */
 export function planInsert(doc: ResearchDocument, parentId: string | null, afterId: string | null, contents: readonly BlockContent[], createId: IdFactory): Plan | { error: string } {
   if (parentId !== null) { const parent = treeOf(doc).byId.get(parentId); if (!parent || !isContainerType(parent.content.type)) return { error: 'Blocks can only be placed inside a section or toggle.' }; }
   const blocks = contents.map((content) => blockInput(createId('block'), parentId, content));
-  return { operations: [{ type: 'insertBlocks', blocks, afterId }], select: blocks.map((block) => block.id), summary: `Inserted ${plural(blocks.length, 'block')}` };
+  return { operations: [{ type: 'insertBlocks', blocks, afterId }], select: blocks.map((block) => block.id), ...blocksSummary(blocks.length, 'Inserted {count} block', 'Inserted {count} blocks') };
 }

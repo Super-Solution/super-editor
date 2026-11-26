@@ -16,7 +16,7 @@ function report(text: string) {
 function page() {
   const dom = new JSDOM('<!doctype html><body></body>', { pretendToBeVisual: true });
   const { window } = dom;
-  defineSuperEditor({ registry: window.customElements, base: window.HTMLElement as unknown as typeof HTMLElement });
+  defineSuperEditor({ registry: window.customElements, base: window.HTMLElement as unknown as typeof HTMLElement, warn: false });
   const el = window.document.createElement('super-editor') as unknown as SuperEditorElement;
   window.document.body.append(el);
   return { window, el, close: () => window.close() };
@@ -119,4 +119,31 @@ test('src loads a document, readonly forces view, and locale, time-zone, density
     assert.match(failures[0] ?? '', /500/);
     assert.match(el.textContent ?? '', /From src/, 'the previous document stays');
   } finally { globalThis.fetch = original; close(); }
+});
+
+test('mode="edit" says it is the basic editor: a data-editor attribute, and one console warning per page unless silenced', () => {
+  const { el, close } = page();
+  el.load(report('Basic'));
+  assert.equal(el.getAttribute('data-editor'), null, 'view mode has no editor attribute');
+  el.mode = 'edit';
+  assert.equal(el.getAttribute('data-editor'), 'basic');
+  el.mode = 'view';
+  assert.equal(el.getAttribute('data-editor'), null, 'leaving edit mode removes it');
+  close();
+
+  const warnings: string[] = [];
+  const original = console.warn;
+  console.warn = (...args: unknown[]) => { warnings.push(args.join(' ')); };
+  try {
+    const dom = new JSDOM('<!doctype html><body></body>', { pretendToBeVisual: true });
+    defineSuperEditor({ tag: 'loud-editor', registry: dom.window.customElements, base: dom.window.HTMLElement as unknown as typeof HTMLElement });
+    for (let index = 0; index < 2; index += 1) {
+      const loud = dom.window.document.createElement('loud-editor') as unknown as SuperEditorElement;
+      dom.window.document.body.append(loud);
+      loud.load(report('Loud')); loud.mode = 'edit'; loud.mode = 'view'; loud.mode = 'edit';
+    }
+    assert.equal(warnings.length, 1, 'once per page, however many elements and renders');
+    assert.match(warnings[0]!, /basic editor/); assert.match(warnings[0]!, /ReportEditor/); assert.match(warnings[0]!, /warn: false/);
+    dom.window.close();
+  } finally { console.warn = original; }
 });

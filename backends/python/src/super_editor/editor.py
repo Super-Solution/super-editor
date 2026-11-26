@@ -175,6 +175,12 @@ class _Replacer:
         return out
 
 
+def count_replacements(content: dict[str, Any], find: str, all_matches: bool, case_sensitive: bool) -> int:
+    """How many replacements replace_text would make in a block's content (0 for a block without text)."""
+    result = _replace_in_content(content, find, "", all_matches, case_sensitive)
+    return 0 if result is None else result[1]
+
+
 def _replace_in_content(  # noqa: C901, PLR0912
     content: dict[str, Any], find: str, replace: str, all_matches: bool, case_sensitive: bool
 ) -> tuple[dict[str, Any], int] | None:

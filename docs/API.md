@@ -17,7 +17,7 @@ Contents: [Conventions](#conventions) · [Actions](#actions) · [HTTP](#http) ·
   duplicate?: true }                         // an identical retry: nothing was applied again
 ```
 
-Some actions add fields: `blockId` (`add_chart`), `citationId` (`add_citation`), `idPrefix` and `rootIds` (`insert_template`), `matchedBlocks` (`replace_text` without `blockId`), `mode` (`import_markdown`).
+Some actions add fields: `blockId` (`add_chart`), `citationId` (`add_citation`), `idPrefix` and `rootIds` (`insert_template`), `replacements` (`replace_text`: how many replacements were made) and `matchedBlocks` (`replace_text` without `blockId`), `mode` (`import_markdown`).
 
 **Failure.** Every failure, from every transport, is:
 
@@ -43,7 +43,7 @@ Some actions add fields: `blockId` (`add_chart`), `citationId` (`add_citation`),
 | `find_blocks` | read | type, text, parentId, within, ids, citationId, limit, offset, include |
 | `get_block` | read | **blockId** |
 | `document_stats` | read | (none) |
-| `export_markdown` | read | blockId |
+| `export_markdown` | read | blockId, withIds |
 | `export_html` | read | blockId, standalone |
 | `export_text` | read | blockId |
 | `list_revisions` | read | limit, offset |
@@ -52,7 +52,7 @@ Some actions add fields: `blockId` (`add_chart`), `citationId` (`add_citation`),
 | `insert_blocks` | write | markdown or blocks, afterId, parentId, idPrefix |
 | `update_block_text` | write, destructive | **blockId**, **expectedVersion**, **text**, format, conflictPolicy |
 | `update_block` | write, destructive | **blockId**, **expectedVersion**, **content**, citationIds, conflictPolicy |
-| `replace_text` | write, destructive | **find**, **replace**, blockId, expectedVersion, within, all, caseSensitive, conflictPolicy |
+| `replace_text` | write, destructive | **find**, **replace**, blockId, expectedVersion, within, all, caseSensitive, expectedMatches, conflictPolicy |
 | `move_blocks` | write | **blocks** (`{ blockId, expectedVersion }[]`), **parentId**, afterId |
 | `delete_blocks` | write, destructive | **blocks** |
 | `add_chart` | write | **spec**, afterId, parentId, id, citationIds |
@@ -66,15 +66,27 @@ Behaviour worth knowing:
 - **Placement.** `afterId` is a sibling in the destination: a block ID inserts after it, `null` inserts first, omitting it appends to the end of `parentId` (the document root unless given). Markdown blocks go to `parentId`; blocks you send carry their own `parentId`.
 - **`find_blocks`** returns `{ total, offset, count, truncated?, blocks }` in reading order. `include: "content"` returns full blocks. `text` matches case-insensitively against the block's visible text (title, paragraph text, list items, table cells, chart title and caption, image alt).
 - **`update_block_text`** works on paragraph, heading, quote, callout, code, list (one item per line; `checked` and `indent` are kept by position), section and toggle. Inline markdown is parsed for paragraph, quote and callout unless `format` is `plain`. Other types return a `validation` issue that points to `replace_text` and `update_block`.
-- **`replace_text`** replaces every occurrence unless `all: false`, case-insensitively unless `caseSensitive`. Matches may span formatting runs; the replacement takes the formatting where the match starts. With `blockId` it edits that block (needs `expectedVersion`); without it, every block containing the text (using current versions), limited by `within`; at most 256 blocks per call. No match is a `not-found`.
+- **`replace_text`** replaces every occurrence unless `all: false`, case-insensitively unless `caseSensitive`. Matches may span formatting runs; the replacement takes the formatting where the match starts. With `blockId` it edits that block (needs `expectedVersion`); without it, every block containing the text (using current versions), limited by `within`; at most 256 blocks per call. No match is a `not-found`. The result always carries `replacements`, the number of places replaced. **`expectedMatches`** (an integer of at least 1) is the number of replacements you expect: when the text would be replaced a different number of times the call fails with `conflict` at `input.expectedMatches`, nothing is changed, and the message and hint give the real count (`expectedMatches: 1` means "change exactly one place"; with `all: false` each block counts once). `dryRun: true` returns the same counts first. The count is checked against the document as it is now, so it cannot be combined with `conflictPolicy: "rebase-safe"` (`validation`); a stale `expectedVersion` is still reported as a `conflict` on the block, not as a miscount. For the form without `blockId`, which edits each block at the version it was counted at, send `expectedRevision` as well to also refuse a document that changed since you last read it.
 - **`insert_blocks`** takes `markdown` (converted to blocks with fresh IDs unless `idPrefix` is given) or `blocks` (`{ id, content, parentId?, citationIds? }[]`, parents first). Large inserts are split into 500-block batches inside one transaction.
 - **`import_markdown`** `mode: "replace"` deletes every existing block first and imports the markdown as the new body; `setTitle` takes the title from a leading `# Title` line.
 - **`add_citation`** with `blockId` also attaches the citation to the block's `citationIds`; `marker: true` appends an inline marker to paragraph, quote or callout text.
-- **Exports** return `{ format, characters, text }`. `blockId` exports one block with its descendants. HTML is escaped static markup; `standalone: true` is a full page with a small stylesheet.
+- **Exports** return `{ format, characters, text }`. `blockId` exports one block with its descendants. HTML is escaped static markup; `standalone: true` is a full page with a small stylesheet. `export_markdown` with `withIds: true` precedes every block with `<!-- id=BLOCK_ID v=VERSION -->` (the id and version the edit actions need), including blocks that print nothing; it is a reading view, not an exchange format (`toMarkdown(document, { withIds: true })` in code). Only the action has the option: `GET /export.md` does not.
 - **`list_revisions`** returns the revisions of the current editing session (the service's `revisions()`), newest first.
 - **`validate_transaction`** applies a Core transaction to a scratch copy and returns what would change, or the issues. Nothing is saved.
 
 Core extensions that make this possible: `ReportService.revisions?()`, `AGENT_ACTIONS`, `getAgentAction`, `runAgentAction`, `TRANSPORT_LIMITS`, the typed `AgentActionInputs` / `AgentActionOutputs` maps and the template functions.
+
+**Adding actions to a transport.** The shared table is fixed (it is what the Go and Python servers implement). A host that wants more passes an `actions` list to `createHttpHandler`, `createMcpDispatcher`, `runStdioServer(argv, io, { actions })` or `runCli(args, io, { actions })`: `[...AGENT_ACTIONS, ...formatActions(registry)]` adds `list_formats` and `export_document` (Markdown, HTML, text and Word, see [FORMATS.md](FORMATS.md#formats-over-http-mcp-and-the-cli)). An extra action is `{ name, title, description, access, destructive, idempotent, inputSchema, run }`; `run` may be asynchronous. The list is validated when the transport is created. A server that is not given the list is unchanged.
+
+**Proposals.** `proposalActions(createProposalBox(service))` adds `propose_transaction`, `list_proposals` and `resolve_proposal`: an agent's transaction waits, unapplied, until a person accepts it. The box is held next to the service (in memory), not in the document, so nothing in the document format, the schemas or the Go and Python ports changes.
+
+| Action | Access | Input | Notes |
+| --- | --- | --- | --- |
+| `propose_transaction` | write, but served on read-only endpoints (`readOnlyOk`) | **transaction**, `note` | Checked like an edit; invalid or stale is refused. Same transaction id and content returns the same proposal (`duplicate: true`) |
+| `list_proposals` | read | `proposalId`, `state`, `detail`, `limit`, `offset` | Pending ones carry `review`: `ready`, `stale` or `invalid`, recomputed against the current document |
+| `resolve_proposal` | write, destructive, never on a read-only endpoint | **proposalId**, **decision** (`accept` or `reject`), `expectedRevision` (required to accept), `reason` | Only a person: the call's actor must pass `canResolve` (default `kind: "human"`), else a `validation` issue with `path: "actor"`. Accept applies the proposal's transaction through the service (guards and compare-and-swap included), recorded under the proposal's author |
+
+**Who is a person.** An actor's `kind` is provenance, not authentication. Over MCP the server's own `actor` decides (an agent cannot claim otherwise: an `actor` argument is refused); over HTTP the `actor` option wins over any `actor` in the body, so set it from your sign-in: without it every caller is `http-client:agent` and nobody can resolve. A host with its own rules passes `canResolve`. Limits: 100 waiting (`maxPending`, refused with a hint when full), 200 resolved remembered (`maxResolved`, older ones forgotten). Not done: accepting part of a transaction, word-level diffs, persistence across restarts, the Go and Python servers.
 
 ## HTTP
 

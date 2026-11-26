@@ -39,6 +39,7 @@ function redlineOptionIssues(options: unknown): EditorIssue[] {
   const out = optionIssues(options, EXTRA);
   if (typeof options !== 'object' || options === null || Array.isArray(options)) return out;
   const given = options as Record<string, unknown>;
+  if (given.resolveImage !== undefined) out.push(issue('options.resolveImage', 'A redline does not embed pictures.', 'Remove resolveImage: images stay links in a redline. Use exportDocx for a clean copy with the pictures.'));
   if ('changeAuthor' in given && (typeof given.changeAuthor !== 'string' || given.changeAuthor === '' || given.changeAuthor.length > 200)) out.push(issue('options.changeAuthor', 'Expected a nonempty string of at most 200 characters.', 'Use the name a reviewer should see, for example "research-agent".'));
   if ('changeDate' in given && (typeof given.changeDate !== 'string' || !/^\d{4}-\d\d-\d\dT/.test(given.changeDate) || !Number.isFinite(Date.parse(given.changeDate)))) out.push(issue('options.changeDate', 'Expected an ISO 8601 date and time, for example "2026-11-24T10:00:00Z".', 'Omit it to use the new document\'s updatedAt.'));
   if ('trackChanges' in given && typeof given.trackChanges !== 'boolean') out.push(issue('options.trackChanges', 'Expected true or false.', 'Pass a boolean or omit it.'));

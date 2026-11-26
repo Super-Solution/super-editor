@@ -56,6 +56,7 @@ def test_documents() -> None:
         doc = case["document"]
         assert to_markdown(doc) == case["markdown"], i
         assert to_markdown(doc, title=False, chart_rows_limit=2) == case["markdownBare"], i
+        assert to_markdown(doc, with_ids=True) == case["markdownWithIds"], i
         assert to_html(doc) == case["html"], i
         assert to_html(doc, title=False, chart_rows_limit=2) == case["htmlBare"], i
         assert to_html(doc, standalone=True) == case["htmlStandalone"], i

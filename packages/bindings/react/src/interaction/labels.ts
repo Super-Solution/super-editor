@@ -12,6 +12,10 @@ export type InteractionLabels = {
   placeholderCallout: string;
   placeholderCode: string;
   placeholderCell: string;
+  /** Accessible names of the editable fields (the placeholder is only a hint and is not a name). Headings are named by their own text. */
+  fieldParagraph: string; fieldListItem: string; fieldToggle: string; fieldQuote: string; fieldCallout: string; fieldCode: string;
+  fieldHeaderCell: (column: number) => string;
+  fieldCell: (row: number, column: number) => string;
   codeLanguage: string;
   addBlock: string;
   dragHandle: string;
@@ -23,6 +27,10 @@ export type InteractionLabels = {
   highlightColor: (color: string) => string;
   selectionToolbar: string;
   blocksSelected: (count: number) => string;
+  /** Spoken when one block is selected: its kind and the start of its text. */
+  blockSelected: (kind: string, summary: string) => string;
+  /** Spoken when the keyboard enters the document. */
+  surfaceHint: string;
   duplicate: string; delete: string; moveUp: string; moveDown: string; copy: string; clearSelection: string; turnInto: string;
   blockMenu: string;
   linkDialog: string; linkUrl: string; linkApply: string; linkRemove: string; cancel: string;
@@ -48,6 +56,9 @@ export const defaultInteractionLabels: InteractionLabels = {
   placeholderCallout: 'Callout',
   placeholderCode: 'Code',
   placeholderCell: '',
+  fieldParagraph: 'Paragraph', fieldListItem: 'List item', fieldToggle: 'Toggle title', fieldQuote: 'Quote', fieldCallout: 'Callout text', fieldCode: 'Code',
+  fieldHeaderCell: (column) => `Column ${column} heading`,
+  fieldCell: (row, column) => `Row ${row}, column ${column}`,
   codeLanguage: 'Code language',
   addBlock: 'Add a block below',
   dragHandle: 'Drag to move, or open the block menu',
@@ -59,6 +70,8 @@ export const defaultInteractionLabels: InteractionLabels = {
   highlightColor: (color) => `Highlight ${color}`,
   selectionToolbar: 'Selected blocks',
   blocksSelected: (count) => `${count} block${count === 1 ? '' : 's'} selected`,
+  blockSelected: (kind, summary) => summary ? `${kind} selected: ${summary}` : `${kind} selected`,
+  surfaceHint: 'Press Down or Enter to start at the first block.',
   duplicate: 'Duplicate', delete: 'Delete', moveUp: 'Move up', moveDown: 'Move down', copy: 'Copy as markdown', clearSelection: 'Clear selection', turnInto: 'Turn into',
   blockMenu: 'Block actions',
   linkDialog: 'Edit link', linkUrl: 'Link address (https)', linkApply: 'Apply', linkRemove: 'Remove link', cancel: 'Cancel',

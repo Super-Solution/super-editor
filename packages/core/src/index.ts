@@ -2,7 +2,7 @@
 // Copyright 2026 SUPER SOLUTION LABS INC
 export type * from './types.js';
 export { createDocument, createEditor } from './editor.js';
-export { LIMITS, parseDocument, safeUrl, serializeDocument, validateDocument, validateTransaction } from './validation.js';
+export { LIMITS, RETIRED_LIMIT, RETIRED_WARNING, parseDocument, safeUrl, serializeDocument, validateDocument, validateTransaction } from './validation.js';
 export { AXIS_FORMATS, BLOCK_TYPES, CALLOUT_TONES, CHART_KINDS, CONTAINER_TYPES, HIGHLIGHTS, IMAGE_WIDTHS, LIST_STYLES, METRIC_TONES, OPERATION_TYPES, TABLE_ALIGNMENTS, isContainerType } from './constants.js';
 export { clipText } from './text.js';
 export { blockText, orderedBlocks, getBlock, childrenOf, ancestorsOf, descendantsOf, findBlocks, getOutline, type BlockSelector, type OutlineItem } from './query.js';
@@ -16,6 +16,8 @@ export { createReportService, validationFailure, type ReportService } from './se
 export { documentSchema, transactionSchema, emptyInputSchema, historyInputSchema, transactionInputSchema } from './schemas.js';
 export { TEMPLATES, TEMPLATE_KINDS, arbitrageTemplate, blankTemplate, comparisonTemplate, createTemplate, equityTemplate, isTemplateKind, listTemplates, macroTemplate, portfolioTemplate, strategyTemplate, templateTitle, type TemplateFunction, type TemplateInfo, type TemplateKind, type TemplateOptions } from './templates.js';
 export { AGENT_ACTIONS, TRANSPORT_LIMITS, getAgentAction, runAgentAction, runAgentActionAsync, type AgentAction, type AgentActionContext, type AgentActionInputs, type AgentActionName, type AgentActionOutputs, type WriteControls, type AgentActionResult, type AgentFailure, type AgentWriteSuccess, type BlockBrief, type TouchedBlock } from './actions.js';
+export { PROPOSAL_LIMITS, createProposalBox, proposalActions, type ProposalBox, type ProposalBoxOptions, type ProposalRecord, type ProposalState } from './proposals.js';
+export { FORMAT_EXPORT_BYTES, formatActions, resolveActions, runTransportAction, type ActionTable, type TransportAction } from './transport-actions.js';
 export { applyToDocument, createMemoryStore, createStoreService, isPromiseLike, openSnapshot, type AsyncReportService, type DocumentStore, type SaveResult, type ServiceSnapshot, type StoreServiceOptions } from './store.js';
 export { DOCUMENT_FEATURES, WARNING_BLOCKS, chartRowsWarning, checkDocument, createFormatRegistry, lossWarnings, scanFeatures, unknownOptionIssues, type DocumentFeature, type ExportResult, type Exporter, type FeatureUse, type Fidelity, type FidelityTable, type FormatCapability, type FormatInfo, type FormatRegistry, type FormatWarning, type ImportBaseOptions, type ImportResult, type Importer, type SyncExporter, type SyncImporter } from './formats.js';
 export { HTML_FIDELITY, MARKDOWN_FIDELITY, MARKDOWN_LOSSES, TEXT_FIDELITY, htmlExporter, markdownExporter, markdownImporter, textFormatExporter, type MarkdownImportOptions } from './formats-builtin.js';

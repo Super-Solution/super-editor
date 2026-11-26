@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
-import type { Actor, AgentActionResult, ReportService } from '@supersolutions/super-editor-core';
-import { getAgentAction, runAgentAction, validationFailure, withHints } from '@supersolutions/super-editor-core';
+import type { Actor, AgentActionResult, ReportService, TransportAction } from '@supersolutions/super-editor-core';
+import { resolveActions, runTransportAction, validationFailure, withHints } from '@supersolutions/super-editor-core';
 import { SERVER_INSTRUCTIONS } from './guide.js';
 import { PROMPTS, getPrompt } from './prompts.js';
 import { RESOURCES, RESOURCE_TEMPLATES, readResource } from './resources.js';
-import { isCoreTool, isReadOnlyTool, listTools } from './tools.js';
+import { CORE_TOOL_NAMES, isCoreTool, isReadOnlyTool, listTools } from './tools.js';
 
 type RpcId = string | number | null;
 export type JsonRpcResponse =
@@ -27,6 +27,12 @@ export type McpDispatcherOptions = {
   instructions?: string;
   /** Clock for timestamps the tools create (citation `accessedAt`). */
   now?: () => string;
+  /**
+   * The semantic tools served next to the four Core tools. Default: the shared `AGENT_ACTIONS`. To add the format exporters of a
+   * registry without touching the shared table: `actions: [...AGENT_ACTIONS, ...formatActions(registry)]`. Names must be unique snake_case
+   * and not `read_document`, `apply_transaction`, `undo` or `redo`; a wrong list throws when the dispatcher is created.
+   */
+  actions?: readonly TransportAction[];
 };
 
 /** Newest first. A client that asks for another version is told which one this server speaks. */
@@ -75,11 +81,12 @@ export function createMcpDispatcher(service: ReportService, options: McpDispatch
   const serverInfo = options.serverInfo ?? DEFAULT_SERVER_INFO;
   const instructions = options.instructions ?? SERVER_INSTRUCTIONS;
   const context = { actor, ...(options.now ? { now: options.now } : {}) };
+  const actions = resolveActions(options.actions, CORE_TOOL_NAMES);
 
-  function actionResult(name: string, args: Record<string, unknown>): McpToolResult {
-    const result: AgentActionResult = runAgentAction(service, name, args, context);
+  async function actionResult(name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+    const result: AgentActionResult = await runTransportAction(actions, service, name, args, context);
     if (!result.ok) return toolResult(result as unknown as Record<string, unknown>, true);
-    const textField = getAgentAction(name)?.textField;
+    const textField = actions.get(name)?.textField;
     const raw = textField !== undefined && typeof result[textField] === 'string' ? result[textField] as string : undefined;
     return toolResult(result, false, raw);
   }
@@ -122,7 +129,7 @@ export function createMcpDispatcher(service: ReportService, options: McpDispatch
         case 'tools/list': {
           if (withoutMeta(params).some(key => key !== 'cursor') || (Object.hasOwn(params, 'cursor') && typeof params.cursor !== 'string')) return invalid('tools/list takes only an optional cursor.');
           // One page only; a cursor can only point past the end. Copies keep a caller from altering future discovery.
-          return ok({ tools: Object.hasOwn(params, 'cursor') ? [] : JSON.parse(JSON.stringify(listTools({ readOnly }))) as unknown });
+          return ok({ tools: Object.hasOwn(params, 'cursor') ? [] : JSON.parse(JSON.stringify(listTools({ readOnly, actions: actions.list }))) as unknown });
         }
         case 'tools/call': {
           if (typeof params.name !== 'string' || withoutMeta(params).some(key => key !== 'name' && key !== 'arguments')) {
@@ -132,8 +139,8 @@ export function createMcpDispatcher(service: ReportService, options: McpDispatch
           if (args === null) return invalid('Tool arguments must be an object with own data properties.');
           const name = params.name;
           let result: McpToolResult;
-          if (!isCoreTool(name) && getAgentAction(name) === undefined) return invalid('Unknown tool.');
-          if (readOnly && !isReadOnlyTool(name)) {
+          if (!isCoreTool(name) && actions.get(name) === undefined) return invalid('Unknown tool.');
+          if (readOnly && !isReadOnlyTool(name, actions.list)) {
             const refused = { ok: false, issues: withHints([{ code: 'validation', message: `This server is read-only; "${name}" can change the document.`, hint: 'Use a read-only tool (get_outline, find_blocks, get_block, export_markdown, document_stats) or ask the operator for a writable server.' }]), currentRevision: service.read().revision };
             return ok(toolResult(refused, true));
           }
@@ -151,7 +158,7 @@ export function createMcpDispatcher(service: ReportService, options: McpDispatch
                 ? service.undo(args.actor as Actor, args.expectedRevision as number)
                 : service.redo(args.actor as Actor, args.expectedRevision as number);
             result = toolResult(withFailureHints(applied), !applied.ok);
-          } else result = actionResult(name, args);
+          } else result = await actionResult(name, args);
           return ok(result);
         }
         case 'resources/list': return ok({ resources: JSON.parse(JSON.stringify(RESOURCES)) as unknown });

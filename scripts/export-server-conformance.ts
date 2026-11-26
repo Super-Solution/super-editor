@@ -228,7 +228,7 @@ async function walk(index: number, steps: number): Promise<void> {
     else if (kind === 1) await h.action('find_blocks', { ...(chance(2) ? { type: pick(['paragraph', 'heading', 'list', 'section', ['table', 'chart'], 'nope']) } : {}), ...(chance(2) ? { text: pick(WORDS) } : {}), ...(chance(4) ? { parentId: chance(2) ? null : block.id } : {}), ...(chance(5) ? { within: containers.length ? pick(containers).id : 'x' } : {}), ...(chance(3) ? { limit: 1 + rand(5), offset: rand(3) } : {}), ...(chance(4) ? { include: 'content' } : {}) });
     else if (kind === 2) await h.action('get_block', { blockId: id(block) });
     else if (kind === 3) await h.action(pick(['document_stats', 'list_templates']), {});
-    else if (kind === 4) await h.action(pick(['export_markdown', 'export_html', 'export_text']), { ...(chance(3) ? { blockId: id(block) } : {}), ...(chance(3) ? { standalone: chance(2) } : {}) });
+    else if (kind === 4) await h.action(pick(['export_markdown', 'export_html', 'export_text']), { ...(chance(3) ? { blockId: id(block) } : {}), ...(chance(3) ? { standalone: chance(2) } : {}), ...(chance(3) ? { withIds: chance(2) } : {}) });
     else if (kind === 5) await h.action('list_revisions', chance(2) ? { limit: 1 + rand(5), offset: rand(3) } : {});
     else if (kind === 6) await h.action('validate_transaction', { transaction: { id: tx(), actor: { id: 'v', kind: 'agent' }, baseRevision: h.service.read().revision + (chance(5) ? 1 : 0), operations: [chance(2) ? op.setTitle(sentence()) : op.updateBlock(id(block), version(block), CONTENTS() as never)] } });
     else if (kind === 7 || kind === 8) await h.action('insert_blocks', chance(3) ? { blocks: [{ id: `new-${++prefixCounter}`, content: CONTENTS(), ...parent() }], ...after(), ...controls() } : { markdown: markdownText(), ...(chance(3) ? { idPrefix: `ip${++prefixCounter}` } : {}), ...parent(), ...after(), ...controls() });
@@ -236,7 +236,7 @@ async function walk(index: number, steps: number): Promise<void> {
     else if (kind === 11) await h.action('update_block', { blockId: id(block), expectedVersion: version(block), content: CONTENTS(), ...(chance(4) ? { citationIds: chance(2) ? [] : ['c1'] } : {}), ...(chance(8) ? { conflictPolicy: 'rebase-safe' } : {}), ...controls() });
     else if (kind === 12 || kind === 13) {
       const single = chance(2);
-      await h.action('replace_text', { find: pick(WORDS), replace: chance(5) ? '' : pick(WORDS), ...(single ? { blockId: id(block), ...(chance(8) ? {} : { expectedVersion: version(block) }) } : chance(6) ? { expectedVersion: 1 } : {}), ...(!single && containers.length && chance(3) ? { within: pick(containers).id } : {}), ...(chance(3) ? { all: chance(2) } : {}), ...(chance(3) ? { caseSensitive: chance(2) } : {}), ...controls() });
+      await h.action('replace_text', { find: pick(WORDS), replace: chance(5) ? '' : pick(WORDS), ...(single ? { blockId: id(block), ...(chance(8) ? {} : { expectedVersion: version(block) }) } : chance(6) ? { expectedVersion: 1 } : {}), ...(!single && containers.length && chance(3) ? { within: pick(containers).id } : {}), ...(chance(3) ? { all: chance(2) } : {}), ...(chance(3) ? { caseSensitive: chance(2) } : {}), ...(chance(4) ? { expectedMatches: 1 + rand(3) } : {}), ...controls() });
     }
     else if (kind === 14 || kind === 15) await h.action('move_blocks', { blocks: Array.from({ length: 1 + rand(2) }, () => { const entry = any(); return { blockId: id(entry), expectedVersion: version(entry) }; }), parentId: containers.length && chance(2) ? pick(containers).id : null, ...after(), ...controls() });
     else if (kind === 16 && chance(2)) await h.action('delete_blocks', { blocks: [{ blockId: id(block), expectedVersion: version(block) }], ...controls() });
@@ -275,11 +275,11 @@ async function inputs(): Promise<void> {
   const h = new Harness('inputs', mainDocument());
   const seeds: Record<string, unknown[]> = {
     get_outline: [{ maxDepth: 2 }], find_blocks: [{ type: 'paragraph', text: 'alpha', limit: 3 }, { ids: ['p1'], include: 'content' }, { parentId: null, within: 's1' }], get_block: [{ blockId: 'p1' }], document_stats: [{}],
-    export_markdown: [{ blockId: 's1' }], export_html: [{ standalone: true }], export_text: [{}], list_revisions: [{ limit: 5, offset: 0 }], list_templates: [{}],
+    export_markdown: [{ blockId: 's1' }, { withIds: true }, { withIds: true, blockId: 's1' }, { withIds: 'yes' }], export_html: [{ standalone: true }], export_text: [{}], list_revisions: [{ limit: 5, offset: 0 }], list_templates: [{}],
     validate_transaction: [{ transaction: { id: 'v1', actor: { id: 'a', kind: 'agent' }, baseRevision: 1, operations: [op.setTitle('T')] } }],
     insert_blocks: [{ markdown: '# H\n\ntext', afterId: null, idPrefix: 'mm' }, { blocks: [{ id: 'nb', content: { type: 'divider' }, citationIds: ['c1'] }] }],
     update_block_text: [{ blockId: 'p2', expectedVersion: 1, text: 'new text', format: 'plain' }], update_block: [{ blockId: 'p2', expectedVersion: 1, content: { type: 'paragraph', runs: [{ text: 'x' }] }, citationIds: ['c1'] }],
-    replace_text: [{ find: 'fox', replace: 'cat', all: false, caseSensitive: true }, { blockId: 'p2', expectedVersion: 1, find: 'fox', replace: 'cat' }],
+    replace_text: [{ find: 'fox', replace: 'cat', all: false, caseSensitive: true }, { blockId: 'p2', expectedVersion: 1, find: 'fox', replace: 'cat' }, { find: 'fox', replace: 'cat', expectedMatches: 1 }, { find: 'fox', replace: 'cat', expectedMatches: 7, dryRun: true }, { blockId: 'p2', expectedVersion: 1, find: 'fox', replace: 'cat', expectedMatches: 3 }, { find: 'fox', replace: 'cat', expectedMatches: 1, conflictPolicy: 'rebase-safe' }],
     move_blocks: [{ blocks: [{ blockId: 'p4', expectedVersion: 1 }], parentId: 's1', afterId: null }], delete_blocks: [{ blocks: [{ blockId: 'dv1', expectedVersion: 1 }] }],
     add_chart: [{ spec: chart.bar({ title: 'T', labels: ['a'], values: [1] }), id: 'chart-n', citationIds: ['c1'] }], add_citation: [{ title: 'S', url: 'https://example.com/s', id: 'src-n', accessedAt: '2026-11-11T00:00:00Z', blockId: 'p2', expectedVersion: 1, marker: true }],
     set_title: [{ title: 'New title' }], insert_template: [{ kind: 'equity', subject: 'BTC', idPrefix: 'eq', setTitle: true }, { kind: 'blank' }], import_markdown: [{ markdown: 'a\n\nb', mode: 'append', setTitle: false }],

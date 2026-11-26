@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2026 SUPER SOLUTION LABS INC
 import type { Interaction, ShortcutContext } from './interaction.js';
-import type { ShortcutDefinition, ShortcutRegistry } from './shortcuts.js';
+import type { KeyEventLike, ShortcutDefinition, ShortcutRegistry } from './shortcuts.js';
 import type { TurnIntoTarget } from './convert.js';
 import { fieldText } from './fields.js';
 
@@ -57,12 +57,15 @@ export function registerDefaultShortcuts(interaction: Interaction, registry: Sho
   add({ id: 'selection.down', keys: ['ArrowDown'], description: 'Select next block', group: 'Selection', hidden: true, when: selecting, run: () => { interaction.selection.move(1); } });
   add({ id: 'selection.extendUp', keys: ['Shift+ArrowUp'], description: 'Extend selection up', group: 'Selection', when: selecting, run: () => { interaction.selection.move(-1, true); } });
   add({ id: 'selection.extendDown', keys: ['Shift+ArrowDown'], description: 'Extend selection down', group: 'Selection', when: selecting, run: () => { interaction.selection.move(1, true); } });
-  add({ id: 'selection.open', keys: ['Enter'], description: 'Edit the selected block', group: 'Selection', when: selecting, run: () => {
-    const [id] = interaction.getState().selection.ids;
-    const block = id ? interaction.editor.getSnapshot().blocks.find((entry) => entry.id === id) : undefined;
-    if (!block) return false;
-    if (block.content.type === 'chart') { interaction.openChartEditor(block.id); return; }
-    return interaction.edit.start(block.id, { caret: 'end' }) ? undefined : false;
+  add({ id: 'selection.open', keys: ['Enter'], description: 'Edit the selected block', group: 'Selection', when: selecting, run: () => { interaction.openSelected(); } });
+  // The document has focus but nothing is selected yet (a keyboard user has just tabbed in): Down or Enter starts at the first block.
+  // Only when the surface itself has focus, so Enter on a button inside the document still presses the button.
+  const onSurface = (event: KeyEventLike): boolean => !!(event as { target?: Element | null }).target?.hasAttribute?.('data-se-surface');
+  const idle = (c: ShortcutContext): boolean => c.state.editing === null && c.state.selection.ids.length === 0 && c.state.drag === null && c.state.menu === null && c.state.prompt === null && !c.state.help;
+  add({ id: 'selection.begin', keys: ['ArrowDown'], description: 'Start at the first block', group: 'Selection', hidden: true, when: idle, run: (_c, event) => onSurface(event) && interaction.selection.first() ? undefined : false });
+  add({ id: 'selection.beginEdit', keys: ['Enter'], description: 'Start editing the first block', group: 'Selection', hidden: true, when: idle, run: (_c, event) => {
+    if (!onSurface(event) || !interaction.selection.first()) return false;
+    interaction.openSelected();
   } });
 
   add({ id: 'edit.enter', keys: ['Enter'], description: 'New block (splits at the caret)', group: 'Editing', when: editing, run: () => { interaction.edit.enter(); } });

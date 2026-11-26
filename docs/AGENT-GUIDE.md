@@ -73,7 +73,8 @@ const found = await client.actions.find_blocks({ text: 'revenue', type: 'paragra
 ## The editing loop
 
 1. **Look cheaply.** `get_outline` shows sections and headings. `document_stats` shows size. Avoid `read_document` on large documents.
-2. **Find what you will change.** `find_blocks` returns `{ id, type, version, parentId, text }` summaries. Filter by `type`, `text`, `within` (a section), `parentId`, `citationId` or `ids`.
+2. **Read the prose** when you need the words, not only the structure: `export_markdown({ withIds: true })` returns the whole document as Markdown with each block preceded by `<!-- id=BLOCK_ID v=VERSION -->`, and `blockId` limits it to one section (read a long document section by section after `get_outline`). One call gives you the ids and versions you edit with. The comments are for reading: do not save or re-import the view. (Over HTTP this is `POST /actions/export_markdown`; the `GET /export.md` route has no such option.)
+   **Find what you will change.** `find_blocks` returns `{ id, type, version, parentId, text }` summaries. Filter by `type`, `text`, `within` (a section), `parentId`, `citationId` or `ids`.
 3. **Make one narrow edit** with the version from step 2.
 4. **Use the result.** Every edit returns `blocks: [{ id, type, version }]` for what it touched, so you can chain another edit on those blocks without reading again.
 
@@ -98,6 +99,7 @@ add_citation({ title: "ACME annual report", url: "https://example.com/10k",
 | Change content | `update_block_text`, `update_block`, `replace_text`, `set_title`, `move_blocks` |
 | Remove content | `delete_blocks` |
 | Check before committing | `dryRun: true` on any write, `validate_transaction` |
+| Read the prose with ids | `export_markdown` with `withIds: true` (and `blockId` for one section) |
 | Get it out | `export_markdown`, `export_html`, `export_text` |
 | Full control | `apply_transaction`, `undo`, `redo`, `read_document` |
 | Context | `list_revisions`, `list_templates` |
@@ -184,6 +186,15 @@ For text edits that should survive unrelated changes elsewhere in the document, 
 - **Replace and delete** are visible in `readOnlyHint` / `destructiveHint` annotations. `delete_blocks` on a section deletes everything inside it.
 - **Do not invent**. Cite sources, state data sources on charts and say so when data is missing. Reports here are analysis, not advice.
 
+## Proposing a change for a person to review
+
+Some servers offer three more tools: `propose_transaction`, `list_proposals` and `resolve_proposal`. They exist when the operator turned on the proposal box; if `tools/list` does not show them, edit as above or ask for them.
+
+- **Propose, do not edit,** when you are not sure the change is wanted. `propose_transaction` takes the same `transaction` as `apply_transaction` (use the `expectedRevision` you read as `baseRevision`, a fresh `id`, and your own `actor`) and an optional `note` saying why. It is checked now exactly as an edit would be, and refused with `issues` and `hint`s if it is invalid or `baseRevision` is not the current revision. **Nothing in the document changes.** You get `proposalId` (your transaction id), a one-sentence summary and each change with before and after text. Sending the identical transaction again returns the same proposal (`duplicate: true`); a different change needs a new id.
+- **See what happened** with `list_proposals` (waiting ones, oldest first, with `review: "ready" | "stale" | "invalid"`; `proposalId` or `detail: true` adds the changes). A proposal goes **stale** as soon as the document moves past its `baseRevision` (anyone's edit, including another proposal being accepted): it cannot be accepted any more. Read the document again and propose again with a new id.
+- **Only a person resolves.** `resolve_proposal` accepts (it applies your transaction, recorded under your actor, and needs the reviewer's `expectedRevision`) or rejects. A call from an agent is refused with `path: "actor"`; do not retry it, tell the user a proposal is waiting. Repeating the same decision is safe (`duplicate: true`); a resolved proposal is never reversed.
+- **What it is not.** Proposals live in the server's memory, not in the document: a restart forgets them (what was accepted is in the document's revision history). Accepting is all-or-nothing for the whole transaction: there is no accept-this-change-but-not-that-one yet, so propose small, separate transactions when a reviewer may want to take only some. There is no comment thread and no word-level diff in these tools. For one `ProposalReview` panel per proposal in your own UI, `box.get(id).transaction` is the proposal to hand it.
+
 ## Limits
 
 | Limit | Value |
@@ -200,6 +211,7 @@ For text edits that should survive unrelated changes elsewhere in the document, 
 | HTTP request body | 1 MiB by default (`maxBodyBytes`) |
 | MCP stdio message | 4 MiB per line |
 | Document or input file (CLI, stdio server) | 32 MiB |
+| Proposals waiting / remembered after a decision | 100 / 200 (the host can change both) |
 
 The Core `LIMITS` object and `TRANSPORT_LIMITS` export every number. A call over a limit fails with a `validation` issue and a hint.
 
@@ -207,7 +219,7 @@ The Core `LIMITS` object and `TRANSPORT_LIMITS` export every number. A call over
 
 **Draft an equity report.** `insert_template({ kind: "equity", subject: "ACME", setTitle: true })`, then `get_outline`, then per section `find_blocks({ within })` and `update_block_text` / `update_block`, `add_chart` for each placeholder, `add_citation` with `marker`, `delete_blocks` for the placeholder notes, `export_markdown` to read it back.
 
-**Fix a number everywhere.** `replace_text({ find: "12.4%", replace: "12.8%" })` edits every block containing it. Add `within` to limit it to one section, `dryRun: true` to see which blocks match.
+**Fix a number everywhere.** `replace_text({ find: "12.4%", replace: "12.8%" })` edits every block containing it. Add `within` to limit it to one section, `dryRun: true` to see which blocks match and how many `replacements` it would make. Add `expectedMatches` (and `expectedRevision`) to be refused, with nothing changed, if the number is not the one you meant: `expectedMatches: 1` for a figure that should appear once.
 
 **Reorder sections.** `move_blocks({ blocks: [{ blockId, expectedVersion }], parentId: null, afterId })`. Children move with their section.
 

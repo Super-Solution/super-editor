@@ -55,6 +55,12 @@ export type MarkdownOptions = {
   title?: boolean;
   /** Rows of chart data shown per chart before "more rows omitted". Default 100. */
   chartRows?: number;
+  /**
+   * A reading view for an editing agent: every block is preceded by `<!-- id=BLOCK_ID v=VERSION -->` (the id and the version that
+   * `update_block`, `move_blocks` and `delete_blocks` need), including blocks that print nothing. The comment is invisible when the
+   * Markdown is rendered, but this is not an exchange format: `fromMarkdown` keeps the comments as text. Default false.
+   */
+  withIds?: boolean;
 };
 const ALERTS: Record<Content<'callout'>['tone'], string> = { info: 'NOTE', success: 'TIP', note: 'IMPORTANT', warning: 'WARNING', danger: 'CAUTION' };
 const TONES: Record<string, Content<'callout'>['tone']> = { NOTE: 'info', TIP: 'success', IMPORTANT: 'note', WARNING: 'warning', CAUTION: 'danger', INFO: 'info', SUCCESS: 'success', DANGER: 'danger' };
@@ -92,7 +98,7 @@ export function toMarkdown(document: ResearchDocument, options: MarkdownOptions 
   const model = tree(document), chartRows = options.chartRows ?? 100, parts: string[] = [];
   if (options.title !== false && document.title) parts.push(`# ${escapeHeadingText(line(document.title))}`);
   const render = (block: Block, depth: number): void => {
-    const content = block.content;
+    const content = block.content, start = parts.length;
     switch (content.type) {
       case 'section': parts.push(`${'#'.repeat(Math.min(6, 2 + depth))} ${escapeHeadingText(line(content.title))}`); break;
       case 'toggle': parts.push(`**${escapeInline(line(content.title))}**`); break;
@@ -135,6 +141,10 @@ export function toMarkdown(document: ResearchDocument, options: MarkdownOptions 
     }
     const sources = blockSources(block);
     if (sources.length) parts.push(`Sources: ${sources.map(id => `[^${id}]`).join(' ')}`);
+    if (options.withIds === true) {
+      const mark = `<!-- id=${block.id} v=${block.version} -->`;
+      if (parts.length > start) parts[start] = `${mark}\n${parts[start]}`; else parts.push(mark);
+    }
     for (const child of model.children.get(block.id) ?? []) render(child, content.type === 'section' ? depth + 1 : depth);
   };
   for (const block of model.children.get(null) ?? []) render(block, 0);

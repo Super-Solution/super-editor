@@ -25,11 +25,15 @@ All colors, fonts, spacing and shape are `--se-*` custom properties (see `tokens
 - `labels` (all components) translates the UI strings, including the classic editor controls (`labels.classic`) and the proposal panel (`labels.proposal`).
 - `interactionLabels` and `slashLabels` translate the interactive editor's components and slash menu.
 - `messages` translates the interaction layer's own strings (notices, block-menu entries, shortcut help), keyed by the English text: `messages={{ 'Block ID copied': '區塊 ID 已複製', Duplicate: '複製' }}`. Messages that come from the core (validation issues) carry a stable `code` you can map yourself.
+  - **A notice with a number or a name is a template**, and the template is the key: `'Pasted {count} blocks'`, `'Pasted {count} block'`, `'Duplicated {count} blocks'`, `'Turned {count} blocks into {type}'`, `'Inserted {item}'`, `'The image is larger than {size} MB.'`, `'Uploading {count} images…'`. English has two forms where a count is involved (one key for exactly 1, one for the rest); a language with other plural rules gives a **function** instead of a string, `{ 'Pasted {count} blocks': ({ count }) => … }`, which receives the parameters (use `Intl.PluralRules`). A placeholder with no value stays as written, and a block kind inside a template (`{type}`) is translated through the same dictionary (`'Heading 2'`).
+  - Every `FeedbackEvent` that was made from a template also carries `template` (the English key) and `params`, so a host that draws its own notices through `onFeedback` can translate or format them itself. The keys are listed by running the editor, not by a catalogue: `interaction.t` is the same function.
 - `locale` and `timeZone` format timestamps and the "Updated" time for people (`Intl.DateTimeFormat`, medium date and short time; the machine-readable `dateTime` and a tooltip keep the ISO value). Without either, the ISO text is shown as before.
 
 ## Pasting and images
 
 Pasting HTML (a web page, Word, Google Docs) keeps headings, lists (with nesting), block quotes, code, tables, rules, links and bold/italic/underline/strike/code. The HTML is parsed inertly and only an allow-list of structure is read; styles, scripts, event handlers, `data:` images and unsafe links are dropped.
+
+**What a paste leaves out is reported, not hidden.** Dropping styles, scripts and classes is the point and stays silent. Content a reader would miss is a `PasteWarning` (`code`, `count`, an English `message` template, `params`), one per kind: `blocks-capped` (over 500 blocks per paste), `list-items-capped`, `text-shortened` (over a field's length limit), `table-trimmed` (rows or columns over the limit), `image-left-out` (not an https image), `link-removed` (a link whose address is not allowed; its text is kept; relative and in-page links are not counted) and `html-too-large` (over 1,000,000 characters: the formatting is ignored and the plain text is pasted). The interactive editor shows them as one `info` notice after "Pasted N blocks" and passes them on `FeedbackEvent.warnings`. Outside the editor, `htmlToBlocks(html, createId, { warnings })` fills the array you give it (without it, nothing changes for existing callers). Not detected: formatting the allow-list does not model (colours, fonts, alignment, footnotes) and text inside elements it skips, such as forms and `svg`.
 
 Images arrive as files (a screenshot, a drag from the desktop). Give the editor `uploadImage: (file) => Promise<{ url, alt?, caption? }>` and it uploads pasted or dropped image files (png, jpeg, gif, webp, avif; up to `maxImageBytes`, default 20 MB) and inserts image blocks with the returned **https** address. Without a handler the editor says so instead of silently ignoring the file.
 
@@ -50,6 +54,10 @@ Shows who proposed the change and against which revision, what it would add, cha
 
 `defineSuperEditor()` registers `<super-editor>`. Attributes: `mode="view|edit"`, `readonly`, `theme`, `density`, `locale`, `time-zone`, `actor`, `src` (a URL whose JSON body is the document), `credentials`. Property `labels`; methods `load(document)` and `reload()`; events `change`, `error`, `load`.
 
+> **`mode="edit"` is the basic editor, not the interactive one.** `ReportEditor` (React) is the full editor: the `/` menu, block selection and menu, drag and keyboard moves, rich paste, inline formatting, undo toasts, and the axe, keyboard and input-method tests in [ACCESSIBILITY.md](ACCESSIBILITY.md). The element's edit mode mounts the classic editor from `-ui` (`mountEditor`): a toolbar, an "Edit" button on each text block and a plain-text textarea with Save and Discard. It is a working way to change text, nothing more, and none of the accessibility checks cover it. There is no vanilla-DOM version of the interactive editor yet (the interaction store in `-ui` is already independent of React, so one is possible; it is not done). Use `mode="view"` (fully rendered) for display, or `ReportEditor` when people write.
+>
+> The element tells you: it sets `data-editor="basic"` while in edit mode (style or test on it) and removes it in view mode, and it logs one `console.warn` per page the first time it mounts the basic editor. `defineSuperEditor({ warn: false })` silences the message; the attribute stays.
+
 ```html
 <!-- Vue / Svelte / Angular / plain HTML: it is a custom element -->
 <super-editor mode="edit" theme="host" locale="de-DE" src="/api/reports/7/document"></super-editor>
@@ -60,7 +68,9 @@ const element = document.querySelector('super-editor')!;
 element.addEventListener('change', (event) => save((event as CustomEvent).detail.document));
 ```
 
-In Vue, add `isCustomElement: (tag) => tag === 'super-editor'` to the compiler options; in Angular add `CUSTOM_ELEMENTS_SCHEMA`; in Svelte no setup is needed. Set rich properties (`labels`) on the element instance, not as attributes.
+In Vue, add `isCustomElement: (tag) => tag === 'super-editor'` to the compiler options; in Angular add `CUSTOM_ELEMENTS_SCHEMA`; in Svelte no setup is needed. Set rich properties (`labels`) on the element instance, not as attributes. Working components for [Vue 3](../examples/vue/ReportEditor.vue) and [Svelte 5](../examples/svelte/ReportEditor.svelte) are in `examples/` (not compiled by this repository's tests; a test checks that they name only attributes, methods and events the element has).
+
+The toolbar's `<select>` elements fire native `change` events that bubble through the element, so a `change` listener also sees events that are not the element's: handle only those whose `event.target` is the element itself (they carry `detail.document`). The examples do.
 
 ## Performance
 
@@ -68,4 +78,4 @@ A single-block edit does not scale with document size: `apply` keeps validated b
 
 ## Tests
 
-`npm test` runs the unit and jsdom suites. `npm run test:e2e` runs real-browser tests (Chromium through Playwright): typing, bold, the slash menu, HTML paste, container-query layout, theme bridging and a console-error check.
+`npm test` runs the unit and jsdom suites. `npm run test:e2e` runs real-browser tests (Chromium through Playwright): typing, bold, the slash menu, HTML paste, container-query layout, theme bridging, a console-error check, and the accessibility suite (axe, keyboard-only, input-method composition, right-to-left text; see [ACCESSIBILITY.md](ACCESSIBILITY.md)). Set `SUPER_EDITOR_CHROMIUM=/path/to/chrome` to use a browser you already have instead of Playwright's download.

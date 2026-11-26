@@ -95,9 +95,12 @@ def _outline_markdown(entries: Sequence[dict[str, Any]], depth: int) -> list[str
     return out
 
 
-def to_markdown(doc: Document, *, title: bool = True, chart_rows_limit: int | None = None) -> str:
+def to_markdown(
+    doc: Document, *, title: bool = True, chart_rows_limit: int | None = None, with_ids: bool = False
+) -> str:
     """Render a document as Markdown for reading and exchange. ``title=False`` leaves out the document title;
-    ``chart_rows_limit`` caps the rows shown for each chart (default 100)."""
+    ``chart_rows_limit`` caps the rows shown for each chart (default 100). ``with_ids`` precedes every block with
+    ``<!-- id=ID v=VERSION -->``: a reading view for an editing agent, not an exchange format."""
     tree = Tree(doc)
     rows_cap = chart_rows(chart_rows_limit, 100)
     parts: list[str] = []
@@ -107,6 +110,7 @@ def to_markdown(doc: Document, *, title: bool = True, chart_rows_limit: int | No
     def render(block: dict[str, Any], depth: int) -> None:
         c = block["content"]
         kind = c["type"]
+        start = len(parts)
         if kind == "section":
             parts.append("#" * min(6, 2 + depth) + " " + escape_heading_text(line(text_of(c, "title"))))
         elif kind == "toggle":
@@ -181,6 +185,12 @@ def to_markdown(doc: Document, *, title: bool = True, chart_rows_limit: int | No
         sources = block_sources(block)
         if sources:
             parts.append("Sources: " + " ".join(f"[^{s}]" for s in sources))
+        if with_ids:
+            mark = f"<!-- id={block['id']} v={int(block['version'])} -->"
+            if len(parts) > start:
+                parts[start] = mark + "\n" + parts[start]
+            else:
+                parts.append(mark)
         nxt = depth + 1 if kind == "section" else depth
         for child in tree.children.get(block["id"], []):
             render(child, nxt)

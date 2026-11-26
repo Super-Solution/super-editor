@@ -5,6 +5,7 @@ import {
   type Block, type CalloutTone, type EditorIssue, type ExportResult, type Exporter, type FidelityTable, type FormatWarning, type InlineRun, type OutlineItem, type ResearchDocument,
 } from '@supersolutions/super-editor-core';
 import { RELATIONSHIP_TYPES, ZipError, createPackage, escapeXmlAttribute, escapeXmlText, xmlText } from '@supersolutions/super-editor-opc';
+import { notEmbeddedWarning, resolveImages, type Embedded, type ImageBatch } from './images.js';
 import { DEFAULT_FONTS, DEFAULT_LABELS, DEFAULT_MARGIN_MM, optionIssues, type DocxLabels, type DocxOptions, type HeaderFooter } from './options.js';
 import { CONTENT_TYPES, RELATIONSHIPS, R, STYLE, W, XML_HEADER, corePropertiesXml, extendedPropertiesXml, heading, numberingXml, settingsXml, stylesXml } from './parts.js';
 
@@ -17,7 +18,7 @@ export const DOCX_FIDELITY: FidelityTable = {
   chart: { level: 'degraded', note: 'A chart becomes its title and data table; no picture is drawn. If the picture matters, paste it into Word or send the chart as an image.' },
   card: { level: 'degraded', note: 'A card becomes its title and alt text; the card itself is not in the file.' },
   embed: { level: 'degraded', note: 'An embed becomes a link.' },
-  image: { level: 'degraded', note: 'An image becomes "[Image: alt text]" and a link to its address. Images are not downloaded or embedded.' },
+  image: { level: 'degraded', note: 'An image becomes "[Image: alt text]" and a link to its address. The package never downloads an image: pass a resolveImage function to embed PNG, JPEG and GIF pictures from bytes you provide.' },
   metrics: { level: 'degraded', note: 'Metrics become a table.' },
   timestamp: { level: 'degraded', note: 'A timestamp becomes the text "label: time".' },
   toc: { level: 'degraded', note: 'A table of contents becomes a fixed list of links to the headings, without page numbers; it does not update when headings change.' },
@@ -38,6 +39,8 @@ export type Context = {
   document: ResearchDocument; labels: DocxLabels; monoFont: string; textWidth: number; chartRows: number; replaced: number;
   children: Map<string | null, Block[]>; numbers: Map<string, number>; headingNames: Map<string, string>; bookmarkSeq: number;
   addLink: (url: string) => string; orderedLists: number;
+  /** The embedded picture for an image address (`resolveImage` returned bytes for it), or undefined when the image stays a link. */
+  picture: (url: string) => Embedded | undefined; drawingSeq: number;
   /** Redline only. The text of a block whose words changed, as runs with the changes marked (given the block's base run properties). */
   merge?: Map<string, (base: RunProps) => string>;
   /** Redline only. Wraps how a block's own content is written; `render(block)` writes any version of the block. */
@@ -172,6 +175,12 @@ function renderOwn(ctx: Context, block: Block, depth: number): string {
     case 'divider': parts.push(paragraph({ border: { side: 'bottom', color: 'D0D7DE', size: 6, space: 1 }, spacing: { before: 120, after: 120 } })); break;
     case 'pageBreak': parts.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>'); break;
     case 'image': {
+      const picture = ctx.picture(content.url);
+      if (picture) {
+        parts.push(paragraph({ keepNext: content.caption !== undefined && content.caption !== '' }, drawing(ctx, picture, content.alt)));
+        if (content.caption) parts.push(paragraph({ style: STYLE.caption }, textRuns(ctx, content.caption)));
+        break;
+      }
       const label = `[${ctx.labels.image}: ${content.alt || content.url}] `;
       parts.push(paragraph({}, textRuns(ctx, label, { italic: true }) + link(ctx, content.url, textRuns(ctx, content.url, { style: STYLE.link }))));
       if (content.caption) parts.push(paragraph({ style: STYLE.caption }, textRuns(ctx, content.caption)));
@@ -197,6 +206,16 @@ function renderOwn(ctx: Context, block: Block, depth: number): string {
   const sources = ownSources(block);
   if (sources.length) parts.push(paragraph({ style: STYLE.caption, spacing: { after: 120 } }, textRuns(ctx, `${ctx.labels.sources}: `) + sources.map(id => marker(ctx, id)).join(textRuns(ctx, ' '))));
   return parts.join('');
+}
+
+const EMU_PER_PIXEL = 9525, EMU_PER_TWIP = 635, NS_WP = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing', NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main', NS_PIC = 'http://schemas.openxmlformats.org/drawingml/2006/picture';
+/** An embedded picture as an inline drawing, at its own size or scaled down (never up) to the text width. `alt` is its alternative text. */
+function drawing(ctx: Context, picture: Embedded, alt: string): string {
+  const maxWidth = ctx.textWidth * EMU_PER_TWIP, scale = Math.min(1, maxWidth / (picture.widthPx * EMU_PER_PIXEL));
+  const cx = Math.max(1, Math.round(picture.widthPx * EMU_PER_PIXEL * scale)), cy = Math.max(1, Math.round(picture.heightPx * EMU_PER_PIXEL * scale));
+  const id = ++ctx.drawingSeq, description = escapeXmlAttribute(xmlText(alt).text), name = escapeXmlAttribute(picture.part.slice(picture.part.lastIndexOf('/') + 1));
+  ctx.replaced += xmlText(alt).replaced;
+  return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="${NS_WP}"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Picture ${id}" descr="${description}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="${NS_A}" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="${NS_A}"><a:graphicData uri="${NS_PIC}"><pic:pic xmlns:pic="${NS_PIC}"><pic:nvPicPr><pic:cNvPr id="${id}" name="${name}" descr="${description}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${picture.relationshipId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
 }
 
 /** One line of the Sources list. `index` is the citation's position in the document's citation list (the number its markers show). */
@@ -265,11 +284,17 @@ export async function assemble(document: ResearchDocument, opts: DocxOptions, pl
 
   // The document part's relationships: styles, numbering and settings, then the header and footer when given, then one per distinct link,
   // in order of first use. The ids are known before the package exists, so the body can name them while it is written.
+  // Pictures come next (only for a plain export; a redline keeps images as links), before the links, so their ids are known too.
+  const batch: ImageBatch | undefined = opts.resolveImage && !plan.body ? await resolveImages(document.blocks, opts.resolveImage) : undefined;
   const fixed = 3 + (opts.header === undefined ? 0 : 1) + (opts.footer === undefined ? 0 : 1), linkUrls: string[] = [];
+  const pictures = new Map<string, Embedded>();
+  for (const [url, found] of batch?.found ?? []) pictures.set(url, { ...found, relationshipId: `rId${fixed + pictures.size + 1}` });
+  const linkBase = fixed + pictures.size;
   const ctx: Context = {
     document, labels, monoFont: fonts.mono, textWidth: page.value.width - page.value.left - page.value.right, chartRows: opts.chartRows ?? 100, replaced: 0,
     children, numbers: new Map(document.citations.map((citation, index) => [citation.id, index + 1])), headingNames, bookmarkSeq: 0, orderedLists: 0,
-    addLink: url => { let index = linkUrls.indexOf(url); if (index < 0) index = linkUrls.push(url) - 1; return `rId${fixed + index + 1}`; },
+    addLink: url => { let index = linkUrls.indexOf(url); if (index < 0) index = linkUrls.push(url) - 1; return `rId${linkBase + index + 1}`; },
+    picture: url => pictures.get(url), drawingSeq: 0,
   };
   plan.prepare?.(ctx);
   const body: string[] = plan.body ? plan.body(ctx) : [];
@@ -303,6 +328,7 @@ export async function assemble(document: ResearchDocument, opts: DocxOptions, pl
   const ids = [
     pkg.addRelationship(documentPart, { type: RELATIONSHIPS.styles, part: 'word/styles.xml' }), pkg.addRelationship(documentPart, { type: RELATIONSHIPS.numbering, part: 'word/numbering.xml' }), pkg.addRelationship(documentPart, { type: RELATIONSHIPS.settings, part: 'word/settings.xml' }),
     ...parts.map(part => pkg.addRelationship(documentPart, { type: part.rel, part: part.path })),
+    ...[...pictures.values()].map(picture => { pkg.addPart(picture.part, picture.mime, picture.data); return pkg.addRelationship(documentPart, { type: RELATIONSHIPS.image, part: picture.part }); }),
     ...linkUrls.map(url => pkg.addRelationship(documentPart, { type: RELATIONSHIP_TYPES.hyperlink, url })),
   ];
   if (ids.some((id, index) => id !== `rId${index + 1}`)) throw new Error('Relationship ids drifted from the ones written into the body.');
@@ -312,7 +338,10 @@ export async function assemble(document: ResearchDocument, opts: DocxOptions, pl
     if (error instanceof ZipError) return refuse([{ code: 'validation', path: 'document', message: `The package could not be written: ${error.message}`, hint: 'Report this: it is a fault in the exporter, the document was not changed.' }]);
     throw error;
   }
-  const warnings: FormatWarning[] = lossWarnings(document, DOCX_FIDELITY);
+  // With a resolver, `image-not-embedded` says exactly which images stayed links, so the general "image is reduced" warning is dropped.
+  const warnings: FormatWarning[] = lossWarnings(document, DOCX_FIDELITY).filter(warning => !(batch && warning.feature === 'image'));
+  const stayed = batch ? notEmbeddedWarning(batch.skipped) : undefined;
+  if (stayed) warnings.push(stayed);
   if (plan.warnings) warnings.push(...plan.warnings(ctx));
   const cut = chartRowsWarning(document, ctx.chartRows);
   if (cut) warnings.push(cut);

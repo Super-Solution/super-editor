@@ -116,7 +116,8 @@ function ToastItem({ toast, onDismiss, defaultDuration, labels }: { toast: Toast
     return () => { clearTimeout(timer); remaining.current -= Date.now() - started; };
   }, [paused, sticky, toast.id, onDismiss]);
   const urgent = toast.tone === 'error' || toast.tone === 'conflict';
-  return <li className="se-toast" data-tone={toast.tone} role={urgent ? 'alert' : 'status'}
+  // Each toast is its own live region (a status or an alert), so it is not a list item: a list may only contain list items.
+  return <div className="se-toast" data-tone={toast.tone} role={urgent ? 'alert' : 'status'}
     onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}
     onKeyDown={(event) => { if (event.key === 'Escape') onDismiss(toast.id); }}>
     <span className="se-toast-bar" aria-hidden="true" />
@@ -126,14 +127,14 @@ function ToastItem({ toast, onDismiss, defaultDuration, labels }: { toast: Toast
     </div>
     {toast.action ? <button type="button" className="se-button" data-primary={toast.tone === 'conflict' || undefined} onClick={() => { toast.action!.onClick(); onDismiss(toast.id); }}>{toast.action.label}</button> : null}
     <button type="button" className="se-toast-close" aria-label={labels.toasts.dismiss} onClick={() => onDismiss(toast.id)}>×</button>
-  </li>;
+  </div>;
 }
 
 /** The visible stack. `ToastProvider` renders one; render your own only when you manage toast state yourself. */
 export function ToastViewport({ toasts, onDismiss, defaultDuration = 5_000, position = 'bottom-right', labels, portalContainer }: { toasts: readonly Toast[]; onDismiss: (id: string) => void; defaultDuration?: number; position?: ToastProviderProps['position']; labels?: Labels; portalContainer?: PortalContainer }): ReactNode {
   const inherited = useContext(LabelsContext), resolved = labels ?? inherited, setting = usePortalSetting();
   const stack = <section className="se-toasts" data-position={position} role="region" aria-label={resolved.toasts.region}>
-    <ul>{toasts.map((toast) => <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} defaultDuration={defaultDuration} labels={resolved} />)}</ul>
+    <div className="se-toast-list">{toasts.map((toast) => <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} defaultDuration={defaultDuration} labels={resolved} />)}</div>
   </section>;
   return portalContainer === undefined && !setting ? stack : <OverlayPortal container={portalContainer}>{stack}</OverlayPortal>;
 }

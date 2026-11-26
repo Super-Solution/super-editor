@@ -12,6 +12,9 @@
   container: se-document / inline-size;
   background: var(--se-surface); color: var(--se-text); overflow-wrap: anywhere; line-height: var(--se-leading);
 }
+/* Each block of text takes the direction of its own script (what dir="auto" does), so Arabic or Hebrew in a left-to-right page reads and aligns right to left,
+   and a mixed document needs no markup from the host. Zero specificity: a host that sets direction itself wins. */
+:where(.super-editor-document) :where(.se-paragraph, .se-heading, .se-section-title, .se-quote p, .se-callout-body p, .se-list li, .se-todo-text, .se-toggle-name, .se-header h1, td, th, figcaption, caption) { unicode-bidi: plaintext; }
 .super-editor-document[data-font="sans"] { font-family: var(--se-font-sans); }
 .super-editor-document[data-font="serif"] { font-family: var(--se-font-serif); }
 .super-editor-document[data-font="mono"] { font-family: var(--se-font-mono); }

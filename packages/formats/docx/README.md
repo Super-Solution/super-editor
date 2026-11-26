@@ -31,7 +31,7 @@ const formats = createFormatRegistry(); formats.addExporter(docxExporter);
 | Citations | Superscript `[n]` links and a **Sources** section at the end |
 | Chart | Its title and data table (degraded; no picture) |
 | Card, embed, metrics, timestamp, table of contents, toggle | Alt text, link, table, "label: time", a fixed list of links, a bold title with the content below (all degraded) |
-| Image | `[Image: alt text]` and a link; **nothing is downloaded or embedded** (degraded) |
+| Image | `[Image: alt text]` and a link (degraded); with `resolveImage` an embedded PNG, JPEG or GIF with its alt text. **Nothing is ever downloaded by the package.** |
 | Page format | A4 or letter from the document (a `screen` document is written on A4); options override |
 
 `DOCX_FIDELITY` lists the degraded rows in code, and each use is a warning (`feature-degraded`) with the affected block ids. Other warnings: `chart-rows-omitted` (a chart cut to `chartRows` rows), `invalid-xml-characters` (control characters that a Word file cannot hold were replaced, with a count). Valid text of any script, emoji, tabs and line breaks is written exactly.
@@ -58,13 +58,14 @@ The file is the new document with the differences as Word tracked changes: inser
 | `labels` | English | "Sources", "accessed", "Image", metric table headings, "more rows omitted" |
 | `chartRows` | 100 | Data rows kept for a chart table |
 | `compress` | `true` | Deflate the parts |
+| `resolveImage` | none | `({ url, alt, blockId }) => bytes \| null`: the host's way to turn an image address into PNG, JPEG or GIF bytes. See [docs/FORMATS.md](../../../docs/FORMATS.md#pictures-resolveimage) for the security notes and limits |
 
 Unknown option names are refused, with the list of valid ones.
 
 ## What it does not do
 
 - **No comments**, and plain `exportDocx` writes no tracked changes: the document has no revision history. Use the redline below to show what a proposal or a newer version changes.
-- **No pictures.** Images and charts are not drawn or embedded.
+- **Pictures only from bytes you provide** (`resolveImage`); charts are never drawn (their data table is written). SVG, WebP and other types stay links. Images in a redline stay links.
 - **No import.** There is no `.docx` importer yet.
 - **Not verified in Microsoft Word.** (This includes how Word draws the tracked changes; LibreOffice reads and shows them.) The output is checked for well-formed XML, a complete package, Word's schema element order, and opens in python-docx and LibreOffice. Open an export in Word before relying on it.
 - Page numbers in a table of contents, live fields other than the page number, and Word styles beyond the built-in set are out of scope.

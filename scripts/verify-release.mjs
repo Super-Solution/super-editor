@@ -8,6 +8,13 @@ import { gunzipSync } from 'node:zlib';
 import { licenseFile, packageLicenses, packageName, releasePackages } from './release-contract.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packages = releasePackages(root);
+// The README is the first thing a consumer reads: its version and package list must match what is about to be packed.
+{
+  const readme = readFileSync(resolve(root, 'README.md'), 'utf8');
+  const stated = /Version `([^`]+)`/.exec(readme)?.[1];
+  assert.equal(stated, packages[0].version, `README.md says Version \`${stated}\` but the release is ${packages[0].version}: update the line when the version is bumped.`);
+  for (const item of packages) assert.ok(readme.includes(`\`${packageName(item.name)}\``), `README.md does not list ${packageName(item.name)}.`);
+}
 const output = resolve(root, 'artifacts', 'release');
 mkdirSync(output, { recursive: true });
 const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
